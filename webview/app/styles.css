@@ -175,6 +175,18 @@ textarea {
   margin-top: 8px;
 }
 
+.chip-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.chip-row button {
+  font-size: 12px;
+  padding: 3px 7px;
+}
+
 .validation-error {
   color: var(--vscode-errorForeground);
 }

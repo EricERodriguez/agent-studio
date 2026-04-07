@@ -19,10 +19,35 @@ export function DashboardPage(): React.JSX.Element {
   const selectWorkflow = useStudioStore((s) => s.selectWorkflow);
   const toggleCapabilityGraph = useStudioStore((s) => s.toggleCapabilityGraph);
   const setFilter = useStudioStore((s) => s.setFilter);
+  const setSelectedCapability = useStudioStore((s) => s.setSelectedCapability);
+  const autoLayoutWorkflow = useStudioStore((s) => s.autoLayoutWorkflow);
 
   const selectedWorkflow = workflows.find(
     (workflow) => workflow.id === selectedWorkflowId,
   );
+  const filteredAgents = agents.filter((agent) => {
+    if (
+      filters.toolId &&
+      !agent.capabilities.tools.some((tool) => tool.id === filters.toolId)
+    ) {
+      return false;
+    }
+    if (
+      filters.skillId &&
+      !agent.capabilities.skills.some((skill) => skill.id === filters.skillId)
+    ) {
+      return false;
+    }
+    if (
+      filters.mcpId &&
+      !agent.capabilities.mcpServers.some(
+        (server) => server.id === filters.mcpId,
+      )
+    ) {
+      return false;
+    }
+    return true;
+  });
 
   return (
     <div className="layout">
@@ -139,16 +164,23 @@ export function DashboardPage(): React.JSX.Element {
             <div className="panel-title-row">
               <h2>Workflow Graph</h2>
               {selectedWorkflow && (
-                <button
-                  onClick={() =>
-                    vscode?.postMessage({
-                      type: "saveWorkflow",
-                      payload: selectedWorkflow,
-                    })
-                  }
-                >
-                  Save Workflow
-                </button>
+                <>
+                  <button
+                    onClick={() => autoLayoutWorkflow(selectedWorkflow.id)}
+                  >
+                    Auto Layout
+                  </button>
+                  <button
+                    onClick={() =>
+                      vscode?.postMessage({
+                        type: "saveWorkflow",
+                        payload: selectedWorkflow,
+                      })
+                    }
+                  >
+                    Save Workflow
+                  </button>
+                </>
               )}
             </div>
             <GraphCanvas mode="workflow" />
@@ -166,7 +198,7 @@ export function DashboardPage(): React.JSX.Element {
               <div>
                 <h4>Agent to Tool/Skill/MCP</h4>
                 <ul>
-                  {agents.map((agent) => (
+                  {filteredAgents.map((agent) => (
                     <li key={agent.id}>
                       {agent.name}
                       {" -> "}
@@ -176,6 +208,41 @@ export function DashboardPage(): React.JSX.Element {
                     </li>
                   ))}
                 </ul>
+              </div>
+              <div>
+                <h4>Tools</h4>
+                <div className="chip-row">
+                  {graph.tools.map((tool) => (
+                    <button
+                      key={tool.id}
+                      onClick={() => setSelectedCapability(tool.id)}
+                    >
+                      {tool.label} ({tool.kind})
+                    </button>
+                  ))}
+                </div>
+                <h4>Skills</h4>
+                <div className="chip-row">
+                  {graph.skills.map((skill) => (
+                    <button
+                      key={skill.id}
+                      onClick={() => setSelectedCapability(skill.id)}
+                    >
+                      {skill.label}
+                    </button>
+                  ))}
+                </div>
+                <h4>MCP Servers</h4>
+                <div className="chip-row">
+                  {graph.mcpServers.map((server) => (
+                    <button
+                      key={server.id}
+                      onClick={() => setSelectedCapability(server.id)}
+                    >
+                      {server.label}
+                    </button>
+                  ))}
+                </div>
               </div>
             </section>
           )}

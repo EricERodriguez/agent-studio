@@ -64,7 +64,7 @@ export function GraphCanvas({ mode }: GraphCanvasProps): React.JSX.Element {
       id: agent.id,
       position: { x: 120 + index * 250, y: 150 },
       data: {
-        label: agent.name,
+        label: `${agent.name} | T:${agent.capabilities.tools.length} S:${agent.capabilities.skills.length} M:${agent.capabilities.mcpServers.length}`,
         role: agent.role,
         toolsCount: agent.capabilities.tools.length,
         skillsCount: agent.capabilities.skills.length,
