@@ -21,6 +21,27 @@ import type { AgentDefinition, WorkflowDefinition } from "./domain/models";
 export async function activate(
   context: vscode.ExtensionContext,
 ): Promise<void> {
+  const ensureWorkspaceOpen = async (): Promise<boolean> => {
+    if ((vscode.workspace.workspaceFolders?.length || 0) > 0) {
+      return true;
+    }
+
+    const action = await vscode.window.showErrorMessage(
+      "Agent Studio needs an opened folder to create or save files.",
+      "Open Extension Folder",
+    );
+
+    if (action === "Open Extension Folder") {
+      await vscode.commands.executeCommand(
+        "vscode.openFolder",
+        vscode.Uri.file(context.extensionPath),
+        false,
+      );
+    }
+
+    return false;
+  };
+
   const agentRegistryService = new AgentRegistryService();
   const workflowService = new WorkflowService();
   const capabilityService = new CapabilityService();
@@ -62,9 +83,20 @@ export async function activate(
       await refreshState();
     },
     onSaveAgent: async (agent) => {
-      await agentRegistryService.saveAgent(agent);
-      await refreshState();
-      dashboard.postInfo(`Saved agent ${agent.name}`);
+      if (!(await ensureWorkspaceOpen())) {
+        dashboard.postError("Open a folder/workspace first to save agents.");
+        return;
+      }
+
+      try {
+        await agentRegistryService.saveAgent(agent);
+        await refreshState();
+        dashboard.postInfo(`Saved agent ${agent.name}`);
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Failed to save agent.";
+        dashboard.postError(message);
+      }
     },
     onDeleteAgent: async (agentId) => {
       const agent = agents.find((candidate) => candidate.id === agentId);
@@ -91,9 +123,20 @@ export async function activate(
       await chatBridgeService.openAgentInChat(agent);
     },
     onSaveWorkflow: async (workflow) => {
-      await workflowService.saveWorkflow(workflow);
-      await refreshState();
-      dashboard.postInfo(`Saved workflow ${workflow.name}`);
+      if (!(await ensureWorkspaceOpen())) {
+        dashboard.postError("Open a folder/workspace first to save workflows.");
+        return;
+      }
+
+      try {
+        await workflowService.saveWorkflow(workflow);
+        await refreshState();
+        dashboard.postInfo(`Saved workflow ${workflow.name}`);
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Failed to save workflow.";
+        dashboard.postError(message);
+      }
     },
     onCreateAgent: async () => {
       await createAgent();
@@ -116,6 +159,10 @@ export async function activate(
   };
 
   const createAgent = async (templateName?: string): Promise<void> => {
+    if (!(await ensureWorkspaceOpen())) {
+      return;
+    }
+
     const name =
       (await vscode.window.showInputBox({
         prompt: "Agent name",
@@ -210,6 +257,10 @@ export async function activate(
   };
 
   const createWorkflow = async (): Promise<void> => {
+    if (!(await ensureWorkspaceOpen())) {
+      return;
+    }
+
     const skeleton = await createWorkflowSkeleton(agents);
     if (!skeleton) {
       return;

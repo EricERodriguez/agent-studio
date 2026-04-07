@@ -76,6 +76,47 @@
                 "title": "Agent Studio: Create Workflow"
             }
         ],
+        "menus": {
+            "view/title": [
+                {
+                    "command": "agentStudio.createAgent",
+                    "when": "view == agentStudio.agentsView",
+                    "group": "navigation"
+                },
+                {
+                    "command": "agentStudio.createWorkflow",
+                    "when": "view == agentStudio.workflowsView",
+                    "group": "navigation"
+                },
+                {
+                    "command": "agentStudio.openDashboard",
+                    "when": "view == agentStudio.workflowsView",
+                    "group": "navigation@2"
+                }
+            ],
+            "view/item/context": [
+                {
+                    "command": "agentStudio.editAgent",
+                    "when": "view == agentStudio.agentsView && viewItem == agentStudio.agent",
+                    "group": "inline"
+                },
+                {
+                    "command": "agentStudio.openInChat",
+                    "when": "view == agentStudio.agentsView && viewItem == agentStudio.agent",
+                    "group": "navigation"
+                },
+                {
+                    "command": "agentStudio.duplicateAgent",
+                    "when": "view == agentStudio.agentsView && viewItem == agentStudio.agent",
+                    "group": "navigation@2"
+                },
+                {
+                    "command": "agentStudio.deleteAgent",
+                    "when": "view == agentStudio.agentsView && viewItem == agentStudio.agent",
+                    "group": "navigation@3"
+                }
+            ]
+        },
         "configuration": {
             "title": "Agent Studio",
             "properties": {
