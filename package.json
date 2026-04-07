@@ -22,7 +22,7 @@
                 {
                     "id": "agentStudio",
                     "title": "Agent Studio",
-                    "icon": "$(hubot)"
+                    "icon": "media/agent-studio.svg"
                 }
             ]
         },

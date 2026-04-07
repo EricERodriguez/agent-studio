@@ -1,0 +1,208 @@
+:root {
+  color-scheme: light dark;
+  font-family: var(--vscode-font-family);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--vscode-editor-background);
+  color: var(--vscode-editor-foreground);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+  background: var(--vscode-input-background);
+  border: 1px solid var(--vscode-input-border);
+  border-radius: 6px;
+  padding: 6px 8px;
+}
+
+button {
+  cursor: pointer;
+  background: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+  border: none;
+}
+
+button:hover {
+  background: var(--vscode-button-hoverBackground);
+}
+
+.layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  gap: 10px;
+  padding: 10px;
+}
+
+.header,
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 10px;
+  padding: 10px;
+}
+
+.header h1 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.header-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.toolbar label {
+  margin-right: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.main-grid {
+  display: grid;
+  grid-template-columns: 1.15fr 1.6fr 0.95fr;
+  gap: 10px;
+  min-height: calc(100vh - 136px);
+}
+
+.column {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.panel,
+.builder,
+.inspector {
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 10px;
+  padding: 10px;
+  background: color-mix(in srgb, var(--vscode-editor-background) 88%, var(--vscode-sideBar-background) 12%);
+}
+
+.graph-stack .panel {
+  flex: 1;
+}
+
+.graph-canvas {
+  width: 100%;
+  height: 280px;
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.builder-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.tab-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.tab-row button {
+  padding: 4px 8px;
+}
+
+.tab-row .active {
+  outline: 1px solid var(--vscode-focusBorder);
+}
+
+.builder-form {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+.builder-form label,
+.block-label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+textarea {
+  resize: vertical;
+}
+
+.source-preview {
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 6px;
+  padding: 10px;
+  overflow: auto;
+  max-height: 300px;
+}
+
+.builder-actions,
+.inspector-actions,
+.panel-title-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  align-items: center;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+}
+
+.validation-row {
+  min-height: 22px;
+  margin-top: 8px;
+}
+
+.validation-error {
+  color: var(--vscode-errorForeground);
+}
+
+.validation-warning {
+  color: var(--vscode-editorWarning-foreground);
+}
+
+.message {
+  padding: 8px 10px;
+  border-radius: 6px;
+}
+
+.message.info {
+  background: color-mix(in srgb, var(--vscode-charts-blue) 20%, transparent);
+}
+
+.message.error {
+  background: color-mix(in srgb, var(--vscode-errorForeground) 20%, transparent);
+}
+
+ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+@media (max-width: 1300px) {
+  .main-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .graph-canvas {
+    height: 320px;
+  }
+}
