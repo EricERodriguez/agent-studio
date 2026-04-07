@@ -16,13 +16,29 @@ export function registerCommands(
   handlers: CommandHandlers,
 ): void {
   const defs: Array<[string, (...args: unknown[]) => unknown]> = [
-    ["agentStudio.openDashboard", handlers.openDashboard],
-    ["agentStudio.createAgent", handlers.createAgent],
-    ["agentStudio.editAgent", handlers.editAgent],
-    ["agentStudio.deleteAgent", handlers.deleteAgent],
-    ["agentStudio.duplicateAgent", handlers.duplicateAgent],
-    ["agentStudio.openInChat", handlers.openInChat],
-    ["agentStudio.createWorkflow", handlers.createWorkflow],
+    ["agentStudio.openDashboard", () => handlers.openDashboard()],
+    [
+      "agentStudio.createAgent",
+      (templateName) =>
+        handlers.createAgent(templateName as string | undefined),
+    ],
+    [
+      "agentStudio.editAgent",
+      (agentId) => handlers.editAgent(agentId as string | undefined),
+    ],
+    [
+      "agentStudio.deleteAgent",
+      (agentId) => handlers.deleteAgent(agentId as string | undefined),
+    ],
+    [
+      "agentStudio.duplicateAgent",
+      (agentId) => handlers.duplicateAgent(agentId as string | undefined),
+    ],
+    [
+      "agentStudio.openInChat",
+      (agentId) => handlers.openInChat(agentId as string | undefined),
+    ],
+    ["agentStudio.createWorkflow", () => handlers.createWorkflow()],
   ];
 
   for (const [command, cb] of defs) {

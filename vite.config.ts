@@ -1,8 +1,7 @@
-import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
 
-export default defineConfig({
+const config = {
   plugins: [react()],
   root: path.resolve(__dirname, "webview"),
   build: {
@@ -21,4 +20,6 @@ export default defineConfig({
       "@app": path.resolve(__dirname, "webview/app"),
     },
   },
-});
+};
+
+export default config;

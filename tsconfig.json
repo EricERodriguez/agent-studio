@@ -13,20 +13,11 @@
             "node",
             "vscode"
         ],
-        "paths": {
-            "@domain/*": [
-                "src/domain/*"
-            ],
-            "@services/*": [
-                "src/services/*"
-            ],
-            "@views/*": [
-                "src/views/*"
-            ],
-            "@infra/*": [
-                "src/infrastructure/*"
-            ]
-        }
+        "jsx": "react-jsx",
+        "lib": [
+            "ES2022",
+            "DOM"
+        ]
     },
     "include": [
         "src/**/*.ts",

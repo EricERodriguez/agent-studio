@@ -137,7 +137,7 @@ export class DashboardPanel {
         this.extensionUri,
         "webview-dist",
         "assets",
-        "main.css",
+        "index.css",
       ),
     );
     const nonce = String(Date.now());

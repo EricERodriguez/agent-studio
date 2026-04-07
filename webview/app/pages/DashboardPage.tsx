@@ -20,16 +20,26 @@ export function DashboardPage(): React.JSX.Element {
   const toggleCapabilityGraph = useStudioStore((s) => s.toggleCapabilityGraph);
   const setFilter = useStudioStore((s) => s.setFilter);
 
-  const selectedWorkflow = workflows.find((workflow) => workflow.id === selectedWorkflowId);
+  const selectedWorkflow = workflows.find(
+    (workflow) => workflow.id === selectedWorkflowId,
+  );
 
   return (
     <div className="layout">
       <header className="header">
         <h1>Agent Studio</h1>
         <div className="header-actions">
-          <button onClick={() => vscode?.postMessage({ type: "createAgent" })}>Create Agent</button>
-          <button onClick={() => vscode?.postMessage({ type: "createWorkflow" })}>Create Workflow</button>
-          <button onClick={() => vscode?.postMessage({ type: "refresh" })}>Refresh</button>
+          <button onClick={() => vscode?.postMessage({ type: "createAgent" })}>
+            Create Agent
+          </button>
+          <button
+            onClick={() => vscode?.postMessage({ type: "createWorkflow" })}
+          >
+            Create Workflow
+          </button>
+          <button onClick={() => vscode?.postMessage({ type: "refresh" })}>
+            Refresh
+          </button>
         </div>
       </header>
 
@@ -37,7 +47,10 @@ export function DashboardPage(): React.JSX.Element {
         <div>
           <label>
             Agent
-            <select value={selectedAgentId || ""} onChange={(e) => selectAgent(e.target.value || undefined)}>
+            <select
+              value={selectedAgentId || ""}
+              onChange={(e) => selectAgent(e.target.value || undefined)}
+            >
               {agents.map((agent) => (
                 <option key={agent.id} value={agent.id}>
                   {agent.name}
@@ -47,7 +60,10 @@ export function DashboardPage(): React.JSX.Element {
           </label>
           <label>
             Workflow
-            <select value={selectedWorkflowId || ""} onChange={(e) => selectWorkflow(e.target.value || undefined)}>
+            <select
+              value={selectedWorkflowId || ""}
+              onChange={(e) => selectWorkflow(e.target.value || undefined)}
+            >
               {workflows.map((workflow) => (
                 <option key={workflow.id} value={workflow.id}>
                   {workflow.name}
@@ -59,7 +75,10 @@ export function DashboardPage(): React.JSX.Element {
         <div className="header-actions">
           <label>
             Tool filter
-            <select value={filters.toolId || ""} onChange={(e) => setFilter("toolId", e.target.value)}>
+            <select
+              value={filters.toolId || ""}
+              onChange={(e) => setFilter("toolId", e.target.value)}
+            >
               <option value="">All</option>
               {graph.tools.map((tool) => (
                 <option key={tool.id} value={tool.id}>
@@ -70,7 +89,10 @@ export function DashboardPage(): React.JSX.Element {
           </label>
           <label>
             Skill filter
-            <select value={filters.skillId || ""} onChange={(e) => setFilter("skillId", e.target.value)}>
+            <select
+              value={filters.skillId || ""}
+              onChange={(e) => setFilter("skillId", e.target.value)}
+            >
               <option value="">All</option>
               {graph.skills.map((skill) => (
                 <option key={skill.id} value={skill.id}>
@@ -81,7 +103,10 @@ export function DashboardPage(): React.JSX.Element {
           </label>
           <label>
             MCP filter
-            <select value={filters.mcpId || ""} onChange={(e) => setFilter("mcpId", e.target.value)}>
+            <select
+              value={filters.mcpId || ""}
+              onChange={(e) => setFilter("mcpId", e.target.value)}
+            >
               <option value="">All</option>
               {graph.mcpServers.map((server) => (
                 <option key={server.id} value={server.id}>
@@ -90,7 +115,11 @@ export function DashboardPage(): React.JSX.Element {
               ))}
             </select>
           </label>
-          <button onClick={toggleCapabilityGraph}>{showCapabilityGraph ? "Hide Capability Graph" : "Show Capability Graph"}</button>
+          <button onClick={toggleCapabilityGraph}>
+            {showCapabilityGraph
+              ? "Hide Capability Graph"
+              : "Show Capability Graph"}
+          </button>
         </div>
       </section>
 
@@ -110,7 +139,16 @@ export function DashboardPage(): React.JSX.Element {
             <div className="panel-title-row">
               <h2>Workflow Graph</h2>
               {selectedWorkflow && (
-                <button onClick={() => vscode?.postMessage({ type: "saveWorkflow", payload: selectedWorkflow })}>Save Workflow</button>
+                <button
+                  onClick={() =>
+                    vscode?.postMessage({
+                      type: "saveWorkflow",
+                      payload: selectedWorkflow,
+                    })
+                  }
+                >
+                  Save Workflow
+                </button>
               )}
             </div>
             <GraphCanvas mode="workflow" />
@@ -122,14 +160,19 @@ export function DashboardPage(): React.JSX.Element {
             <section className="inspector">
               <h3>Capability Layer</h3>
               <p>
-                Tools: {graph.tools.length} | Skills: {graph.skills.length} | MCP: {graph.mcpServers.length}
+                Tools: {graph.tools.length} | Skills: {graph.skills.length} |
+                MCP: {graph.mcpServers.length}
               </p>
               <div>
                 <h4>Agent to Tool/Skill/MCP</h4>
                 <ul>
                   {agents.map((agent) => (
                     <li key={agent.id}>
-                      {agent.name} -> {agent.capabilities.tools.length} tools, {agent.capabilities.skills.length} skills, {agent.capabilities.mcpServers.length} mcp
+                      {agent.name}
+                      {" -> "}
+                      {agent.capabilities.tools.length} tools,{" "}
+                      {agent.capabilities.skills.length} skills,{" "}
+                      {agent.capabilities.mcpServers.length} mcp
                     </li>
                   ))}
                 </ul>
