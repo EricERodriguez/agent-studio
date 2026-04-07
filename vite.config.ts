@@ -12,13 +12,13 @@ export default defineConfig({
       output: {
         entryFileNames: "assets/main.js",
         chunkFileNames: "assets/[name].js",
-        assetFileNames: "assets/[name][extname]"
-      }
-    }
+        assetFileNames: "assets/[name][extname]",
+      },
+    },
   },
   resolve: {
     alias: {
-      "@app": path.resolve(__dirname, "webview/app")
-    }
-  }
+      "@app": path.resolve(__dirname, "webview/app"),
+    },
+  },
 });

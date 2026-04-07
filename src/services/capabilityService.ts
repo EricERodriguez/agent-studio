@@ -1,10 +1,19 @@
 import * as path from "path";
 import * as vscode from "vscode";
-import type { AgentDefinition, CapabilityGraph, MCPServerRef, SkillRef, ToolRef } from "../domain/models";
+import type {
+  AgentDefinition,
+  CapabilityGraph,
+  MCPServerRef,
+  SkillRef,
+  ToolRef,
+} from "../domain/models";
 import { getWorkspaceRoot } from "../infrastructure/fsUtils";
 
 interface McpJsonShape {
-  servers?: Record<string, { command?: string; args?: string[]; env?: Record<string, string> }>;
+  servers?: Record<
+    string,
+    { command?: string; args?: string[]; env?: Record<string, string> }
+  >;
 }
 
 export class CapabilityService {
@@ -40,15 +49,19 @@ export class CapabilityService {
     if (root) {
       const mcpPath = path.join(root, "mcp.json");
       try {
-        const bytes = await vscode.workspace.fs.readFile(vscode.Uri.file(mcpPath));
-        const json = JSON.parse(Buffer.from(bytes).toString("utf8")) as McpJsonShape;
+        const bytes = await vscode.workspace.fs.readFile(
+          vscode.Uri.file(mcpPath),
+        );
+        const json = JSON.parse(
+          Buffer.from(bytes).toString("utf8"),
+        ) as McpJsonShape;
         for (const [id, server] of Object.entries(json.servers || {})) {
           discovered.set(id, {
             id,
             label: id,
             command: server.command,
             args: server.args,
-            env: server.env
+            env: server.env,
           });
         }
       } catch {
@@ -56,20 +69,24 @@ export class CapabilityService {
       }
     }
 
-    return [...discovered.values()].sort((a, b) => a.label.localeCompare(b.label));
+    return [...discovered.values()].sort((a, b) =>
+      a.label.localeCompare(b.label),
+    );
   }
 
-  async buildCapabilityGraph(agents: AgentDefinition[]): Promise<CapabilityGraph> {
+  async buildCapabilityGraph(
+    agents: AgentDefinition[],
+  ): Promise<CapabilityGraph> {
     const [tools, skills, mcpServers] = await Promise.all([
       this.discoverTools(agents),
       this.discoverSkills(agents),
-      this.discoverMcpServers(agents)
+      this.discoverMcpServers(agents),
     ]);
 
     const usage = {
       tools: {} as Record<string, string[]>,
       skills: {} as Record<string, string[]>,
-      mcpServers: {} as Record<string, string[]>
+      mcpServers: {} as Record<string, string[]>,
     };
 
     for (const agent of agents) {
@@ -91,7 +108,7 @@ export class CapabilityService {
       tools,
       skills,
       mcpServers,
-      usage
+      usage,
     };
   }
 }

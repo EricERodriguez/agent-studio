@@ -1,5 +1,9 @@
 import * as vscode from "vscode";
-import { registerCommands, pickAgent, createWorkflowSkeleton } from "./commands/registerCommands";
+import {
+  registerCommands,
+  pickAgent,
+  createWorkflowSkeleton,
+} from "./commands/registerCommands";
 import { AgentRegistryService } from "./services/agentRegistryService";
 import { CapabilityService } from "./services/capabilityService";
 import { ChatBridgeService } from "./services/chatBridgeService";
@@ -9,17 +13,22 @@ import {
   AgentsTreeProvider,
   CapabilitiesTreeProvider,
   TemplatesTreeProvider,
-  WorkflowsTreeProvider
+  WorkflowsTreeProvider,
 } from "./views/treeProviders";
 import { DashboardPanel } from "./views/dashboardPanel";
 import type { AgentDefinition, WorkflowDefinition } from "./domain/models";
 
-export async function activate(context: vscode.ExtensionContext): Promise<void> {
+export async function activate(
+  context: vscode.ExtensionContext,
+): Promise<void> {
   const agentRegistryService = new AgentRegistryService();
   const workflowService = new WorkflowService();
   const capabilityService = new CapabilityService();
   const chatBridgeService = new ChatBridgeService();
-  const sampleDataService = new SampleDataService(agentRegistryService, workflowService);
+  const sampleDataService = new SampleDataService(
+    agentRegistryService,
+    workflowService,
+  );
 
   let agents: AgentDefinition[] = [];
   let workflows: WorkflowDefinition[] = [];
@@ -30,10 +39,22 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const templatesTreeProvider = new TemplatesTreeProvider();
 
   context.subscriptions.push(
-    vscode.window.registerTreeDataProvider("agentStudio.agentsView", agentsTreeProvider),
-    vscode.window.registerTreeDataProvider("agentStudio.workflowsView", workflowsTreeProvider),
-    vscode.window.registerTreeDataProvider("agentStudio.capabilitiesView", capabilitiesTreeProvider),
-    vscode.window.registerTreeDataProvider("agentStudio.templatesView", templatesTreeProvider)
+    vscode.window.registerTreeDataProvider(
+      "agentStudio.agentsView",
+      agentsTreeProvider,
+    ),
+    vscode.window.registerTreeDataProvider(
+      "agentStudio.workflowsView",
+      workflowsTreeProvider,
+    ),
+    vscode.window.registerTreeDataProvider(
+      "agentStudio.capabilitiesView",
+      capabilitiesTreeProvider,
+    ),
+    vscode.window.registerTreeDataProvider(
+      "agentStudio.templatesView",
+      templatesTreeProvider,
+    ),
   );
 
   const dashboard = new DashboardPanel(context.extensionUri, {
@@ -79,13 +100,14 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     },
     onEditAgent: async (agentId) => {
       await editAgent(agentId);
-    }
+    },
   });
 
   const refreshState = async (): Promise<void> => {
     agents = await agentRegistryService.discoverAgents();
     workflows = await workflowService.loadWorkflows();
-    const capabilityGraph = await capabilityService.buildCapabilityGraph(agents);
+    const capabilityGraph =
+      await capabilityService.buildCapabilityGraph(agents);
 
     agentsTreeProvider.setAgents(agents);
     workflowsTreeProvider.setWorkflows(workflows);
@@ -98,7 +120,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       (await vscode.window.showInputBox({
         prompt: "Agent name",
         value: templateName || "New Agent",
-        ignoreFocusOut: true
+        ignoreFocusOut: true,
       })) || "";
 
     if (!name.trim()) {
@@ -115,8 +137,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       capabilities: {
         tools: [],
         skills: [],
-        mcpServers: []
-      }
+        mcpServers: [],
+      },
     });
 
     await refreshState();
@@ -149,7 +171,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       return;
     }
 
-    const confirmed = await vscode.window.showWarningMessage(`Delete ${target.name}?`, { modal: true }, "Delete");
+    const confirmed = await vscode.window.showWarningMessage(
+      `Delete ${target.name}?`,
+      { modal: true },
+      "Delete",
+    );
     if (confirmed !== "Delete") {
       return;
     }
@@ -203,7 +229,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     deleteAgent,
     duplicateAgent,
     openInChat,
-    createWorkflow
+    createWorkflow,
   });
 
   await refreshState();

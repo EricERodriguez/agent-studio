@@ -1,6 +1,13 @@
 import * as vscode from "vscode";
-import type { ExtensionToWebviewMessage, WebviewToExtensionMessage } from "../domain/messages";
-import type { AgentDefinition, CapabilityGraph, WorkflowDefinition } from "../domain/models";
+import type {
+  ExtensionToWebviewMessage,
+  WebviewToExtensionMessage,
+} from "../domain/messages";
+import type {
+  AgentDefinition,
+  CapabilityGraph,
+  WorkflowDefinition,
+} from "../domain/models";
 
 export interface DashboardPanelHandlers {
   onRefresh: () => Promise<void>;
@@ -18,7 +25,7 @@ export class DashboardPanel {
 
   constructor(
     private readonly extensionUri: vscode.Uri,
-    private readonly handlers: DashboardPanelHandlers
+    private readonly handlers: DashboardPanelHandlers,
   ) {}
 
   show(): void {
@@ -27,53 +34,64 @@ export class DashboardPanel {
       return;
     }
 
-    this.panel = vscode.window.createWebviewPanel("agentStudio.dashboard", "Agent Studio", vscode.ViewColumn.One, {
-      enableScripts: true,
-      retainContextWhenHidden: true,
-      localResourceRoots: [
-        vscode.Uri.joinPath(this.extensionUri, "webview-dist"),
-        vscode.Uri.joinPath(this.extensionUri, "media")
-      ]
-    });
+    this.panel = vscode.window.createWebviewPanel(
+      "agentStudio.dashboard",
+      "Agent Studio",
+      vscode.ViewColumn.One,
+      {
+        enableScripts: true,
+        retainContextWhenHidden: true,
+        localResourceRoots: [
+          vscode.Uri.joinPath(this.extensionUri, "webview-dist"),
+          vscode.Uri.joinPath(this.extensionUri, "media"),
+        ],
+      },
+    );
 
     this.panel.webview.html = this.getHtml(this.panel.webview);
 
-    this.panel.webview.onDidReceiveMessage(async (message: WebviewToExtensionMessage) => {
-      switch (message.type) {
-        case "ready":
-        case "refresh":
-          await this.handlers.onRefresh();
-          break;
-        case "saveAgent":
-          await this.handlers.onSaveAgent(message.payload);
-          break;
-        case "deleteAgent":
-          await this.handlers.onDeleteAgent(message.payload.agentId);
-          break;
-        case "openRawAgent":
-          await this.handlers.onOpenRawAgent(message.payload.agentId);
-          break;
-        case "openInChat":
-          await this.handlers.onOpenInChat(message.payload.agentId);
-          break;
-        case "saveWorkflow":
-          await this.handlers.onSaveWorkflow(message.payload);
-          break;
-        case "createAgent":
-          await this.handlers.onCreateAgent();
-          break;
-        case "editAgent":
-          await this.handlers.onEditAgent(message.payload.agentId);
-          break;
-      }
-    });
+    this.panel.webview.onDidReceiveMessage(
+      async (message: WebviewToExtensionMessage) => {
+        switch (message.type) {
+          case "ready":
+          case "refresh":
+            await this.handlers.onRefresh();
+            break;
+          case "saveAgent":
+            await this.handlers.onSaveAgent(message.payload);
+            break;
+          case "deleteAgent":
+            await this.handlers.onDeleteAgent(message.payload.agentId);
+            break;
+          case "openRawAgent":
+            await this.handlers.onOpenRawAgent(message.payload.agentId);
+            break;
+          case "openInChat":
+            await this.handlers.onOpenInChat(message.payload.agentId);
+            break;
+          case "saveWorkflow":
+            await this.handlers.onSaveWorkflow(message.payload);
+            break;
+          case "createAgent":
+            await this.handlers.onCreateAgent();
+            break;
+          case "editAgent":
+            await this.handlers.onEditAgent(message.payload.agentId);
+            break;
+        }
+      },
+    );
 
     this.panel.onDidDispose(() => {
       this.panel = undefined;
     });
   }
 
-  postState(agents: AgentDefinition[], workflows: WorkflowDefinition[], capabilityGraph: CapabilityGraph): void {
+  postState(
+    agents: AgentDefinition[],
+    workflows: WorkflowDefinition[],
+    capabilityGraph: CapabilityGraph,
+  ): void {
     if (!this.panel) {
       return;
     }
@@ -83,8 +101,8 @@ export class DashboardPanel {
       payload: {
         agents,
         workflows,
-        capabilityGraph
-      }
+        capabilityGraph,
+      },
     };
 
     void this.panel.webview.postMessage(payload);
@@ -106,8 +124,22 @@ export class DashboardPanel {
   }
 
   private getHtml(webview: vscode.Webview): string {
-    const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(this.extensionUri, "webview-dist", "assets", "main.js"));
-    const styleUri = webview.asWebviewUri(vscode.Uri.joinPath(this.extensionUri, "webview-dist", "assets", "main.css"));
+    const scriptUri = webview.asWebviewUri(
+      vscode.Uri.joinPath(
+        this.extensionUri,
+        "webview-dist",
+        "assets",
+        "main.js",
+      ),
+    );
+    const styleUri = webview.asWebviewUri(
+      vscode.Uri.joinPath(
+        this.extensionUri,
+        "webview-dist",
+        "assets",
+        "main.css",
+      ),
+    );
     const nonce = String(Date.now());
 
     return `<!DOCTYPE html>

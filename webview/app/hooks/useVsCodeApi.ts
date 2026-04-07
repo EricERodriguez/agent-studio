@@ -10,4 +10,6 @@ declare global {
   }
 }
 
-export const vscode = window.acquireVsCodeApi ? window.acquireVsCodeApi() : undefined;
+export const vscode = window.acquireVsCodeApi
+  ? window.acquireVsCodeApi()
+  : undefined;

@@ -2,7 +2,12 @@ import * as path from "path";
 import * as vscode from "vscode";
 import type { AgentDefinition } from "../domain/models";
 import { AgentMarkdownService } from "./agentMarkdownService";
-import { ensureDirectory, fileNameWithoutExt, getWorkspaceRoot, toAgentId } from "../infrastructure/fsUtils";
+import {
+  ensureDirectory,
+  fileNameWithoutExt,
+  getWorkspaceRoot,
+  toAgentId,
+} from "../infrastructure/fsUtils";
 
 export class AgentRegistryService {
   private readonly markdownService = new AgentMarkdownService();
@@ -18,9 +23,15 @@ export class AgentRegistryService {
       .get<string[]>("agentPaths", [".github/chatmodes"]);
 
     const defaultGlobs = [".github/chatmodes/**/*.agent.md"];
-    const configuredGlobs = configuredPaths.map((base) => `${base.replace(/\\/g, "/")}/**/*.agent.md`);
+    const configuredGlobs = configuredPaths.map(
+      (base) => `${base.replace(/\\/g, "/")}/**/*.agent.md`,
+    );
 
-    const uris = await Promise.all([...new Set([...defaultGlobs, ...configuredGlobs])].map((glob) => vscode.workspace.findFiles(glob)));
+    const uris = await Promise.all(
+      [...new Set([...defaultGlobs, ...configuredGlobs])].map((glob) =>
+        vscode.workspace.findFiles(glob),
+      ),
+    );
     const files = uris.flat();
 
     const agents: AgentDefinition[] = [];
@@ -41,8 +52,12 @@ export class AgentRegistryService {
   }
 
   async loadAgent(agentPath: string): Promise<AgentDefinition> {
-    const content = await vscode.workspace.fs.readFile(vscode.Uri.file(agentPath));
-    const parsed = this.markdownService.parse(Buffer.from(content).toString("utf8"));
+    const content = await vscode.workspace.fs.readFile(
+      vscode.Uri.file(agentPath),
+    );
+    const parsed = this.markdownService.parse(
+      Buffer.from(content).toString("utf8"),
+    );
     parsed.sourcePath = agentPath;
     return parsed;
   }
@@ -66,13 +81,19 @@ export class AgentRegistryService {
     const fileName = `${toAgentId(agent.name)}.agent.md`;
     const agentPath = agent.sourcePath || path.join(folder, fileName);
 
-    const serialized = this.markdownService.generate({ ...agent, id: toAgentId(agent.name) });
-    await vscode.workspace.fs.writeFile(vscode.Uri.file(agentPath), Buffer.from(serialized, "utf8"));
+    const serialized = this.markdownService.generate({
+      ...agent,
+      id: toAgentId(agent.name),
+    });
+    await vscode.workspace.fs.writeFile(
+      vscode.Uri.file(agentPath),
+      Buffer.from(serialized, "utf8"),
+    );
 
     return {
       ...agent,
       id: toAgentId(agent.name),
-      sourcePath: agentPath
+      sourcePath: agentPath,
     };
   }
 
@@ -80,7 +101,9 @@ export class AgentRegistryService {
     if (!agent.sourcePath) {
       throw new Error("Agent source file not found.");
     }
-    await vscode.workspace.fs.delete(vscode.Uri.file(agent.sourcePath), { useTrash: true });
+    await vscode.workspace.fs.delete(vscode.Uri.file(agent.sourcePath), {
+      useTrash: true,
+    });
   }
 
   async duplicateAgent(agent: AgentDefinition): Promise<AgentDefinition> {
@@ -88,7 +111,7 @@ export class AgentRegistryService {
       ...agent,
       id: toAgentId(`${agent.name} copy`),
       name: `${agent.name} Copy`,
-      sourcePath: undefined
+      sourcePath: undefined,
     };
     return this.saveAgent(clone);
   }

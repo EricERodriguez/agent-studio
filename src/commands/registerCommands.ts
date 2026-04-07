@@ -11,7 +11,10 @@ export interface CommandHandlers {
   createWorkflow: () => Promise<void>;
 }
 
-export function registerCommands(context: vscode.ExtensionContext, handlers: CommandHandlers): void {
+export function registerCommands(
+  context: vscode.ExtensionContext,
+  handlers: CommandHandlers,
+): void {
   const defs: Array<[string, (...args: unknown[]) => unknown]> = [
     ["agentStudio.openDashboard", handlers.openDashboard],
     ["agentStudio.createAgent", handlers.createAgent],
@@ -19,7 +22,7 @@ export function registerCommands(context: vscode.ExtensionContext, handlers: Com
     ["agentStudio.deleteAgent", handlers.deleteAgent],
     ["agentStudio.duplicateAgent", handlers.duplicateAgent],
     ["agentStudio.openInChat", handlers.openInChat],
-    ["agentStudio.createWorkflow", handlers.createWorkflow]
+    ["agentStudio.createWorkflow", handlers.createWorkflow],
   ];
 
   for (const [command, cb] of defs) {
@@ -27,7 +30,10 @@ export function registerCommands(context: vscode.ExtensionContext, handlers: Com
   }
 }
 
-export async function pickAgent(agents: AgentDefinition[], placeHolder: string): Promise<AgentDefinition | undefined> {
+export async function pickAgent(
+  agents: AgentDefinition[],
+  placeHolder: string,
+): Promise<AgentDefinition | undefined> {
   if (agents.length === 0) {
     vscode.window.showWarningMessage("No agents available.");
     return undefined;
@@ -37,24 +43,28 @@ export async function pickAgent(agents: AgentDefinition[], placeHolder: string):
     agents.map((agent) => ({
       label: agent.name,
       description: agent.description,
-      agent
+      agent,
     })),
-    { placeHolder }
+    { placeHolder },
   );
 
   return pick?.agent;
 }
 
-export async function createWorkflowSkeleton(existingAgents: AgentDefinition[]): Promise<WorkflowDefinition | undefined> {
+export async function createWorkflowSkeleton(
+  existingAgents: AgentDefinition[],
+): Promise<WorkflowDefinition | undefined> {
   if (existingAgents.length === 0) {
-    vscode.window.showWarningMessage("Create at least one agent before creating workflows.");
+    vscode.window.showWarningMessage(
+      "Create at least one agent before creating workflows.",
+    );
     return undefined;
   }
 
   const name = await vscode.window.showInputBox({
     prompt: "Workflow name",
     value: "New Workflow",
-    ignoreFocusOut: true
+    ignoreFocusOut: true,
   });
 
   if (!name) {
@@ -63,16 +73,19 @@ export async function createWorkflowSkeleton(existingAgents: AgentDefinition[]):
 
   const firstAgent = existingAgents[0];
   return {
-    id: name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, ""),
+    id: name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, ""),
     name,
     nodes: [
       {
         id: "entry",
         agentId: firstAgent.id,
         position: { x: 180, y: 120 },
-        isEntry: true
-      }
+        isEntry: true,
+      },
     ],
-    edges: []
+    edges: [],
   };
 }

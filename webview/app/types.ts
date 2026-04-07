@@ -42,7 +42,12 @@ export interface WorkflowDefinition {
   id: string;
   name: string;
   description?: string;
-  nodes: Array<{ id: string; agentId: string; position: { x: number; y: number }; isEntry?: boolean }>;
+  nodes: Array<{
+    id: string;
+    agentId: string;
+    position: { x: number; y: number };
+    isEntry?: boolean;
+  }>;
   edges: Array<{ id: string; source: string; target: string; label?: string }>;
 }
 
@@ -57,7 +62,13 @@ export interface CapabilityGraph {
   };
 }
 
-export type BuilderTab = "Identity" | "Instructions" | "Context" | "Handoffs" | "Capabilities" | "Source Preview";
+export type BuilderTab =
+  | "Identity"
+  | "Instructions"
+  | "Context"
+  | "Handoffs"
+  | "Capabilities"
+  | "Source Preview";
 
 export type ExtensionToWebviewMessage =
   | {

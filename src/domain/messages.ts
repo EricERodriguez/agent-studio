@@ -1,4 +1,8 @@
-import type { AgentDefinition, CapabilityGraph, WorkflowDefinition } from "./models";
+import type {
+  AgentDefinition,
+  CapabilityGraph,
+  WorkflowDefinition,
+} from "./models";
 
 export type WebviewToExtensionMessage =
   | { type: "ready" }

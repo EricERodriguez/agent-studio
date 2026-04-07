@@ -14,16 +14,23 @@ export class WorkflowService {
       return [];
     }
 
-    const workflowUris = await vscode.workspace.findFiles(".vscode/agent-studio/workflows/*.json");
+    const workflowUris = await vscode.workspace.findFiles(
+      ".vscode/agent-studio/workflows/*.json",
+    );
     const workflows: WorkflowDefinition[] = [];
 
     for (const uri of workflowUris) {
       try {
         const bytes = await vscode.workspace.fs.readFile(uri);
-        const workflow = JSON.parse(Buffer.from(bytes).toString("utf8")) as WorkflowDefinition;
+        const workflow = JSON.parse(
+          Buffer.from(bytes).toString("utf8"),
+        ) as WorkflowDefinition;
         workflows.push(workflow);
       } catch (error) {
-        console.warn(`Agent Studio failed to read workflow ${uri.fsPath}`, error);
+        console.warn(
+          `Agent Studio failed to read workflow ${uri.fsPath}`,
+          error,
+        );
       }
     }
 
@@ -66,6 +73,9 @@ export class WorkflowService {
     await ensureDirectory(folder);
 
     const target = path.join(folder, `${workflow.id}.json`);
-    await vscode.workspace.fs.writeFile(vscode.Uri.file(target), Buffer.from(JSON.stringify(workflow, null, 2), "utf8"));
+    await vscode.workspace.fs.writeFile(
+      vscode.Uri.file(target),
+      Buffer.from(JSON.stringify(workflow, null, 2), "utf8"),
+    );
   }
 }

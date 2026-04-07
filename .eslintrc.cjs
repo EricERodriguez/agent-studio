@@ -5,15 +5,15 @@ module.exports = {
   extends: ["eslint:recommended", "plugin:@typescript-eslint/recommended"],
   parserOptions: {
     ecmaVersion: 2022,
-    sourceType: "module"
+    sourceType: "module",
   },
   ignorePatterns: ["dist", "webview-dist", "node_modules"],
   overrides: [
     {
       files: ["*.ts", "*.tsx"],
       rules: {
-        "@typescript-eslint/no-explicit-any": "off"
-      }
-    }
-  ]
+        "@typescript-eslint/no-explicit-any": "off",
+      },
+    },
+  ],
 };

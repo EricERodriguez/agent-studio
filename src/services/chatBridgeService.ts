@@ -9,7 +9,7 @@ export class ChatBridgeService {
       agent.role ? `Role: ${agent.role}` : "",
       "",
       "Instructions:",
-      agent.instructions
+      agent.instructions,
     ]
       .filter(Boolean)
       .join("\n");
@@ -19,15 +19,17 @@ export class ChatBridgeService {
       await vscode.env.clipboard.writeText(prompt);
 
       vscode.window.showInformationMessage(
-        `Chat opened for ${agent.name}. Agent context has been copied to clipboard. Paste it into chat to continue.`
+        `Chat opened for ${agent.name}. Agent context has been copied to clipboard. Paste it into chat to continue.`,
       );
     } catch {
       const doc = await vscode.workspace.openTextDocument({
         language: "markdown",
-        content: `# ${agent.name} Chat Context\n\n\`\`\`\n${prompt}\n\`\`\``
+        content: `# ${agent.name} Chat Context\n\n\`\`\`\n${prompt}\n\`\`\``,
       });
       await vscode.window.showTextDocument(doc, { preview: false });
-      vscode.window.showWarningMessage("Unable to open chat directly. Opened agent context in an editor instead.");
+      vscode.window.showWarningMessage(
+        "Unable to open chat directly. Opened agent context in an editor instead.",
+      );
     }
   }
 }

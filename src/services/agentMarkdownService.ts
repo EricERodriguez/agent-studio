@@ -1,5 +1,10 @@
 import matter from "gray-matter";
-import type { AgentDefinition, MCPServerRef, SkillRef, ToolRef } from "../domain/models";
+import type {
+  AgentDefinition,
+  MCPServerRef,
+  SkillRef,
+  ToolRef,
+} from "../domain/models";
 import { toAgentId } from "../infrastructure/fsUtils";
 
 interface AgentFrontmatter {
@@ -29,7 +34,12 @@ export class AgentMarkdownService {
       const id = String(item.id || item.name || "tool");
       const label = String(item.label || item.name || id);
       const kind = (item.kind as ToolRef["kind"]) || "built-in";
-      return { id, label, kind, description: item.description as string | undefined };
+      return {
+        id,
+        label,
+        kind,
+        description: item.description as string | undefined,
+      };
     });
 
     const skills: SkillRef[] = (fm.skills || []).map((item) => {
@@ -52,7 +62,7 @@ export class AgentMarkdownService {
         label,
         command: item.command as string | undefined,
         args: item.args as string[] | undefined,
-        env: item.env as Record<string, string> | undefined
+        env: item.env as Record<string, string> | undefined,
       };
     });
 
@@ -68,8 +78,8 @@ export class AgentMarkdownService {
       capabilities: {
         tools,
         skills,
-        mcpServers
-      }
+        mcpServers,
+      },
     };
   }
 
@@ -83,7 +93,7 @@ export class AgentMarkdownService {
       mcp: agent.capabilities.mcpServers,
       handoffs: agent.handoffs,
       tags: agent.tags,
-      context: agent.context
+      context: agent.context,
     };
 
     const sanitized = Object.fromEntries(
@@ -92,7 +102,7 @@ export class AgentMarkdownService {
           return value.length > 0;
         }
         return value !== undefined && value !== "";
-      })
+      }),
     );
 
     return matter.stringify(agent.instructions.trim() + "\n", sanitized);

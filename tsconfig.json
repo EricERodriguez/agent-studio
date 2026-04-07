@@ -1,22 +1,43 @@
 {
-  "compilerOptions": {
-    "target": "ES2022",
-    "module": "Node16",
-    "moduleResolution": "Node16",
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "rootDir": ".",
-    "baseUrl": ".",
-    "types": ["node", "vscode"],
-    "paths": {
-      "@domain/*": ["src/domain/*"],
-      "@services/*": ["src/services/*"],
-      "@views/*": ["src/views/*"],
-      "@infra/*": ["src/infrastructure/*"]
-    }
-  },
-  "include": ["src/**/*.ts", "src/**/*.tsx", "webview/**/*.ts", "webview/**/*.tsx", "vite.config.ts"],
-  "exclude": ["node_modules", "dist", "webview-dist"]
+    "compilerOptions": {
+        "target": "ES2022",
+        "module": "Node16",
+        "moduleResolution": "Node16",
+        "strict": true,
+        "esModuleInterop": true,
+        "skipLibCheck": true,
+        "forceConsistentCasingInFileNames": true,
+        "rootDir": ".",
+        "baseUrl": ".",
+        "types": [
+            "node",
+            "vscode"
+        ],
+        "paths": {
+            "@domain/*": [
+                "src/domain/*"
+            ],
+            "@services/*": [
+                "src/services/*"
+            ],
+            "@views/*": [
+                "src/views/*"
+            ],
+            "@infra/*": [
+                "src/infrastructure/*"
+            ]
+        }
+    },
+    "include": [
+        "src/**/*.ts",
+        "src/**/*.tsx",
+        "webview/**/*.ts",
+        "webview/**/*.tsx",
+        "vite.config.ts"
+    ],
+    "exclude": [
+        "node_modules",
+        "dist",
+        "webview-dist"
+    ]
 }
