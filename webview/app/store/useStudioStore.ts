@@ -48,7 +48,9 @@ interface StudioState {
     connection: { source?: string | null; target?: string | null },
   ) => void;
   setFilter: (key: keyof Filters, value?: string) => void;
+  setSelectedCapability: (capabilityId?: string) => void;
   toggleCapabilityGraph: () => void;
+  autoLayoutWorkflow: (workflowId: string) => void;
   setInfoMessage: (message?: string) => void;
   setErrorMessage: (message?: string) => void;
 }
@@ -149,8 +151,26 @@ export const useStudioStore = create<StudioState>((set, get) => ({
         [key]: value || undefined,
       },
     })),
+  setSelectedCapability: (selectedCapabilityId) =>
+    set({ selectedCapabilityId }),
   toggleCapabilityGraph: () =>
     set((state) => ({ showCapabilityGraph: !state.showCapabilityGraph })),
+  autoLayoutWorkflow: (workflowId) =>
+    set((state) => ({
+      workflows: state.workflows.map((workflow) => {
+        if (workflow.id !== workflowId) {
+          return workflow;
+        }
+
+        return {
+          ...workflow,
+          nodes: workflow.nodes.map((node, index) => ({
+            ...node,
+            position: { x: 140 + index * 230, y: 150 },
+          })),
+        };
+      }),
+    })),
   setInfoMessage: (infoMessage) => set({ infoMessage }),
   setErrorMessage: (errorMessage) => set({ errorMessage }),
 }));
