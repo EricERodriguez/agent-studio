@@ -93,7 +93,11 @@ button:hover {
   border: 1px solid var(--vscode-panel-border);
   border-radius: 10px;
   padding: 10px;
-  background: color-mix(in srgb, var(--vscode-editor-background) 88%, var(--vscode-sideBar-background) 12%);
+  background: color-mix(
+    in srgb,
+    var(--vscode-editor-background) 88%,
+    var(--vscode-sideBar-background) 12%
+  );
 }
 
 .graph-stack .panel {
@@ -189,7 +193,11 @@ textarea {
 }
 
 .message.error {
-  background: color-mix(in srgb, var(--vscode-errorForeground) 20%, transparent);
+  background: color-mix(
+    in srgb,
+    var(--vscode-errorForeground) 20%,
+    transparent
+  );
 }
 
 ul {

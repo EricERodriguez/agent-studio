@@ -1,9 +1,22 @@
 import React, { useMemo, useState } from "react";
 import { useStudioStore, selectors } from "../store/useStudioStore";
-import type { AgentDefinition, BuilderTab, ToolRef, SkillRef, MCPServerRef } from "../types";
+import type {
+  AgentDefinition,
+  BuilderTab,
+  ToolRef,
+  SkillRef,
+  MCPServerRef,
+} from "../types";
 import { vscode } from "../hooks/useVsCodeApi";
 
-const tabs: BuilderTab[] = ["Identity", "Instructions", "Context", "Handoffs", "Capabilities", "Source Preview"];
+const tabs: BuilderTab[] = [
+  "Identity",
+  "Instructions",
+  "Context",
+  "Handoffs",
+  "Capabilities",
+  "Source Preview",
+];
 
 function generateMarkdown(agent: AgentDefinition): string {
   const frontmatter = {
@@ -15,7 +28,7 @@ function generateMarkdown(agent: AgentDefinition): string {
     mcp: agent.capabilities.mcpServers,
     handoffs: agent.handoffs,
     tags: agent.tags,
-    context: agent.context
+    context: agent.context,
   };
 
   const sanitized = Object.fromEntries(
@@ -24,7 +37,7 @@ function generateMarkdown(agent: AgentDefinition): string {
         return value.length > 0;
       }
       return value !== undefined && value !== "";
-    })
+    }),
   );
 
   return `---\n${JSON.stringify(sanitized, null, 2)}\n---\n\n${agent.instructions}`;
@@ -43,13 +56,18 @@ export function AgentBuilder(): React.JSX.Element {
   const setTab = useStudioStore((s) => s.setTab);
   const allAgents = useStudioStore((s) => s.agents);
   const graph = useStudioStore((s) => s.capabilityGraph);
-  const [draft, setDraft] = useState<AgentDefinition | undefined>(selectedAgent);
+  const [draft, setDraft] = useState<AgentDefinition | undefined>(
+    selectedAgent,
+  );
 
   React.useEffect(() => {
     setDraft(selectedAgent);
   }, [selectedAgent]);
 
-  const markdownPreview = useMemo(() => (draft ? generateMarkdown(draft) : ""), [draft]);
+  const markdownPreview = useMemo(
+    () => (draft ? generateMarkdown(draft) : ""),
+    [draft],
+  );
 
   if (!draft) {
     return (
@@ -71,19 +89,33 @@ export function AgentBuilder(): React.JSX.Element {
           <div className="builder-form">
             <label>
               Name
-              <input value={draft.name} onChange={(e) => update({ name: e.target.value })} />
+              <input
+                value={draft.name}
+                onChange={(e) => update({ name: e.target.value })}
+              />
             </label>
             <label>
               Description
-              <input value={draft.description} onChange={(e) => update({ description: e.target.value })} />
+              <input
+                value={draft.description}
+                onChange={(e) => update({ description: e.target.value })}
+              />
             </label>
             <label>
               Role
-              <input value={draft.role || ""} onChange={(e) => update({ role: e.target.value })} />
+              <input
+                value={draft.role || ""}
+                onChange={(e) => update({ role: e.target.value })}
+              />
             </label>
             <label>
               Tags (comma separated)
-              <input value={draft.tags.join(", ")} onChange={(e) => update({ tags: parseCommaList(e.target.value) })} />
+              <input
+                value={draft.tags.join(", ")}
+                onChange={(e) =>
+                  update({ tags: parseCommaList(e.target.value) })
+                }
+              />
             </label>
           </div>
         );
@@ -91,21 +123,34 @@ export function AgentBuilder(): React.JSX.Element {
         return (
           <label className="block-label">
             Instructions
-            <textarea value={draft.instructions} onChange={(e) => update({ instructions: e.target.value })} rows={14} />
+            <textarea
+              value={draft.instructions}
+              onChange={(e) => update({ instructions: e.target.value })}
+              rows={14}
+            />
           </label>
         );
       case "Context":
         return (
           <label className="block-label">
             Context
-            <textarea value={draft.context || ""} onChange={(e) => update({ context: e.target.value })} rows={10} />
+            <textarea
+              value={draft.context || ""}
+              onChange={(e) => update({ context: e.target.value })}
+              rows={10}
+            />
           </label>
         );
       case "Handoffs":
         return (
           <label className="block-label">
             Handoff Agent IDs (comma separated)
-            <input value={draft.handoffs.join(", ")} onChange={(e) => update({ handoffs: parseCommaList(e.target.value) })} />
+            <input
+              value={draft.handoffs.join(", ")}
+              onChange={(e) =>
+                update({ handoffs: parseCommaList(e.target.value) })
+              }
+            />
           </label>
         );
       case "Capabilities":
@@ -114,15 +159,19 @@ export function AgentBuilder(): React.JSX.Element {
             <label>
               Tools (ids, comma separated)
               <input
-                value={draft.capabilities.tools.map((tool) => tool.id).join(", ")}
+                value={draft.capabilities.tools
+                  .map((tool) => tool.id)
+                  .join(", ")}
                 onChange={(e) =>
                   update({
                     capabilities: {
                       ...draft.capabilities,
                       tools: parseCommaList(e.target.value).map(
-                        (id) => graph.tools.find((tool) => tool.id === id) || ({ id, label: id, kind: "built-in" } as ToolRef)
-                      )
-                    }
+                        (id) =>
+                          graph.tools.find((tool) => tool.id === id) ||
+                          ({ id, label: id, kind: "built-in" } as ToolRef),
+                      ),
+                    },
                   })
                 }
               />
@@ -130,15 +179,19 @@ export function AgentBuilder(): React.JSX.Element {
             <label>
               Skills (ids, comma separated)
               <input
-                value={draft.capabilities.skills.map((skill) => skill.id).join(", ")}
+                value={draft.capabilities.skills
+                  .map((skill) => skill.id)
+                  .join(", ")}
                 onChange={(e) =>
                   update({
                     capabilities: {
                       ...draft.capabilities,
                       skills: parseCommaList(e.target.value).map(
-                        (id) => graph.skills.find((skill) => skill.id === id) || ({ id, label: id } as SkillRef)
-                      )
-                    }
+                        (id) =>
+                          graph.skills.find((skill) => skill.id === id) ||
+                          ({ id, label: id } as SkillRef),
+                      ),
+                    },
                   })
                 }
               />
@@ -146,15 +199,19 @@ export function AgentBuilder(): React.JSX.Element {
             <label>
               MCP Servers (ids, comma separated)
               <input
-                value={draft.capabilities.mcpServers.map((server) => server.id).join(", ")}
+                value={draft.capabilities.mcpServers
+                  .map((server) => server.id)
+                  .join(", ")}
                 onChange={(e) =>
                   update({
                     capabilities: {
                       ...draft.capabilities,
                       mcpServers: parseCommaList(e.target.value).map(
-                        (id) => graph.mcpServers.find((server) => server.id === id) || ({ id, label: id } as MCPServerRef)
-                      )
-                    }
+                        (id) =>
+                          graph.mcpServers.find((server) => server.id === id) ||
+                          ({ id, label: id } as MCPServerRef),
+                      ),
+                    },
                   })
                 }
               />
@@ -173,10 +230,19 @@ export function AgentBuilder(): React.JSX.Element {
     }
   };
 
-  const hasValidContent = draft.name.trim().length > 0 && draft.instructions.trim().length > 0;
+  const hasValidContent =
+    draft.name.trim().length > 0 && draft.instructions.trim().length > 0;
   const hasCapabilities =
-    draft.capabilities.tools.length + draft.capabilities.skills.length + draft.capabilities.mcpServers.length > 0;
-  const brokenHandoffs = draft.handoffs.filter((handoffId) => !allAgents.some((agent) => agent.id === handoffId && agent.id !== draft.id));
+    draft.capabilities.tools.length +
+      draft.capabilities.skills.length +
+      draft.capabilities.mcpServers.length >
+    0;
+  const brokenHandoffs = draft.handoffs.filter(
+    (handoffId) =>
+      !allAgents.some(
+        (agent) => agent.id === handoffId && agent.id !== draft.id,
+      ),
+  );
 
   return (
     <section className="builder">
@@ -184,7 +250,11 @@ export function AgentBuilder(): React.JSX.Element {
         <h2>Agent Builder</h2>
         <div className="tab-row">
           {tabs.map((tab) => (
-            <button key={tab} className={tab === selectedTab ? "active" : ""} onClick={() => setTab(tab)}>
+            <button
+              key={tab}
+              className={tab === selectedTab ? "active" : ""}
+              onClick={() => setTab(tab)}
+            >
               {tab}
             </button>
           ))}
@@ -192,21 +262,42 @@ export function AgentBuilder(): React.JSX.Element {
       </div>
       {renderTab()}
       <div className="validation-row">
-        {!hasValidContent && <span className="validation-error">Agent name and instructions are required.</span>}
-        {hasValidContent && !hasCapabilities && <span className="validation-warning">Warning: no capabilities configured.</span>}
+        {!hasValidContent && (
+          <span className="validation-error">
+            Agent name and instructions are required.
+          </span>
+        )}
+        {hasValidContent && !hasCapabilities && (
+          <span className="validation-warning">
+            Warning: no capabilities configured.
+          </span>
+        )}
         {brokenHandoffs.length > 0 && (
-          <span className="validation-error">Broken handoffs: {brokenHandoffs.join(", ")}</span>
+          <span className="validation-error">
+            Broken handoffs: {brokenHandoffs.join(", ")}
+          </span>
         )}
       </div>
       <div className="builder-actions">
         <button
           disabled={!hasValidContent || brokenHandoffs.length > 0}
-          onClick={() => vscode?.postMessage({ type: "saveAgent", payload: draft })}
+          onClick={() =>
+            vscode?.postMessage({ type: "saveAgent", payload: draft })
+          }
         >
           Save
         </button>
         <button onClick={() => setDraft(selectedAgent)}>Cancel</button>
-        <button onClick={() => vscode?.postMessage({ type: "openRawAgent", payload: { agentId: draft.id } })}>Open raw file</button>
+        <button
+          onClick={() =>
+            vscode?.postMessage({
+              type: "openRawAgent",
+              payload: { agentId: draft.id },
+            })
+          }
+        >
+          Open raw file
+        </button>
       </div>
     </section>
   );

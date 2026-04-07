@@ -7,7 +7,7 @@ import ReactFlow, {
   type Edge,
   type Node,
   type NodeChange,
-  type EdgeChange
+  type EdgeChange,
 } from "reactflow";
 import "reactflow/dist/style.css";
 import { useStudioStore, selectors } from "../store/useStudioStore";
@@ -34,16 +34,18 @@ export function GraphCanvas({ mode }: GraphCanvasProps): React.JSX.Element {
           data: {
             label: agent?.name || node.agentId,
             agentId: node.agentId,
-            entry: node.isEntry
+            entry: node.isEntry,
           },
           style: {
-            border: node.isEntry ? "2px solid var(--vscode-charts-green)" : "1px solid var(--vscode-panel-border)",
+            border: node.isEntry
+              ? "2px solid var(--vscode-charts-green)"
+              : "1px solid var(--vscode-panel-border)",
             borderRadius: 8,
             padding: 8,
             background: "var(--vscode-editor-background)",
             color: "var(--vscode-editor-foreground)",
-            minWidth: 160
-          }
+            minWidth: 160,
+          },
         };
       });
 
@@ -52,7 +54,7 @@ export function GraphCanvas({ mode }: GraphCanvasProps): React.JSX.Element {
         source: edge.source,
         target: edge.target,
         label: edge.label,
-        animated: false
+        animated: false,
       }));
 
       return { nodes, edges };
@@ -66,7 +68,7 @@ export function GraphCanvas({ mode }: GraphCanvasProps): React.JSX.Element {
         role: agent.role,
         toolsCount: agent.capabilities.tools.length,
         skillsCount: agent.capabilities.skills.length,
-        mcpCount: agent.capabilities.mcpServers.length
+        mcpCount: agent.capabilities.mcpServers.length,
       },
       style: {
         border: "1px solid var(--vscode-panel-border)",
@@ -74,8 +76,8 @@ export function GraphCanvas({ mode }: GraphCanvasProps): React.JSX.Element {
         padding: 12,
         minWidth: 200,
         background: "var(--vscode-editor-background)",
-        color: "var(--vscode-editor-foreground)"
-      }
+        color: "var(--vscode-editor-foreground)",
+      },
     }));
 
     const edges: Edge[] = agents.flatMap((agent) =>
@@ -85,8 +87,8 @@ export function GraphCanvas({ mode }: GraphCanvasProps): React.JSX.Element {
           id: `${agent.id}-${target}`,
           source: agent.id,
           target,
-          label: "handoff"
-        }))
+          label: "handoff",
+        })),
     );
 
     return { nodes, edges };
@@ -122,7 +124,8 @@ export function GraphCanvas({ mode }: GraphCanvasProps): React.JSX.Element {
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         onNodeClick={(_, node) => {
-          const agentId = mode === "workflow" ? (node.data?.agentId as string) : node.id;
+          const agentId =
+            mode === "workflow" ? (node.data?.agentId as string) : node.id;
           if (agentId) {
             selectAgent(agentId);
           }

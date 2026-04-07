@@ -8,9 +8,15 @@ export function InspectorPanel(): React.JSX.Element {
   const selectedCapabilityId = useStudioStore((s) => s.selectedCapabilityId);
 
   if (selectedCapabilityId) {
-    const tool = capabilityGraph.tools.find((item) => item.id === selectedCapabilityId);
-    const skill = capabilityGraph.skills.find((item) => item.id === selectedCapabilityId);
-    const mcp = capabilityGraph.mcpServers.find((item) => item.id === selectedCapabilityId);
+    const tool = capabilityGraph.tools.find(
+      (item) => item.id === selectedCapabilityId,
+    );
+    const skill = capabilityGraph.skills.find(
+      (item) => item.id === selectedCapabilityId,
+    );
+    const mcp = capabilityGraph.mcpServers.find(
+      (item) => item.id === selectedCapabilityId,
+    );
     const title = tool?.label || skill?.label || mcp?.label || "Capability";
     const users =
       capabilityGraph.usage.tools[selectedCapabilityId] ||
@@ -57,9 +63,36 @@ export function InspectorPanel(): React.JSX.Element {
         <strong>MCP:</strong> {selectedAgent.capabilities.mcpServers.length}
       </p>
       <div className="inspector-actions">
-        <button onClick={() => vscode?.postMessage({ type: "openInChat", payload: { agentId: selectedAgent.id } })}>Open in Chat</button>
-        <button onClick={() => vscode?.postMessage({ type: "editAgent", payload: { agentId: selectedAgent.id } })}>Edit</button>
-        <button onClick={() => vscode?.postMessage({ type: "openRawAgent", payload: { agentId: selectedAgent.id } })}>Reveal File</button>
+        <button
+          onClick={() =>
+            vscode?.postMessage({
+              type: "openInChat",
+              payload: { agentId: selectedAgent.id },
+            })
+          }
+        >
+          Open in Chat
+        </button>
+        <button
+          onClick={() =>
+            vscode?.postMessage({
+              type: "editAgent",
+              payload: { agentId: selectedAgent.id },
+            })
+          }
+        >
+          Edit
+        </button>
+        <button
+          onClick={() =>
+            vscode?.postMessage({
+              type: "openRawAgent",
+              payload: { agentId: selectedAgent.id },
+            })
+          }
+        >
+          Reveal File
+        </button>
       </div>
     </aside>
   );

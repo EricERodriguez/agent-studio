@@ -97,6 +97,7 @@ npm run build
 3. Press `F5` in VS Code to launch the Extension Development Host.
 
 4. In the new window:
+
 - Open Command Palette
 - Run `Agent Studio: Open Dashboard`
 - Explore views under Activity Bar -> Agent Studio
