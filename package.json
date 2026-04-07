@@ -1,0 +1,125 @@
+{
+  "name": "agent-studio",
+  "displayName": "Agent Studio",
+  "description": "Visual control plane for designing and orchestrating AI agents in VS Code.",
+  "version": "0.1.0",
+  "publisher": "local",
+  "engines": {
+    "vscode": "^1.96.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onView:agentStudio.agentsView",
+    "onCommand:agentStudio.openDashboard",
+    "onStartupFinished"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "agentStudio",
+          "title": "Agent Studio",
+          "icon": "$(hubot)"
+        }
+      ]
+    },
+    "views": {
+      "agentStudio": [
+        {
+          "id": "agentStudio.agentsView",
+          "name": "Agents"
+        },
+        {
+          "id": "agentStudio.workflowsView",
+          "name": "Workflows"
+        },
+        {
+          "id": "agentStudio.capabilitiesView",
+          "name": "Capabilities"
+        },
+        {
+          "id": "agentStudio.templatesView",
+          "name": "Templates"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "agentStudio.openDashboard",
+        "title": "Agent Studio: Open Dashboard"
+      },
+      {
+        "command": "agentStudio.createAgent",
+        "title": "Agent Studio: Create Agent"
+      },
+      {
+        "command": "agentStudio.editAgent",
+        "title": "Agent Studio: Edit Agent"
+      },
+      {
+        "command": "agentStudio.deleteAgent",
+        "title": "Agent Studio: Delete Agent"
+      },
+      {
+        "command": "agentStudio.duplicateAgent",
+        "title": "Agent Studio: Duplicate Agent"
+      },
+      {
+        "command": "agentStudio.openInChat",
+        "title": "Agent Studio: Open Agent In Chat"
+      },
+      {
+        "command": "agentStudio.createWorkflow",
+        "title": "Agent Studio: Create Workflow"
+      }
+    ],
+    "configuration": {
+      "title": "Agent Studio",
+      "properties": {
+        "agentStudio.agentPaths": {
+          "type": "array",
+          "default": [
+            ".github/chatmodes"
+          ],
+          "items": {
+            "type": "string"
+          },
+          "description": "Additional workspace-relative directories to discover .agent.md files."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "npm run build:extension && npm run build:webview",
+    "build:extension": "esbuild src/extension.ts --bundle --platform=node --external:vscode --format=cjs --outfile=dist/extension.js",
+    "watch:extension": "esbuild src/extension.ts --bundle --platform=node --external:vscode --format=cjs --outfile=dist/extension.js --watch",
+    "build:webview": "vite build",
+    "watch:webview": "vite build --watch",
+    "dev:webview": "vite",
+    "check": "tsc --noEmit",
+    "lint": "eslint . --ext .ts,.tsx"
+  },
+  "dependencies": {
+    "gray-matter": "^4.0.3",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "reactflow": "^11.11.4",
+    "yaml": "^2.6.1",
+    "zustand": "^4.5.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@typescript-eslint/eslint-plugin": "^8.16.0",
+    "@typescript-eslint/parser": "^8.16.0",
+    "@vitejs/plugin-react": "^4.3.3",
+    "esbuild": "^0.24.0",
+    "eslint": "^9.16.0",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.1"
+  }
+}
