@@ -1,5 +1,6 @@
 import * as path from "path";
 import * as vscode from "vscode";
+import matter from "gray-matter";
 import type {
   AgentDefinition,
   CapabilityGraph,
@@ -18,6 +19,11 @@ interface McpJsonShape {
     string,
     { command?: string; args?: string[]; env?: Record<string, string> }
   >;
+}
+
+interface SkillFrontmatter {
+  name?: string;
+  description?: string;
 }
 
 function getUserMcpConfigPaths(): string[] {
@@ -88,6 +94,136 @@ async function loadMcpServersFromPath(
   }
 }
 
+function getUserSkillsPaths(): string[] {
+  const home = process.env.HOME || process.env.USERPROFILE;
+  const appData = process.env.APPDATA;
+
+  if (!home && !appData) {
+    return [];
+  }
+
+  const candidates = new Set<string>();
+
+  if (process.platform === "linux" && home) {
+    candidates.add(path.join(home, ".agents", "skills"));
+    candidates.add(
+      path.join(home, ".config", "Code", "User", "prompts", "skills"),
+    );
+    candidates.add(
+      path.join(
+        home,
+        ".config",
+        "Code - Insiders",
+        "User",
+        "prompts",
+        "skills",
+      ),
+    );
+  }
+
+  if (process.platform === "darwin" && home) {
+    candidates.add(path.join(home, ".agents", "skills"));
+    candidates.add(
+      path.join(
+        home,
+        "Library",
+        "Application Support",
+        "Code",
+        "User",
+        "prompts",
+        "skills",
+      ),
+    );
+    candidates.add(
+      path.join(
+        home,
+        "Library",
+        "Application Support",
+        "Code - Insiders",
+        "User",
+        "prompts",
+        "skills",
+      ),
+    );
+  }
+
+  if (process.platform === "win32" && appData) {
+    candidates.add(path.join(appData, "Code", "User", "prompts", "skills"));
+    candidates.add(
+      path.join(appData, "Code - Insiders", "User", "prompts", "skills"),
+    );
+  }
+
+  return [...candidates];
+}
+
+function getWorkspaceSkillsPaths(): string[] {
+  const root = getWorkspaceRoot();
+  if (!root) {
+    return [];
+  }
+
+  return [
+    path.join(root, ".agents", "skills"),
+    path.join(root, ".github", "skills"),
+  ];
+}
+
+function extractTitle(content: string): string | undefined {
+  const firstHeading = content.match(/^#\s+(.+)$/m);
+  return firstHeading?.[1]?.trim();
+}
+
+async function loadSkillFromDirectory(
+  skillDirPath: string,
+  fallbackId: string,
+): Promise<SkillRef | undefined> {
+  const skillFilePath = path.join(skillDirPath, "SKILL.md");
+
+  try {
+    const bytes = await vscode.workspace.fs.readFile(
+      vscode.Uri.file(skillFilePath),
+    );
+    const content = Buffer.from(bytes).toString("utf8");
+    const parsed = matter(content);
+    const frontmatter = (parsed.data || {}) as SkillFrontmatter;
+
+    const label =
+      frontmatter.name?.trim() || extractTitle(parsed.content) || fallbackId;
+    const description = frontmatter.description?.trim();
+
+    return {
+      id: fallbackId,
+      label,
+      description,
+    };
+  } catch {
+    return {
+      id: fallbackId,
+      label: fallbackId,
+    };
+  }
+}
+
+async function loadSkillsFromPath(pathToScan: string): Promise<SkillRef[]> {
+  try {
+    const entries = await vscode.workspace.fs.readDirectory(
+      vscode.Uri.file(pathToScan),
+    );
+    const skills = await Promise.all(
+      entries
+        .filter(([, fileType]) => fileType === vscode.FileType.Directory)
+        .map(([name]) =>
+          loadSkillFromDirectory(path.join(pathToScan, name), name),
+        ),
+    );
+
+    return skills.filter((skill): skill is SkillRef => Boolean(skill));
+  } catch {
+    return [];
+  }
+}
+
 export class CapabilityService {
   async discoverTools(agents: AgentDefinition[]): Promise<ToolRef[]> {
     const map = new Map<string, ToolRef>();
@@ -106,6 +242,27 @@ export class CapabilityService {
         map.set(skill.id, skill);
       }
     }
+
+    const installedSkills = await Promise.all(
+      [...new Set([...getWorkspaceSkillsPaths(), ...getUserSkillsPaths()])].map(
+        (skillPath) => loadSkillsFromPath(skillPath),
+      ),
+    );
+
+    for (const skillsFromPath of installedSkills) {
+      for (const skill of skillsFromPath) {
+        const existing = map.get(skill.id);
+        map.set(skill.id, {
+          id: skill.id,
+          label:
+            existing?.label && existing.label !== existing.id
+              ? existing.label
+              : skill.label,
+          description: existing?.description || skill.description,
+        });
+      }
+    }
+
     return [...map.values()].sort((a, b) => a.label.localeCompare(b.label));
   }
 

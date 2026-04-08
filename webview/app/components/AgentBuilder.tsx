@@ -59,9 +59,19 @@ export function AgentBuilder(): React.JSX.Element {
   const [draft, setDraft] = useState<AgentDefinition | undefined>(
     selectedAgent,
   );
+  const [newToolId, setNewToolId] = useState("");
+  const [newToolLabel, setNewToolLabel] = useState("");
+  const [newToolKind, setNewToolKind] = useState<ToolRef["kind"]>("built-in");
+  const [newSkillId, setNewSkillId] = useState("");
+  const [newSkillLabel, setNewSkillLabel] = useState("");
 
   React.useEffect(() => {
     setDraft(selectedAgent);
+    setNewToolId("");
+    setNewToolLabel("");
+    setNewToolKind("built-in");
+    setNewSkillId("");
+    setNewSkillLabel("");
   }, [selectedAgent]);
 
   const markdownPreview = useMemo(
@@ -95,6 +105,102 @@ export function AgentBuilder(): React.JSX.Element {
               (current) => current.id !== server.id,
             )
           : [...draft.capabilities.mcpServers, server],
+      },
+    });
+  };
+
+  const addToolFromForm = (): void => {
+    const id = newToolId.trim();
+    if (!id) {
+      return;
+    }
+
+    const tool: ToolRef = {
+      id,
+      label: newToolLabel.trim() || id,
+      kind: newToolKind,
+    };
+
+    const existingIndex = draft.capabilities.tools.findIndex(
+      (current) => current.id === id,
+    );
+
+    const tools =
+      existingIndex >= 0
+        ? draft.capabilities.tools.map((current, index) =>
+            index === existingIndex ? tool : current,
+          )
+        : [...draft.capabilities.tools, tool];
+
+    update({
+      capabilities: {
+        ...draft.capabilities,
+        tools,
+      },
+    });
+
+    setNewToolId("");
+    setNewToolLabel("");
+    setNewToolKind("built-in");
+  };
+
+  const addSkillFromForm = (): void => {
+    const id = newSkillId.trim();
+    if (!id) {
+      return;
+    }
+
+    const skill: SkillRef = {
+      id,
+      label: newSkillLabel.trim() || id,
+    };
+
+    const existingIndex = draft.capabilities.skills.findIndex(
+      (current) => current.id === id,
+    );
+
+    const skills =
+      existingIndex >= 0
+        ? draft.capabilities.skills.map((current, index) =>
+            index === existingIndex ? skill : current,
+          )
+        : [...draft.capabilities.skills, skill];
+
+    update({
+      capabilities: {
+        ...draft.capabilities,
+        skills,
+      },
+    });
+
+    setNewSkillId("");
+    setNewSkillLabel("");
+  };
+
+  const toggleSkill = (skill: SkillRef): void => {
+    const exists = draft.capabilities.skills.some(
+      (current) => current.id === skill.id,
+    );
+
+    update({
+      capabilities: {
+        ...draft.capabilities,
+        skills: exists
+          ? draft.capabilities.skills.filter(
+              (current) => current.id !== skill.id,
+            )
+          : [...draft.capabilities.skills, skill],
+      },
+    });
+  };
+
+  const removeSkill = (skillId: string): void => {
+    update({
+      capabilities: {
+        ...draft.capabilities,
+        skills: draft.capabilities.skills.filter(
+          (current) => current.id !== skillId,
+        ),
       },
     });
   };
@@ -218,6 +324,77 @@ export function AgentBuilder(): React.JSX.Element {
                 Use tool IDs in this field. If you add or edit agent files,
                 refresh the dashboard to rebuild the catalog.
               </p>
+              <p>
+                Skills are discovered from agent capabilities and installed
+                skill folders (for example <code>.agents/skills</code> in the
+                current workspace and common global VS Code skills paths).
+              </p>
+              <p>
+                Skills are reusable guidance packs that help an agent perform
+                specialized tasks with better quality and consistency.
+              </p>
+            </div>
+            <div className="capability-form-grid">
+              <div className="helper-card">
+                <p>Add or update a Tool</p>
+                <label>
+                  Tool ID
+                  <input
+                    value={newToolId}
+                    onChange={(e) => setNewToolId(e.target.value)}
+                    placeholder="ex: run_in_terminal"
+                  />
+                </label>
+                <label>
+                  Tool label
+                  <input
+                    value={newToolLabel}
+                    onChange={(e) => setNewToolLabel(e.target.value)}
+                    placeholder="ex: Run in Terminal"
+                  />
+                </label>
+                <label>
+                  Tool kind
+                  <select
+                    value={newToolKind}
+                    onChange={(e) =>
+                      setNewToolKind(e.target.value as ToolRef["kind"])
+                    }
+                  >
+                    <option value="built-in">built-in</option>
+                    <option value="extension">extension</option>
+                    <option value="mcp">mcp</option>
+                  </select>
+                </label>
+                <button onClick={addToolFromForm} disabled={!newToolId.trim()}>
+                  Add Tool
+                </button>
+              </div>
+              <div className="helper-card">
+                <p>Add or update a Skill</p>
+                <label>
+                  Skill ID
+                  <input
+                    value={newSkillId}
+                    onChange={(e) => setNewSkillId(e.target.value)}
+                    placeholder="ex: code-review"
+                  />
+                </label>
+                <label>
+                  Skill label
+                  <input
+                    value={newSkillLabel}
+                    onChange={(e) => setNewSkillLabel(e.target.value)}
+                    placeholder="ex: Code Review"
+                  />
+                </label>
+                <button
+                  onClick={addSkillFromForm}
+                  disabled={!newSkillId.trim()}
+                >
+                  Add Skill
+                </button>
+              </div>
             </div>
             <label>
               Tools (ids, comma separated)
@@ -259,6 +436,55 @@ export function AgentBuilder(): React.JSX.Element {
                 }
               />
             </label>
+            <div className="capability-preview">
+              <p>Select skills (tag multi-select)</p>
+              {graph.skills.length === 0 ? (
+                <p>
+                  No discovered skills yet. Install a skill in
+                  <code> .agents/skills </code>
+                  or add one with the form above, then refresh.
+                </p>
+              ) : (
+                <div className="chip-row">
+                  {graph.skills.map((skill) => {
+                    const selected = draft.capabilities.skills.some(
+                      (current) => current.id === skill.id,
+                    );
+                    return (
+                      <button
+                        key={skill.id}
+                        className={
+                          selected ? "skill-tag selected" : "skill-tag"
+                        }
+                        onClick={() => toggleSkill(skill)}
+                      >
+                        {skill.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              <small className="field-hint">
+                Click tags to add or remove multiple skills quickly.
+              </small>
+            </div>
+            <div className="capability-preview">
+              <p>Selected skills for this agent</p>
+              {draft.capabilities.skills.length === 0 ? (
+                <p>No skills selected.</p>
+              ) : (
+                <div className="chip-row removable-chip-row">
+                  {draft.capabilities.skills.map((skill) => (
+                    <span key={skill.id} className="selected-chip">
+                      {skill.label} ({skill.id})
+                      <button onClick={() => removeSkill(skill.id)}>
+                        Remove
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
             <label>
               MCP Servers (ids, comma separated)
               <input
