@@ -105,6 +105,10 @@ export function AgentBuilder(): React.JSX.Element {
         return (
           <div className="builder-form">
             <label>
+              Agent ID
+              <input value={draft.id} readOnly />
+            </label>
+            <label>
               Name
               <input
                 value={draft.name}
@@ -159,16 +163,44 @@ export function AgentBuilder(): React.JSX.Element {
           </label>
         );
       case "Handoffs":
+        const handoffCandidates = allAgents.filter(
+          (agent) => agent.id !== draft.id,
+        );
+
         return (
-          <label className="block-label">
-            Handoff Agent IDs (comma separated)
-            <input
-              value={draft.handoffs.join(", ")}
-              onChange={(e) =>
-                update({ handoffs: parseCommaList(e.target.value) })
-              }
-            />
-          </label>
+          <div className="builder-form">
+            <div className="helper-card">
+              <p>Define which agents this agent can delegate a task to.</p>
+              <p>
+                When a handoff is configured, the current agent can transfer
+                control to the next agent to continue the flow.
+              </p>
+            </div>
+            <label className="block-label">
+              Handoff Agents
+              <select
+                multiple
+                value={draft.handoffs}
+                onChange={(e) => {
+                  const selected = Array.from(
+                    e.target.selectedOptions,
+                    (opt) => opt.value,
+                  );
+                  update({ handoffs: selected });
+                }}
+                size={Math.min(Math.max(handoffCandidates.length, 3), 8)}
+              >
+                {handoffCandidates.map((agent) => (
+                  <option key={agent.id} value={agent.id}>
+                    {agent.name} ({agent.id})
+                  </option>
+                ))}
+              </select>
+            </label>
+            <small className="field-hint">
+              Tip: use Ctrl/Cmd + click to select multiple agents.
+            </small>
+          </div>
         );
       case "Capabilities":
         return (

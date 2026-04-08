@@ -164,6 +164,30 @@ button:hover {
   gap: 6px;
 }
 
+.helper-card {
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: color-mix(
+    in srgb,
+    var(--vscode-editor-infoForeground) 12%,
+    transparent
+  );
+}
+
+.helper-card p {
+  margin: 0;
+  line-height: 1.35;
+}
+
+.helper-card p + p {
+  margin-top: 6px;
+}
+
+.field-hint {
+  color: var(--vscode-descriptionForeground);
+}
+
 textarea {
   resize: vertical;
 }
