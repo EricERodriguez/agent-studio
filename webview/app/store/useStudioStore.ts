@@ -4,6 +4,7 @@ import type {
   AgentDefinition,
   BuilderTab,
   CapabilityGraph,
+  WorkflowRunState,
   WorkflowDefinition,
 } from "../types";
 
@@ -26,6 +27,7 @@ interface StudioState {
   filters: Filters;
   infoMessage?: string;
   errorMessage?: string;
+  workflowRun?: WorkflowRunState;
   setStateFromExtension: (payload: {
     agents: AgentDefinition[];
     workflows: WorkflowDefinition[];
@@ -60,6 +62,7 @@ interface StudioState {
   autoLayoutWorkflow: (workflowId: string) => void;
   setInfoMessage: (message?: string) => void;
   setErrorMessage: (message?: string) => void;
+  setWorkflowRun: (run?: WorkflowRunState) => void;
 }
 
 const emptyGraph: CapabilityGraph = {
@@ -232,6 +235,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
     })),
   setInfoMessage: (infoMessage) => set({ infoMessage }),
   setErrorMessage: (errorMessage) => set({ errorMessage }),
+  setWorkflowRun: (workflowRun) => set({ workflowRun }),
 }));
 
 export const selectors = {

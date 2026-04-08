@@ -27,6 +27,9 @@ window.addEventListener(
         3500,
       );
     }
+    if (message.type === "workflowRunUpdate") {
+      useStudioStore.getState().setWorkflowRun(message.payload);
+    }
   },
 );
 

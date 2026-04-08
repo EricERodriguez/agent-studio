@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 import type {
   ExtensionToWebviewMessage,
+  WorkflowRunState,
   WebviewToExtensionMessage,
 } from "../domain/messages";
 import type {
@@ -16,6 +17,7 @@ export interface DashboardPanelHandlers {
   onOpenRawAgent: (agentId: string) => Promise<void>;
   onOpenInChat: (agentId: string) => Promise<void>;
   onSaveWorkflow: (workflow: WorkflowDefinition) => Promise<void>;
+  onRunWorkflow: (workflowId: string, mode: "chat" | "plan") => Promise<void>;
   onCreateAgent: () => Promise<void>;
   onEditAgent: (agentId: string) => Promise<void>;
 }
@@ -72,6 +74,12 @@ export class DashboardPanel {
           case "saveWorkflow":
             await this.handlers.onSaveWorkflow(message.payload);
             break;
+          case "runWorkflow":
+            await this.handlers.onRunWorkflow(
+              message.payload.workflowId,
+              message.payload.mode,
+            );
+            break;
           case "createAgent":
             await this.handlers.onCreateAgent();
             break;
@@ -114,6 +122,10 @@ export class DashboardPanel {
 
   postError(message: string): void {
     this.postMessage({ type: "error", payload: { message } });
+  }
+
+  postWorkflowRunUpdate(payload: WorkflowRunState): void {
+    this.postMessage({ type: "workflowRunUpdate", payload });
   }
 
   private postMessage(message: ExtensionToWebviewMessage): void {

@@ -12,8 +12,32 @@ export type WebviewToExtensionMessage =
   | { type: "openRawAgent"; payload: { agentId: string } }
   | { type: "openInChat"; payload: { agentId: string } }
   | { type: "saveWorkflow"; payload: WorkflowDefinition }
+  | {
+      type: "runWorkflow";
+      payload: { workflowId: string; mode: "chat" | "plan" };
+    }
   | { type: "createAgent" }
   | { type: "editAgent"; payload: { agentId: string } };
+
+export interface WorkflowRunStep {
+  nodeId: string;
+  agentId: string;
+  agentName: string;
+  status: "pending" | "running" | "completed" | "failed" | "skipped";
+  message?: string;
+}
+
+export interface WorkflowRunState {
+  workflowId: string;
+  mode: "chat" | "plan";
+  status: "running" | "completed" | "failed";
+  currentStepIndex?: number;
+  steps: WorkflowRunStep[];
+  startedAt: number;
+  finishedAt?: number;
+  planText?: string;
+  error?: string;
+}
 
 export type ExtensionToWebviewMessage =
   | {
@@ -31,4 +55,8 @@ export type ExtensionToWebviewMessage =
   | {
       type: "error";
       payload: { message: string };
+    }
+  | {
+      type: "workflowRunUpdate";
+      payload: WorkflowRunState;
     };

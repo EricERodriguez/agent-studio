@@ -5,6 +5,7 @@ import { vscode } from "../hooks/useVsCodeApi";
 export function WorkflowBuilder(): React.JSX.Element {
   const selectedWorkflow = useStudioStore(selectors.selectedWorkflow);
   const agents = useStudioStore((s) => s.agents);
+  const workflowRun = useStudioStore((s) => s.workflowRun);
   const addWorkflowStep = useStudioStore((s) => s.addWorkflowStep);
   const removeWorkflowStep = useStudioStore((s) => s.removeWorkflowStep);
   const setWorkflowEntryStep = useStudioStore((s) => s.setWorkflowEntryStep);
@@ -13,6 +14,12 @@ export function WorkflowBuilder(): React.JSX.Element {
   const [selectedAgentToAdd, setSelectedAgentToAdd] = useState("");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [runMode, setRunMode] = useState<"chat" | "plan">("chat");
+
+  const selectedWorkflowRun =
+    selectedWorkflow && workflowRun?.workflowId === selectedWorkflow.id
+      ? workflowRun
+      : undefined;
 
   useEffect(() => {
     if (selectedWorkflow) {
@@ -149,6 +156,70 @@ export function WorkflowBuilder(): React.JSX.Element {
         reveal its handles, then drag from one handle to another node to create
         an edge.
       </p>
+
+      <div className="helper-card" style={{ marginBottom: 8 }}>
+        <strong>Execution</strong> - Run in <em>Chat</em> mode to open each step
+        agent in order, or in <em>Plan</em> mode to generate a step-by-step
+        execution plan without opening chat.
+      </div>
+
+      <div
+        style={{
+          display: "flex",
+          gap: 8,
+          alignItems: "flex-end",
+          marginBottom: 8,
+        }}
+      >
+        <label style={{ marginBottom: 0 }}>
+          Run mode
+          <select
+            value={runMode}
+            onChange={(e) => setRunMode(e.target.value as "chat" | "plan")}
+          >
+            <option value="chat">Chat</option>
+            <option value="plan">Plan</option>
+          </select>
+        </label>
+        <button
+          disabled={selectedWorkflowRun?.status === "running"}
+          onClick={() =>
+            vscode?.postMessage({
+              type: "runWorkflow",
+              payload: { workflowId: selectedWorkflow.id, mode: runMode },
+            })
+          }
+        >
+          {selectedWorkflowRun?.status === "running"
+            ? "Running..."
+            : "Run Workflow"}
+        </button>
+      </div>
+
+      {selectedWorkflowRun && (
+        <div className="capability-preview" style={{ marginBottom: 8 }}>
+          <h4>
+            Run Status: {selectedWorkflowRun.status.toUpperCase()} (
+            {selectedWorkflowRun.mode})
+          </h4>
+          <ul className="compact-list">
+            {selectedWorkflowRun.steps.map((step, index) => (
+              <li key={`${step.nodeId}-${index}`}>
+                <strong>{index + 1}.</strong> {step.agentName} - {step.status}
+                {step.message ? ` (${step.message})` : ""}
+              </li>
+            ))}
+          </ul>
+          {selectedWorkflowRun.planText && (
+            <pre style={{ whiteSpace: "pre-wrap", marginTop: 8 }}>
+              {selectedWorkflowRun.planText}
+            </pre>
+          )}
+          {selectedWorkflowRun.error && (
+            <p className="field-hint">Error: {selectedWorkflowRun.error}</p>
+          )}
+        </div>
+      )}
 
       <button
         onClick={() =>

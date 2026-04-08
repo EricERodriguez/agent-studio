@@ -86,4 +86,28 @@ export type ExtensionToWebviewMessage =
   | {
       type: "error";
       payload: { message: string };
+    }
+  | {
+      type: "workflowRunUpdate";
+      payload: WorkflowRunState;
     };
+
+export interface WorkflowRunStep {
+  nodeId: string;
+  agentId: string;
+  agentName: string;
+  status: "pending" | "running" | "completed" | "failed" | "skipped";
+  message?: string;
+}
+
+export interface WorkflowRunState {
+  workflowId: string;
+  mode: "chat" | "plan";
+  status: "running" | "completed" | "failed";
+  currentStepIndex?: number;
+  steps: WorkflowRunStep[];
+  startedAt: number;
+  finishedAt?: number;
+  planText?: string;
+  error?: string;
+}
