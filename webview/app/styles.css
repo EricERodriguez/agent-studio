@@ -112,6 +112,23 @@ button:hover {
   overflow: hidden;
 }
 
+.graph-canvas.empty-state {
+  display: grid;
+  place-items: center;
+  padding: 14px;
+  text-align: center;
+}
+
+.graph-canvas.empty-state p {
+  margin: 0;
+  max-width: 560px;
+  line-height: 1.4;
+}
+
+.graph-canvas.empty-state code {
+  font-family: var(--vscode-editor-font-family);
+}
+
 .builder-header {
   display: flex;
   justify-content: space-between;
