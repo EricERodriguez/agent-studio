@@ -11,7 +11,7 @@ Agent Studio is a local-first visual control plane for AI agents in VS Code. It 
   - Capabilities
   - Templates
 - Agent Registry:
-  - discovers `.github/chatmodes/*.agent.md` + configurable paths
+  - discovers `.github/agents/*.agent.md` + configurable paths
   - parses frontmatter metadata
   - create/edit/delete/duplicate agent commands
 - Agent Builder webview:
@@ -74,9 +74,9 @@ Agent Studio is a local-first visual control plane for AI agents in VS Code. It 
 Included by default:
 
 - agents:
-  - `.github/chatmodes/planner.agent.md`
-  - `.github/chatmodes/backend-implementer.agent.md`
-  - `.github/chatmodes/reviewer.agent.md`
+  - `.github/agents/planner.agent.md`
+  - `.github/agents/backend-implementer.agent.md`
+  - `.github/agents/reviewer.agent.md`
 - workflow:
   - `.vscode/agent-studio/workflows/feature-delivery-flow.json`
 

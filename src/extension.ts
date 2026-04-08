@@ -21,6 +21,9 @@ import type { AgentDefinition, WorkflowDefinition } from "./domain/models";
 export async function activate(
   context: vscode.ExtensionContext,
 ): Promise<void> {
+  const quoteArg = (value: string): string =>
+    /[\s"']/g.test(value) ? `"${value.replace(/(["\\$`])/g, "\\$1")}"` : value;
+
   const ensureWorkspaceOpen = async (): Promise<boolean> => {
     if ((vscode.workspace.workspaceFolders?.length || 0) > 0) {
       return true;
@@ -270,6 +273,61 @@ export async function activate(
     dashboard.show();
   };
 
+  const startMcpServer = async (mcpId?: string): Promise<void> => {
+    const available = await capabilityService.discoverMcpServers(agents);
+    if (available.length === 0) {
+      void vscode.window.showWarningMessage(
+        "No MCP servers found. Add servers to mcp.json first.",
+      );
+      return;
+    }
+
+    const selected = mcpId
+      ? available.find((mcp) => mcp.id === mcpId)
+      : (
+          await vscode.window.showQuickPick(
+            available.map((mcp) => ({
+              label: mcp.label,
+              description: mcp.command,
+              detail: [mcp.command, ...(mcp.args || [])]
+                .filter(Boolean)
+                .join(" "),
+              mcp,
+            })),
+            { placeHolder: "Select MCP server to start" },
+          )
+        )?.mcp;
+
+    if (!selected) {
+      return;
+    }
+
+    if (!selected.command) {
+      void vscode.window.showErrorMessage(
+        `MCP server '${selected.label}' has no command configured.`,
+      );
+      return;
+    }
+
+    const terminal = vscode.window.createTerminal({
+      name: `MCP: ${selected.label}`,
+      cwd:
+        vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ||
+        context.extensionPath,
+      env: selected.env,
+    });
+
+    const shellCommand = [selected.command, ...(selected.args || [])]
+      .map((arg) => quoteArg(arg))
+      .join(" ");
+
+    terminal.show();
+    terminal.sendText(shellCommand, true);
+    void vscode.window.showInformationMessage(
+      `Starting MCP server '${selected.label}' in terminal '${terminal.name}'.`,
+    );
+  };
+
   registerCommands(context, {
     openDashboard: () => {
       dashboard.show();
@@ -281,6 +339,7 @@ export async function activate(
     duplicateAgent,
     openInChat,
     createWorkflow,
+    startMcpServer,
   });
 
   await refreshState();

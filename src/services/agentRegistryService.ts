@@ -20,9 +20,12 @@ export class AgentRegistryService {
 
     const configuredPaths = vscode.workspace
       .getConfiguration("agentStudio")
-      .get<string[]>("agentPaths", [".github/chatmodes"]);
+      .get<string[]>("agentPaths", [".github/agents"]);
 
-    const defaultGlobs = [".github/chatmodes/**/*.agent.md"];
+    const defaultGlobs = [
+      ".github/agents/**/*.agent.md",
+      ".github/chatmodes/**/*.agent.md",
+    ];
     const configuredGlobs = configuredPaths.map(
       (base) => `${base.replace(/\\/g, "/")}/**/*.agent.md`,
     );
@@ -75,7 +78,7 @@ export class AgentRegistryService {
       throw new Error("Agent instructions are required.");
     }
 
-    const folder = path.join(root, ".github", "chatmodes");
+    const folder = path.join(root, ".github", "agents");
     await ensureDirectory(folder);
 
     const fileName = `${toAgentId(agent.name)}.agent.md`;

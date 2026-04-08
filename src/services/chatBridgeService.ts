@@ -17,9 +17,12 @@ export class ChatBridgeService {
     try {
       await vscode.commands.executeCommand("workbench.action.chat.open");
       await vscode.env.clipboard.writeText(prompt);
+      await vscode.commands.executeCommand(
+        "editor.action.clipboardPasteAction",
+      );
 
       vscode.window.showInformationMessage(
-        `Chat opened for ${agent.name}. Agent context has been copied to clipboard. Paste it into chat to continue.`,
+        `Chat opened for ${agent.name}. Agent context was copied and paste was attempted automatically.`,
       );
     } catch {
       const doc = await vscode.workspace.openTextDocument({

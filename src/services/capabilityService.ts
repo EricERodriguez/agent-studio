@@ -10,10 +10,82 @@ import type {
 import { getWorkspaceRoot } from "../infrastructure/fsUtils";
 
 interface McpJsonShape {
+  mcpServers?: Record<
+    string,
+    { command?: string; args?: string[]; env?: Record<string, string> }
+  >;
   servers?: Record<
     string,
     { command?: string; args?: string[]; env?: Record<string, string> }
   >;
+}
+
+function getUserMcpConfigPaths(): string[] {
+  const home = process.env.HOME || process.env.USERPROFILE;
+  const appData = process.env.APPDATA;
+
+  if (!home && !appData) {
+    return [];
+  }
+
+  const candidates = new Set<string>();
+
+  if (process.platform === "linux" && home) {
+    candidates.add(path.join(home, ".config", "Code", "User", "mcp.json"));
+    candidates.add(
+      path.join(home, ".config", "Code - Insiders", "User", "mcp.json"),
+    );
+  }
+
+  if (process.platform === "darwin" && home) {
+    candidates.add(
+      path.join(
+        home,
+        "Library",
+        "Application Support",
+        "Code",
+        "User",
+        "mcp.json",
+      ),
+    );
+    candidates.add(
+      path.join(
+        home,
+        "Library",
+        "Application Support",
+        "Code - Insiders",
+        "User",
+        "mcp.json",
+      ),
+    );
+  }
+
+  if (process.platform === "win32" && appData) {
+    candidates.add(path.join(appData, "Code", "User", "mcp.json"));
+    candidates.add(path.join(appData, "Code - Insiders", "User", "mcp.json"));
+  }
+
+  return [...candidates];
+}
+
+async function loadMcpServersFromPath(
+  mcpPath: string,
+): Promise<
+  | Record<
+      string,
+      { command?: string; args?: string[]; env?: Record<string, string> }
+    >
+  | undefined
+> {
+  try {
+    const bytes = await vscode.workspace.fs.readFile(vscode.Uri.file(mcpPath));
+    const json = JSON.parse(
+      Buffer.from(bytes).toString("utf8"),
+    ) as McpJsonShape;
+    return json.servers || json.mcpServers || {};
+  } catch {
+    return undefined;
+  }
 }
 
 export class CapabilityService {
@@ -46,26 +118,27 @@ export class CapabilityService {
     }
 
     const root = getWorkspaceRoot();
-    if (root) {
-      const mcpPath = path.join(root, "mcp.json");
-      try {
-        const bytes = await vscode.workspace.fs.readFile(
-          vscode.Uri.file(mcpPath),
-        );
-        const json = JSON.parse(
-          Buffer.from(bytes).toString("utf8"),
-        ) as McpJsonShape;
-        for (const [id, server] of Object.entries(json.servers || {})) {
-          discovered.set(id, {
-            id,
-            label: id,
-            command: server.command,
-            args: server.args,
-            env: server.env,
-          });
-        }
-      } catch {
-        // mcp.json is optional.
+    const candidatePaths = [
+      ...(root
+        ? [path.join(root, "mcp.json"), path.join(root, ".vscode", "mcp.json")]
+        : []),
+      ...getUserMcpConfigPaths(),
+    ];
+
+    for (const mcpPath of candidatePaths) {
+      const servers = await loadMcpServersFromPath(mcpPath);
+      if (!servers) {
+        continue;
+      }
+
+      for (const [id, server] of Object.entries(servers)) {
+        discovered.set(id, {
+          id,
+          label: id,
+          command: server.command,
+          args: server.args,
+          env: server.env,
+        });
       }
     }
 

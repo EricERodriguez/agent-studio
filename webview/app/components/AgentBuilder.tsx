@@ -82,6 +82,23 @@ export function AgentBuilder(): React.JSX.Element {
     setDraft({ ...draft, ...patch });
   };
 
+  const toggleMcpServer = (server: MCPServerRef): void => {
+    const exists = draft.capabilities.mcpServers.some(
+      (current) => current.id === server.id,
+    );
+
+    update({
+      capabilities: {
+        ...draft.capabilities,
+        mcpServers: exists
+          ? draft.capabilities.mcpServers.filter(
+              (current) => current.id !== server.id,
+            )
+          : [...draft.capabilities.mcpServers, server],
+      },
+    });
+  };
+
   const renderTab = (): React.JSX.Element => {
     switch (selectedTab) {
       case "Identity":
@@ -216,6 +233,25 @@ export function AgentBuilder(): React.JSX.Element {
                 }
               />
             </label>
+            <div className="capability-preview">
+              <p>Discovered MCP servers</p>
+              {graph.mcpServers.length === 0 ? (
+                <p>No MCP servers discovered. Add them to mcp.json.</p>
+              ) : (
+                graph.mcpServers.map((server) => (
+                  <label key={server.id}>
+                    <input
+                      type="checkbox"
+                      checked={draft.capabilities.mcpServers.some(
+                        (current) => current.id === server.id,
+                      )}
+                      onChange={() => toggleMcpServer(server)}
+                    />
+                    {server.label}
+                  </label>
+                ))
+              )}
+            </div>
             <div className="capability-preview">
               <p>Available tools: {graph.tools.length}</p>
               <p>Available skills: {graph.skills.length}</p>

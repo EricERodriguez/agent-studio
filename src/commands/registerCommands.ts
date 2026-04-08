@@ -9,6 +9,7 @@ export interface CommandHandlers {
   duplicateAgent: (agentId?: string) => Promise<void>;
   openInChat: (agentId?: string) => Promise<void>;
   createWorkflow: () => Promise<void>;
+  startMcpServer: (mcpId?: string) => Promise<void>;
 }
 
 export function registerCommands(
@@ -39,6 +40,10 @@ export function registerCommands(
       (agentId) => handlers.openInChat(agentId as string | undefined),
     ],
     ["agentStudio.createWorkflow", () => handlers.createWorkflow()],
+    [
+      "agentStudio.startMcpServer",
+      (mcpId) => handlers.startMcpServer(mcpId as string | undefined),
+    ],
   ];
 
   for (const [command, cb] of defs) {

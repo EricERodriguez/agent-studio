@@ -74,6 +74,10 @@
             {
                 "command": "agentStudio.createWorkflow",
                 "title": "Agent Studio: Create Workflow"
+            },
+            {
+                "command": "agentStudio.startMcpServer",
+                "title": "Agent Studio: Start MCP Server"
             }
         ],
         "menus": {
@@ -114,6 +118,11 @@
                     "command": "agentStudio.deleteAgent",
                     "when": "view == agentStudio.agentsView && viewItem == agentStudio.agent",
                     "group": "navigation@3"
+                },
+                {
+                    "command": "agentStudio.startMcpServer",
+                    "when": "view == agentStudio.capabilitiesView && viewItem == agentStudio.mcpServer",
+                    "group": "inline"
                 }
             ]
         },
@@ -123,7 +132,7 @@
                 "agentStudio.agentPaths": {
                     "type": "array",
                     "default": [
-                        ".github/chatmodes"
+                        ".github/agents"
                     ],
                     "items": {
                         "type": "string"

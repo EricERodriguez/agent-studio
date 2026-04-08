@@ -124,7 +124,16 @@ export class CapabilitiesTreeProvider implements vscode.TreeDataProvider<BaseIte
     }
     if (element.label === "MCP Servers") {
       return Promise.resolve(
-        this.capabilityGraph.mcpServers.map((mcp) => new BaseItem(mcp.label)),
+        this.capabilityGraph.mcpServers.map((mcp) => {
+          const item = new BaseItem(mcp.label);
+          item.contextValue = "agentStudio.mcpServer";
+          item.command = {
+            command: "agentStudio.startMcpServer",
+            title: "Start MCP Server",
+            arguments: [mcp.id],
+          };
+          return item;
+        }),
       );
     }
     return Promise.resolve([]);
