@@ -188,6 +188,15 @@ button:hover {
   color: var(--vscode-descriptionForeground);
 }
 
+.compact-list {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.compact-list li {
+  margin: 2px 0;
+}
+
 textarea {
   resize: vertical;
 }

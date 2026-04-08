@@ -205,6 +205,20 @@ export function AgentBuilder(): React.JSX.Element {
       case "Capabilities":
         return (
           <div className="builder-form">
+            <div className="helper-card">
+              <p>
+                Tools are the actions an agent can execute (for example,
+                searching code, editing files, or running commands).
+              </p>
+              <p>
+                Available tools are loaded from the capabilities declared in all
+                currently loaded agents and merged into a shared catalog.
+              </p>
+              <p>
+                Use tool IDs in this field. If you add or edit agent files,
+                refresh the dashboard to rebuild the catalog.
+              </p>
+            </div>
             <label>
               Tools (ids, comma separated)
               <input
@@ -265,6 +279,20 @@ export function AgentBuilder(): React.JSX.Element {
                 }
               />
             </label>
+            <div className="capability-preview">
+              <p>Discovered tools</p>
+              {graph.tools.length === 0 ? (
+                <p>No tools discovered yet.</p>
+              ) : (
+                <ul className="compact-list">
+                  {graph.tools.map((tool) => (
+                    <li key={tool.id}>
+                      <strong>{tool.label}</strong> ({tool.id}) - {tool.kind}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
             <div className="capability-preview">
               <p>Discovered MCP servers</p>
               {graph.mcpServers.length === 0 ? (
