@@ -62,16 +62,12 @@ export function AgentBuilder(): React.JSX.Element {
   const [newToolId, setNewToolId] = useState("");
   const [newToolLabel, setNewToolLabel] = useState("");
   const [newToolKind, setNewToolKind] = useState<ToolRef["kind"]>("built-in");
-  const [newSkillId, setNewSkillId] = useState("");
-  const [newSkillLabel, setNewSkillLabel] = useState("");
 
   React.useEffect(() => {
     setDraft(selectedAgent);
     setNewToolId("");
     setNewToolLabel("");
     setNewToolKind("built-in");
-    setNewSkillId("");
-    setNewSkillLabel("");
   }, [selectedAgent]);
 
   const markdownPreview = useMemo(
@@ -142,39 +138,6 @@ export function AgentBuilder(): React.JSX.Element {
     setNewToolId("");
     setNewToolLabel("");
     setNewToolKind("built-in");
-  };
-
-  const addSkillFromForm = (): void => {
-    const id = newSkillId.trim();
-    if (!id) {
-      return;
-    }
-
-    const skill: SkillRef = {
-      id,
-      label: newSkillLabel.trim() || id,
-    };
-
-    const existingIndex = draft.capabilities.skills.findIndex(
-      (current) => current.id === id,
-    );
-
-    const skills =
-      existingIndex >= 0
-        ? draft.capabilities.skills.map((current, index) =>
-            index === existingIndex ? skill : current,
-          )
-        : [...draft.capabilities.skills, skill];
-
-    update({
-      capabilities: {
-        ...draft.capabilities,
-        skills,
-      },
-    });
-
-    setNewSkillId("");
-    setNewSkillLabel("");
   };
 
   const toggleSkill = (skill: SkillRef): void => {
@@ -371,29 +334,20 @@ export function AgentBuilder(): React.JSX.Element {
                 </button>
               </div>
               <div className="helper-card">
-                <p>Add or update a Skill</p>
-                <label>
-                  Skill ID
-                  <input
-                    value={newSkillId}
-                    onChange={(e) => setNewSkillId(e.target.value)}
-                    placeholder="ex: code-review"
-                  />
-                </label>
-                <label>
-                  Skill label
-                  <input
-                    value={newSkillLabel}
-                    onChange={(e) => setNewSkillLabel(e.target.value)}
-                    placeholder="ex: Code Review"
-                  />
-                </label>
-                <button
-                  onClick={addSkillFromForm}
-                  disabled={!newSkillId.trim()}
-                >
-                  Add Skill
-                </button>
+                <p>Install Skills</p>
+                <p>
+                  Install skills in the current repo under
+                  <code> .agents/skills </code>
+                  or globally in your user skills folders.
+                </p>
+                <p>
+                  Example command:
+                  <code> npx skills add softaworks/agent-toolkit </code>
+                </p>
+                <p>
+                  After installation, click <strong>Refresh</strong> and Agent
+                  Studio will detect them automatically.
+                </p>
               </div>
             </div>
             <label>
@@ -442,7 +396,7 @@ export function AgentBuilder(): React.JSX.Element {
                 <p>
                   No discovered skills yet. Install a skill in
                   <code> .agents/skills </code>
-                  or add one with the form above, then refresh.
+                  or in a global skills path, then refresh.
                 </p>
               ) : (
                 <div className="chip-row">
