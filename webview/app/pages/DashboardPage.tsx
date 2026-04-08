@@ -1,6 +1,7 @@
 import React from "react";
 import { GraphCanvas } from "../components/GraphCanvas";
 import { AgentBuilder } from "../components/AgentBuilder";
+import { WorkflowBuilder } from "../components/WorkflowBuilder";
 import { InspectorPanel } from "../components/InspectorPanel";
 import { useStudioStore } from "../store/useStudioStore";
 import { vscode } from "../hooks/useVsCodeApi";
@@ -154,15 +155,30 @@ export function DashboardPage(): React.JSX.Element {
       <main className="main-grid">
         <div className="column">
           <AgentBuilder />
+          <WorkflowBuilder />
         </div>
         <div className="column graph-stack">
           <section className="panel">
             <h2>Agent Graph</h2>
+            <p className="field-hint">
+              Displays all discovered agents as nodes. Each node shows the agent
+              name and its capability counts (T = Tools, S = Skills, M = MCP
+              servers). Edges represent handoff relationships — an arrow from
+              Agent A to Agent B means A can delegate tasks to B. Click a node
+              to open that agent in the builder.
+            </p>
             <GraphCanvas mode="agent" />
           </section>
           <section className="panel">
             <div className="panel-title-row">
               <h2>Workflow Graph</h2>
+              <p className="field-hint">
+                Visualizes the selected workflow as a directed step graph. Each
+                node is an agent step; the green-bordered node is the entry
+                point. Edges define execution order between steps. Use{" "}
+                <strong>Auto Layout</strong> to reposition nodes automatically,
+                then <strong>Save Workflow</strong> to persist the layout.
+              </p>
               {selectedWorkflow && (
                 <>
                   <button

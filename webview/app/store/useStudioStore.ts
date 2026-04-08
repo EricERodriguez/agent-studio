@@ -47,6 +47,13 @@ interface StudioState {
     workflowId: string,
     connection: { source?: string | null; target?: string | null },
   ) => void;
+  addWorkflowStep: (workflowId: string, agentId: string) => void;
+  removeWorkflowStep: (workflowId: string, nodeId: string) => void;
+  setWorkflowEntryStep: (workflowId: string, nodeId: string) => void;
+  updateWorkflowMeta: (
+    workflowId: string,
+    meta: { name?: string; description?: string },
+  ) => void;
   setFilter: (key: keyof Filters, value?: string) => void;
   setSelectedCapability: (capabilityId?: string) => void;
   toggleCapabilityGraph: () => void;
@@ -143,6 +150,58 @@ export const useStudioStore = create<StudioState>((set, get) => ({
         ) as any;
         return { ...workflow, edges };
       }),
+    })),
+  addWorkflowStep: (workflowId, agentId) =>
+    set((state) => ({
+      workflows: state.workflows.map((workflow) => {
+        if (workflow.id !== workflowId) return workflow;
+        const isFirst = workflow.nodes.length === 0;
+        const newNode = {
+          id: `step-${Date.now()}`,
+          agentId,
+          position: { x: 140 + workflow.nodes.length * 230, y: 150 },
+          isEntry: isFirst,
+        };
+        return { ...workflow, nodes: [...workflow.nodes, newNode] };
+      }),
+    })),
+  removeWorkflowStep: (workflowId, nodeId) =>
+    set((state) => ({
+      workflows: state.workflows.map((workflow) => {
+        if (workflow.id !== workflowId) return workflow;
+        const nodes = workflow.nodes.filter((n) => n.id !== nodeId);
+        const edges = workflow.edges.filter(
+          (e) => e.source !== nodeId && e.target !== nodeId,
+        );
+        // If we removed the entry, make the first remaining node entry
+        const hasEntry = nodes.some((n) => n.isEntry);
+        return {
+          ...workflow,
+          nodes: hasEntry
+            ? nodes
+            : nodes.map((n, i) => ({ ...n, isEntry: i === 0 })),
+          edges,
+        };
+      }),
+    })),
+  setWorkflowEntryStep: (workflowId, nodeId) =>
+    set((state) => ({
+      workflows: state.workflows.map((workflow) => {
+        if (workflow.id !== workflowId) return workflow;
+        return {
+          ...workflow,
+          nodes: workflow.nodes.map((n) => ({
+            ...n,
+            isEntry: n.id === nodeId,
+          })),
+        };
+      }),
+    })),
+  updateWorkflowMeta: (workflowId, meta) =>
+    set((state) => ({
+      workflows: state.workflows.map((workflow) =>
+        workflow.id !== workflowId ? workflow : { ...workflow, ...meta },
+      ),
     })),
   setFilter: (key, value) =>
     set((state) => ({
