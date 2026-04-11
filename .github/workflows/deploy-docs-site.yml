@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
   pages: write
   id-token: write
 
@@ -21,9 +21,6 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -45,20 +42,24 @@ jobs:
         env:
           GITHUB_REPOSITORY: ${{ github.repository }}
 
-      - name: Debug build output
-        run: |
-          echo "GITHUB_RUN_ID=${GITHUB_RUN_ID}"
-          echo "GITHUB_RUN_NUMBER=${GITHUB_RUN_NUMBER}"
-          echo "Listing built files:"
-          ls -la docs-site/docs/.vitepress/dist || true
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
 
-      # Deploy using peaceiris/actions-gh-pages: publish built files to gh-pages branch
-
-      # Publica a la rama gh-pages (usa GITHUB_TOKEN)
-      - name: Deploy to gh-pages
-        uses: peaceiris/actions-gh-pages@v3
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: docs-site/docs/.vitepress/dist
-          publish_branch: gh-pages
-          # usa GITHUB_TOKEN por defecto; si prefieres un PAT usa: personal_token: ${{ secrets.PERSONAL_TOKEN }}
+          path: docs-site/docs/.vitepress/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      pages: write
+      id-token: write
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
