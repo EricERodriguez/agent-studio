@@ -24,6 +24,8 @@ export interface DashboardPanelHandlers {
 
 export class DashboardPanel {
   private panel?: vscode.WebviewPanel;
+  private webviewReady = false;
+  private pendingMessages: ExtensionToWebviewMessage[] = [];
 
   constructor(
     private readonly extensionUri: vscode.Uri,
@@ -58,11 +60,16 @@ export class DashboardPanel {
     );
 
     this.panel.webview.html = this.getHtml(this.panel.webview);
+    this.webviewReady = false;
 
     this.panel.webview.onDidReceiveMessage(
       async (message: WebviewToExtensionMessage) => {
         switch (message.type) {
           case "ready":
+            this.webviewReady = true;
+            await this.handlers.onRefresh();
+            this.flushPendingMessages();
+            break;
           case "refresh":
             await this.handlers.onRefresh();
             break;
@@ -99,6 +106,8 @@ export class DashboardPanel {
 
     this.panel.onDidDispose(() => {
       this.panel = undefined;
+      this.webviewReady = false;
+      this.pendingMessages = [];
     });
   }
 
@@ -158,11 +167,38 @@ export class DashboardPanel {
     });
   }
 
+  focusWorkflow(workflowId: string): void {
+    this.postMessage({
+      type: "focusWorkflow",
+      payload: { workflowId },
+    });
+  }
+
   private postMessage(message: ExtensionToWebviewMessage): void {
     if (!this.panel) {
       return;
     }
+    if (!this.webviewReady) {
+      this.pendingMessages.push(message);
+      return;
+    }
     void this.panel.webview.postMessage(message);
+  }
+
+  private flushPendingMessages(): void {
+    if (
+      !this.panel ||
+      !this.webviewReady ||
+      this.pendingMessages.length === 0
+    ) {
+      return;
+    }
+
+    const queued = [...this.pendingMessages];
+    this.pendingMessages = [];
+    for (const message of queued) {
+      void this.panel.webview.postMessage(message);
+    }
   }
 
   private getHtml(webview: vscode.Webview): string {

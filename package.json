@@ -11,8 +11,6 @@
         "Other"
     ],
     "activationEvents": [
-        "onView:agentStudio.agentsView",
-        "onCommand:agentStudio.openDashboard",
         "onStartupFinished"
     ],
     "main": "./dist/extension.js",
@@ -29,20 +27,29 @@
         "views": {
             "agentStudio": [
                 {
+                    "id": "agentStudio.quickActionsView",
+                    "name": "Quick Actions",
+                    "icon": "media/agent-studio.svg"
+                },
+                {
                     "id": "agentStudio.agentsView",
-                    "name": "Agents"
+                    "name": "Agents",
+                    "icon": "media/agent-studio.svg"
                 },
                 {
                     "id": "agentStudio.workflowsView",
-                    "name": "Workflows"
+                    "name": "Workflows",
+                    "icon": "media/agent-studio.svg"
                 },
                 {
                     "id": "agentStudio.capabilitiesView",
-                    "name": "Capabilities"
+                    "name": "Capabilities",
+                    "icon": "media/agent-studio.svg"
                 },
                 {
                     "id": "agentStudio.templatesView",
-                    "name": "Templates"
+                    "name": "Templates",
+                    "icon": "media/agent-studio.svg"
                 }
             ]
         },
@@ -84,12 +91,25 @@
                 "title": "Agent Studio: Focus Capability In Dashboard"
             },
             {
+                "command": "agentStudio.focusWorkflow",
+                "title": "Agent Studio: Focus Workflow In Dashboard"
+            },
+            {
+                "command": "agentStudio.refreshStudio",
+                "title": "Agent Studio: Refresh Studio"
+            },
+            {
                 "command": "agentStudio.showToolsGuide",
                 "title": "Agent Studio: Show Tools Guide"
             }
         ],
         "menus": {
             "view/title": [
+                {
+                    "command": "agentStudio.refreshStudio",
+                    "when": "view == agentStudio.quickActionsView",
+                    "group": "navigation"
+                },
                 {
                     "command": "agentStudio.createAgent",
                     "when": "view == agentStudio.agentsView",

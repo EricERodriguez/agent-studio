@@ -64,6 +64,7 @@ export function InspectorPanel(): React.JSX.Element {
       </p>
       <div className="inspector-actions">
         <button
+          title="Open this agent directly in chat to use it immediately."
           onClick={() =>
             vscode?.postMessage({
               type: "openInChat",
@@ -74,6 +75,7 @@ export function InspectorPanel(): React.JSX.Element {
           Open in Chat
         </button>
         <button
+          title="Open this agent in Agent Builder for editing."
           onClick={() =>
             vscode?.postMessage({
               type: "editAgent",
@@ -84,6 +86,7 @@ export function InspectorPanel(): React.JSX.Element {
           Edit
         </button>
         <button
+          title="Reveal the source file that defines this agent."
           onClick={() =>
             vscode?.postMessage({
               type: "openRawAgent",

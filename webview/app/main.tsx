@@ -68,6 +68,14 @@ window.addEventListener(
         2200,
       );
     }
+    if (message.type === "focusWorkflow") {
+      useStudioStore.getState().selectWorkflow(message.payload.workflowId);
+      useStudioStore.getState().setInfoMessage("Workflow ready to edit.");
+      setTimeout(
+        () => useStudioStore.getState().setInfoMessage(undefined),
+        2200,
+      );
+    }
   },
 );
 

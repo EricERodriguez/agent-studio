@@ -3,6 +3,7 @@ import type { AgentDefinition, WorkflowDefinition } from "../domain/models";
 
 export interface CommandHandlers {
   openDashboard: () => void;
+  refreshStudio: () => Promise<void>;
   createAgent: (templateName?: string) => Promise<void>;
   editAgent: (agentId?: string) => Promise<void>;
   deleteAgent: (agentId?: string) => Promise<void>;
@@ -14,6 +15,7 @@ export interface CommandHandlers {
     kind: "tool" | "skill" | "mcp",
     id?: string,
   ) => Promise<void>;
+  focusWorkflow: (workflowId?: string) => Promise<void>;
   showToolsGuide: () => Promise<void>;
 }
 
@@ -23,6 +25,7 @@ export function registerCommands(
 ): void {
   const defs: Array<[string, (...args: unknown[]) => unknown]> = [
     ["agentStudio.openDashboard", () => handlers.openDashboard()],
+    ["agentStudio.refreshStudio", () => handlers.refreshStudio()],
     [
       "agentStudio.createAgent",
       (templateName) =>
@@ -56,6 +59,10 @@ export function registerCommands(
           kind as "tool" | "skill" | "mcp",
           id as string | undefined,
         ),
+    ],
+    [
+      "agentStudio.focusWorkflow",
+      (workflowId) => handlers.focusWorkflow(workflowId as string | undefined),
     ],
     ["agentStudio.showToolsGuide", () => handlers.showToolsGuide()],
   ];

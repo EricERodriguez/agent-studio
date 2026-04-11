@@ -79,4 +79,10 @@ export type ExtensionToWebviewMessage =
         kind: "tool" | "skill" | "mcp";
         id: string;
       };
+    }
+  | {
+      type: "focusWorkflow";
+      payload: {
+        workflowId: string;
+      };
     };

@@ -105,6 +105,17 @@ export function AgentBuilder(): React.JSX.Element {
     });
   };
 
+  const removeMcpServer = (serverId: string): void => {
+    update({
+      capabilities: {
+        ...draft.capabilities,
+        mcpServers: draft.capabilities.mcpServers.filter(
+          (current) => current.id !== serverId,
+        ),
+      },
+    });
+  };
+
   const addToolFromForm = (): void => {
     const id = newToolId.trim();
     if (!id) {
@@ -157,6 +168,32 @@ export function AgentBuilder(): React.JSX.Element {
     });
   };
 
+  const toggleTool = (tool: ToolRef): void => {
+    const exists = draft.capabilities.tools.some(
+      (current) => current.id === tool.id,
+    );
+
+    update({
+      capabilities: {
+        ...draft.capabilities,
+        tools: exists
+          ? draft.capabilities.tools.filter((current) => current.id !== tool.id)
+          : [...draft.capabilities.tools, tool],
+      },
+    });
+  };
+
+  const removeTool = (toolId: string): void => {
+    update({
+      capabilities: {
+        ...draft.capabilities,
+        tools: draft.capabilities.tools.filter(
+          (current) => current.id !== toolId,
+        ),
+      },
+    });
+  };
+
   const removeSkill = (skillId: string): void => {
     update({
       capabilities: {
@@ -175,11 +212,16 @@ export function AgentBuilder(): React.JSX.Element {
           <div className="builder-form">
             <label>
               Agent ID
-              <input value={draft.id} readOnly />
+              <input
+                value={draft.id}
+                readOnly
+                title="Unique agent identifier used in files and references."
+              />
             </label>
             <label>
               Name
               <input
+                title="Human-friendly name shown in the sidebar and dashboard."
                 value={draft.name}
                 onChange={(e) => update({ name: e.target.value })}
               />
@@ -187,6 +229,7 @@ export function AgentBuilder(): React.JSX.Element {
             <label>
               Description
               <input
+                title="Short summary of what this agent does and when to use it."
                 value={draft.description}
                 onChange={(e) => update({ description: e.target.value })}
               />
@@ -194,6 +237,7 @@ export function AgentBuilder(): React.JSX.Element {
             <label>
               Role
               <input
+                title="Optional role label used as quick context in the sidebar."
                 value={draft.role || ""}
                 onChange={(e) => update({ role: e.target.value })}
               />
@@ -201,6 +245,7 @@ export function AgentBuilder(): React.JSX.Element {
             <label>
               Tags (comma separated)
               <input
+                title="Optional labels that help group or find agents later."
                 value={draft.tags.join(", ")}
                 onChange={(e) =>
                   update({ tags: parseCommaList(e.target.value) })
@@ -214,6 +259,7 @@ export function AgentBuilder(): React.JSX.Element {
           <label className="block-label">
             Instructions
             <textarea
+              title="Core behavior instructions for the agent. This is the main prompt content."
               value={draft.instructions}
               onChange={(e) => update({ instructions: e.target.value })}
               rows={14}
@@ -225,6 +271,7 @@ export function AgentBuilder(): React.JSX.Element {
           <label className="block-label">
             Context
             <textarea
+              title="Extra context, constraints, or project-specific notes for this agent."
               value={draft.context || ""}
               onChange={(e) => update({ context: e.target.value })}
               rows={10}
@@ -248,6 +295,7 @@ export function AgentBuilder(): React.JSX.Element {
             <label className="block-label">
               Handoff Agents
               <select
+                title="Choose which other agents this agent can delegate work to."
                 multiple
                 value={draft.handoffs}
                 onChange={(e) => {
@@ -303,6 +351,7 @@ export function AgentBuilder(): React.JSX.Element {
                 <label>
                   Tool ID
                   <input
+                    title="Exact tool identifier, for example run_in_terminal or a custom MCP tool id."
                     value={newToolId}
                     onChange={(e) => setNewToolId(e.target.value)}
                     placeholder="ex: run_in_terminal"
@@ -311,6 +360,7 @@ export function AgentBuilder(): React.JSX.Element {
                 <label>
                   Tool label
                   <input
+                    title="Readable name shown to users in Agent Studio."
                     value={newToolLabel}
                     onChange={(e) => setNewToolLabel(e.target.value)}
                     placeholder="ex: Run in Terminal"
@@ -319,6 +369,7 @@ export function AgentBuilder(): React.JSX.Element {
                 <label>
                   Tool kind
                   <select
+                    title="Classify the tool as built-in, extension-provided, or MCP-based."
                     value={newToolKind}
                     onChange={(e) =>
                       setNewToolKind(e.target.value as ToolRef["kind"])
@@ -353,6 +404,7 @@ export function AgentBuilder(): React.JSX.Element {
             <label>
               Tools (ids, comma separated)
               <input
+                title="Advanced input for pasting several tool ids at once."
                 value={draft.capabilities.tools
                   .map((tool) => tool.id)
                   .join(", ")}
@@ -373,6 +425,7 @@ export function AgentBuilder(): React.JSX.Element {
             <label>
               Skills (ids, comma separated)
               <input
+                title="Advanced input for pasting several skill ids at once."
                 value={draft.capabilities.skills
                   .map((skill) => skill.id)
                   .join(", ")}
@@ -390,6 +443,57 @@ export function AgentBuilder(): React.JSX.Element {
                 }
               />
             </label>
+            <div className="capability-preview">
+              <p>Select tools (tag multi-select)</p>
+              {graph.tools.length === 0 ? (
+                <p>
+                  No discovered tools yet. Refresh after adding tools to agents.
+                </p>
+              ) : (
+                <div className="chip-row">
+                  {graph.tools.map((tool) => {
+                    const selected = draft.capabilities.tools.some(
+                      (current) => current.id === tool.id,
+                    );
+                    return (
+                      <button
+                        key={tool.id}
+                        className={
+                          selected ? "skill-tag selected" : "skill-tag"
+                        }
+                        title={`Add or remove tool ${tool.label} (${tool.kind}).`}
+                        onClick={() => toggleTool(tool)}
+                      >
+                        {tool.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              <small className="field-hint">
+                Click tags to add or remove tools quickly, just like skills.
+              </small>
+            </div>
+            <div className="capability-preview">
+              <p>Selected tools for this agent</p>
+              {draft.capabilities.tools.length === 0 ? (
+                <p>No tools selected.</p>
+              ) : (
+                <div className="chip-row removable-chip-row">
+                  {draft.capabilities.tools.map((tool) => (
+                    <span key={tool.id} className="selected-chip">
+                      {tool.label} ({tool.id})
+                      <button
+                        title={`Remove tool ${tool.label} from this agent.`}
+                        onClick={() => removeTool(tool.id)}
+                      >
+                        Remove
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
             <div className="capability-preview">
               <p>Select skills (tag multi-select)</p>
               {graph.skills.length === 0 ? (
@@ -410,6 +514,7 @@ export function AgentBuilder(): React.JSX.Element {
                         className={
                           selected ? "skill-tag selected" : "skill-tag"
                         }
+                        title={`Add or remove skill ${skill.label}.`}
                         onClick={() => toggleSkill(skill)}
                       >
                         {skill.label}
@@ -431,7 +536,10 @@ export function AgentBuilder(): React.JSX.Element {
                   {draft.capabilities.skills.map((skill) => (
                     <span key={skill.id} className="selected-chip">
                       {skill.label} ({skill.id})
-                      <button onClick={() => removeSkill(skill.id)}>
+                      <button
+                        title={`Remove skill ${skill.label} from this agent.`}
+                        onClick={() => removeSkill(skill.id)}
+                      >
                         Remove
                       </button>
                     </span>
@@ -442,6 +550,7 @@ export function AgentBuilder(): React.JSX.Element {
             <label>
               MCP Servers (ids, comma separated)
               <input
+                title="Advanced input for pasting several MCP server ids at once."
                 value={draft.capabilities.mcpServers
                   .map((server) => server.id)
                   .join(", ")}
@@ -460,36 +569,52 @@ export function AgentBuilder(): React.JSX.Element {
               />
             </label>
             <div className="capability-preview">
-              <p>Discovered tools</p>
-              {graph.tools.length === 0 ? (
-                <p>No tools discovered yet.</p>
-              ) : (
-                <ul className="compact-list">
-                  {graph.tools.map((tool) => (
-                    <li key={tool.id}>
-                      <strong>{tool.label}</strong> ({tool.id}) - {tool.kind}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-            <div className="capability-preview">
-              <p>Discovered MCP servers</p>
+              <p>Select MCP servers (tag multi-select)</p>
               {graph.mcpServers.length === 0 ? (
                 <p>No MCP servers discovered. Add them to mcp.json.</p>
               ) : (
-                graph.mcpServers.map((server) => (
-                  <label key={server.id}>
-                    <input
-                      type="checkbox"
-                      checked={draft.capabilities.mcpServers.some(
-                        (current) => current.id === server.id,
-                      )}
-                      onChange={() => toggleMcpServer(server)}
-                    />
-                    {server.label}
-                  </label>
-                ))
+                <div className="chip-row">
+                  {graph.mcpServers.map((server) => {
+                    const selected = draft.capabilities.mcpServers.some(
+                      (current) => current.id === server.id,
+                    );
+                    return (
+                      <button
+                        key={server.id}
+                        className={
+                          selected ? "skill-tag selected" : "skill-tag"
+                        }
+                        title={`Add or remove MCP server ${server.label}.`}
+                        onClick={() => toggleMcpServer(server)}
+                      >
+                        {server.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              <small className="field-hint">
+                Click tags to associate MCP servers quickly.
+              </small>
+            </div>
+            <div className="capability-preview">
+              <p>Selected MCP servers for this agent</p>
+              {draft.capabilities.mcpServers.length === 0 ? (
+                <p>No MCP servers selected.</p>
+              ) : (
+                <div className="chip-row removable-chip-row">
+                  {draft.capabilities.mcpServers.map((server) => (
+                    <span key={server.id} className="selected-chip">
+                      {server.label} ({server.id})
+                      <button
+                        title={`Remove MCP server ${server.label} from this agent.`}
+                        onClick={() => removeMcpServer(server.id)}
+                      >
+                        Remove
+                      </button>
+                    </span>
+                  ))}
+                </div>
               )}
             </div>
             <div className="capability-preview">
@@ -529,6 +654,7 @@ export function AgentBuilder(): React.JSX.Element {
             <button
               key={tab}
               className={tab === selectedTab ? "active" : ""}
+              title={`Open the ${tab} section of the selected agent.`}
               onClick={() => setTab(tab)}
             >
               {tab}
@@ -556,6 +682,7 @@ export function AgentBuilder(): React.JSX.Element {
       </div>
       <div className="builder-actions">
         <button
+          title="Save all changes made to this agent definition."
           disabled={!hasValidContent || brokenHandoffs.length > 0}
           onClick={() =>
             vscode?.postMessage({ type: "saveAgent", payload: draft })
@@ -563,8 +690,14 @@ export function AgentBuilder(): React.JSX.Element {
         >
           Save
         </button>
-        <button onClick={() => setDraft(selectedAgent)}>Cancel</button>
         <button
+          title="Discard local edits and restore the last loaded version of this agent."
+          onClick={() => setDraft(selectedAgent)}
+        >
+          Cancel
+        </button>
+        <button
+          title="Open the underlying .agent.md file in the editor."
           onClick={() =>
             vscode?.postMessage({
               type: "openRawAgent",

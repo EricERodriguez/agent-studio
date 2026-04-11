@@ -12,6 +12,7 @@ import { WorkflowService } from "./services/workflowService";
 import {
   AgentsTreeProvider,
   CapabilitiesTreeProvider,
+  QuickActionsTreeProvider,
   TemplatesTreeProvider,
   WorkflowsTreeProvider,
 } from "./views/treeProviders";
@@ -61,9 +62,14 @@ export async function activate(
   const agentsTreeProvider = new AgentsTreeProvider();
   const workflowsTreeProvider = new WorkflowsTreeProvider();
   const capabilitiesTreeProvider = new CapabilitiesTreeProvider();
+  const quickActionsTreeProvider = new QuickActionsTreeProvider();
   const templatesTreeProvider = new TemplatesTreeProvider();
 
   context.subscriptions.push(
+    vscode.window.registerTreeDataProvider(
+      "agentStudio.quickActionsView",
+      quickActionsTreeProvider,
+    ),
     vscode.window.registerTreeDataProvider(
       "agentStudio.agentsView",
       agentsTreeProvider,
@@ -395,6 +401,19 @@ export async function activate(
     }
   };
 
+  const focusWorkflow = async (workflowId?: string): Promise<void> => {
+    dashboard.show();
+    if (!workflowId) {
+      return;
+    }
+    const selected = workflows.find((workflow) => workflow.id === workflowId);
+    if (!selected) {
+      return;
+    }
+    dashboard.focusWorkflow(selected.id);
+    dashboard.postInfo(`Editing workflow ${selected.name}.`);
+  };
+
   const focusCapability = async (
     kind: "tool" | "skill" | "mcp",
     id?: string,
@@ -436,6 +455,11 @@ export async function activate(
       content: guide,
     });
     await vscode.window.showTextDocument(doc, { preview: false });
+  };
+
+  const refreshStudio = async (): Promise<void> => {
+    await refreshState();
+    dashboard.postInfo("Agent Studio refreshed.");
   };
 
   const deleteAgent = async (agentId?: string): Promise<void> => {
@@ -497,6 +521,7 @@ export async function activate(
     await workflowService.saveWorkflow(skeleton);
     await refreshState();
     dashboard.show();
+    dashboard.focusWorkflow(skeleton.id);
   };
 
   const startMcpServer = async (mcpId?: string): Promise<void> => {
@@ -559,6 +584,7 @@ export async function activate(
       dashboard.show();
       void refreshState();
     },
+    refreshStudio,
     createAgent,
     editAgent,
     deleteAgent,
@@ -567,6 +593,7 @@ export async function activate(
     createWorkflow,
     startMcpServer,
     focusCapability,
+    focusWorkflow,
     showToolsGuide,
   });
 

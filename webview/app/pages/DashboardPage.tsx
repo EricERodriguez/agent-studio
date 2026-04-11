@@ -115,15 +115,22 @@ export function DashboardPage(): React.JSX.Element {
           </div>
         </div>
         <div className="header-actions">
-          <button onClick={() => vscode?.postMessage({ type: "createAgent" })}>
+          <button
+            title="Create a new agent and open it in the builder."
+            onClick={() => vscode?.postMessage({ type: "createAgent" })}
+          >
             Create Agent
           </button>
           <button
+            title="Create a new workflow graph starting from a default entry step."
             onClick={() => vscode?.postMessage({ type: "createWorkflow" })}
           >
             Create Workflow
           </button>
-          <button onClick={() => vscode?.postMessage({ type: "refresh" })}>
+          <button
+            title="Reload agents, workflows, and capabilities from disk."
+            onClick={() => vscode?.postMessage({ type: "refresh" })}
+          >
             Refresh
           </button>
         </div>
@@ -141,6 +148,7 @@ export function DashboardPage(): React.JSX.Element {
             <label>
               Agent
               <select
+                title="Choose which agent is active in the builder and inspector."
                 value={selectedAgentId || ""}
                 onChange={(e) => selectAgent(e.target.value || undefined)}
               >
@@ -155,6 +163,7 @@ export function DashboardPage(): React.JSX.Element {
             <label>
               Workflow
               <select
+                title="Choose which workflow is active in the workflow editor and graph."
                 value={selectedWorkflowId || ""}
                 onChange={(e) => selectWorkflow(e.target.value || undefined)}
               >
@@ -181,6 +190,7 @@ export function DashboardPage(): React.JSX.Element {
             <label>
               Tool filter
               <select
+                title="Show only agents connected to the selected tool in the capability layer."
                 value={filters.toolId || ""}
                 onChange={(e) => setFilter("toolId", e.target.value)}
               >
@@ -195,6 +205,7 @@ export function DashboardPage(): React.JSX.Element {
             <label>
               Skill filter
               <select
+                title="Show only agents connected to the selected skill in the capability layer."
                 value={filters.skillId || ""}
                 onChange={(e) => setFilter("skillId", e.target.value)}
               >
@@ -209,6 +220,7 @@ export function DashboardPage(): React.JSX.Element {
             <label>
               MCP filter
               <select
+                title="Show only agents connected to the selected MCP server in the capability layer."
                 value={filters.mcpId || ""}
                 onChange={(e) => setFilter("mcpId", e.target.value)}
               >
@@ -225,12 +237,16 @@ export function DashboardPage(): React.JSX.Element {
           <div className="filter-actions">
             <button
               className="secondary-button"
+              title="Remove every active capability filter and show the full agent list again."
               onClick={clearAllFilters}
               disabled={!hasActiveFilters}
             >
               Clear Filters
             </button>
-            <button onClick={toggleCapabilityGraph}>
+            <button
+              title="Show or hide the capability relationship panel on the right."
+              onClick={toggleCapabilityGraph}
+            >
               {showCapabilityGraph
                 ? "Hide Capability Graph"
                 : "Show Capability Graph"}
@@ -247,6 +263,7 @@ export function DashboardPage(): React.JSX.Element {
                   <button
                     key={filter.key}
                     className="filter-chip"
+                    title={`Remove the ${filter.label} filter.`}
                     onClick={() => setFilter(filter.key, undefined)}
                   >
                     {filter.label}: {filter.value} x
@@ -291,11 +308,13 @@ export function DashboardPage(): React.JSX.Element {
               {selectedWorkflow && (
                 <>
                   <button
+                    title="Automatically reposition workflow nodes to a clean layout."
                     onClick={() => autoLayoutWorkflow(selectedWorkflow.id)}
                   >
                     Auto Layout
                   </button>
                   <button
+                    title="Persist current workflow nodes, edges, and layout to disk."
                     onClick={() =>
                       vscode?.postMessage({
                         type: "saveWorkflow",
@@ -340,6 +359,7 @@ export function DashboardPage(): React.JSX.Element {
                   {graph.tools.map((tool) => (
                     <button
                       key={tool.id}
+                      title={`Inspect which agents use the tool ${tool.label}.`}
                       onClick={() => setSelectedCapability(tool.id)}
                     >
                       {tool.label} ({tool.kind})
@@ -351,6 +371,7 @@ export function DashboardPage(): React.JSX.Element {
                   {graph.skills.map((skill) => (
                     <button
                       key={skill.id}
+                      title={`Inspect which agents use the skill ${skill.label}.`}
                       onClick={() => setSelectedCapability(skill.id)}
                     >
                       {skill.label}
@@ -362,6 +383,7 @@ export function DashboardPage(): React.JSX.Element {
                   {graph.mcpServers.map((server) => (
                     <button
                       key={server.id}
+                      title={`Inspect which agents use the MCP server ${server.label}.`}
                       onClick={() => setSelectedCapability(server.id)}
                     >
                       {server.label}

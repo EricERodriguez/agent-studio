@@ -58,6 +58,7 @@ export function WorkflowBuilder(): React.JSX.Element {
       <label>
         Name
         <input
+          title="Workflow name shown in the sidebar and dashboard."
           value={name}
           onChange={(e) => setName(e.target.value)}
           onBlur={() => updateWorkflowMeta(selectedWorkflow.id, { name })}
@@ -67,6 +68,7 @@ export function WorkflowBuilder(): React.JSX.Element {
       <label>
         Description
         <input
+          title="Optional description to explain the purpose of this workflow."
           value={description}
           placeholder="Optional description"
           onChange={(e) => setDescription(e.target.value)}
@@ -86,6 +88,7 @@ export function WorkflowBuilder(): React.JSX.Element {
         <label className="grow">
           Add Agent as Step
           <select
+            title="Pick an agent to add as a new workflow step."
             value={selectedAgentToAdd}
             onChange={(e) => setSelectedAgentToAdd(e.target.value)}
           >
@@ -97,6 +100,7 @@ export function WorkflowBuilder(): React.JSX.Element {
           </select>
         </label>
         <button
+          title="Add the selected agent as a new step in this workflow."
           onClick={() => {
             if (selectedAgentToAdd) {
               addWorkflowStep(selectedWorkflow.id, selectedAgentToAdd);
@@ -126,6 +130,7 @@ export function WorkflowBuilder(): React.JSX.Element {
                   <span className="skill-tag selected">Entry</span>
                 ) : (
                   <button
+                    title="Make this step the workflow entry point."
                     onClick={() =>
                       setWorkflowEntryStep(selectedWorkflow.id, node.id)
                     }
@@ -134,6 +139,7 @@ export function WorkflowBuilder(): React.JSX.Element {
                   </button>
                 )}
                 <button
+                  title="Remove this step and any connected edges from the workflow."
                   onClick={() =>
                     removeWorkflowStep(selectedWorkflow.id, node.id)
                   }
@@ -162,6 +168,7 @@ export function WorkflowBuilder(): React.JSX.Element {
         <label>
           Run mode
           <select
+            title="Choose whether the workflow opens agents in chat or generates a plan only."
             value={runMode}
             onChange={(e) => setRunMode(e.target.value as "chat" | "plan")}
           >
@@ -170,6 +177,7 @@ export function WorkflowBuilder(): React.JSX.Element {
           </select>
         </label>
         <button
+          title="Execute the workflow using the selected run mode."
           disabled={selectedWorkflowRun?.status === "running"}
           onClick={() =>
             vscode?.postMessage({
@@ -208,6 +216,7 @@ export function WorkflowBuilder(): React.JSX.Element {
       )}
 
       <button
+        title="Persist the current workflow definition to disk."
         onClick={() =>
           vscode?.postMessage({
             type: "saveWorkflow",
