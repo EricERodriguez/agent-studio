@@ -76,3 +76,11 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v3
+
+      # Publica a la rama gh-pages (usa GITHUB_TOKEN)
+      - name: Deploy to gh-pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          publish_dir: docs-site/docs/.vitepress/dist
+          publish_branch: gh-pages
+          # usa GITHUB_TOKEN por defecto; si prefieres un PAT usa: personal_token: ${{ secrets.PERSONAL_TOKEN }}
