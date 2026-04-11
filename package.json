@@ -230,7 +230,9 @@
         "watch:webview": "vite build --watch",
         "dev:webview": "vite",
         "check": "tsc --noEmit",
-        "lint": "eslint . --ext .ts,.tsx"
+        "lint": "eslint . --ext .ts,.tsx",
+        "package:vsix": "node scripts/package-vsix.mjs",
+        "package:vsix:dry": "node scripts/package-vsix.mjs --dry-run"
     },
     "dependencies": {
         "gray-matter": "^4.0.3",
