@@ -1,86 +1,126 @@
 # Agent Studio
 
-Agent Studio is a VS Code extension for designing, editing, and orchestrating AI agents directly inside your workspace. It provides a local-first sidebar plus a visual dashboard for `.agent.md` files, capabilities, and multi-agent workflows.
+Create, manage, and orchestrate AI agents inside Visual Studio Code with a visual, developer-friendly control plane.
 
-## What This Extension Adds to VS Code
+## Hero / Tagline
 
-Agent Studio contributes a dedicated **Activity Bar** container named **Agent Studio** with workspace-aware views for agent authoring and orchestration.
+🚀 **Build multi-agent workflows without getting lost in config files.**  
+Agent Studio gives you a visual dashboard to design agents, inspect relationships, and understand tools, skills, and MCP servers at a glance.
 
-Included views:
+**CTA:** Install Agent Studio and run your agent ecosystem directly where you code.
 
-- Getting Started
-- Quick Actions
-- Workspace Health
-- Agents
-- Workflows
-- Capabilities
-- Templates
+## Features
 
-The extension also provides a dashboard webview where you can.
+### 🧠 Visual Agent Dashboard
 
-- create and edit agents
-- manage instructions, context, handoffs, and capabilities
-- inspect Tool, Skill, and MCP usage
-- build workflow graphs visually
-- open agents in VS Code chat
+- Manage agents from a dedicated VS Code sidebar and dashboard.
+- Edit agent definitions with a clearer, structured workflow.
+- Keep agent context close to your codebase.
 
-## Core Features
+### 🔗 Agent Relationships
 
-### Agent authoring
+- Visualize how agents connect and hand off work.
+- Understand flow and dependencies faster in multi-agent setups.
+- Reduce onboarding time for new teammates.
 
-- Discovers `.agent.md` files from `.github/agents` and additional configured paths
-- Parses frontmatter metadata and instructions body
-- Create, edit, duplicate, and delete agents
-- Live source preview while editing
-- Built-in validations for required fields, handoffs, and missing capabilities
+### ⚡ Tools, Skills, and MCP Visibility
 
-### Capability inspection
+- Inspect which tools, skills, and MCP servers each agent uses.
+- Spot capability gaps and overlap quickly.
+- Navigate from high-level architecture to implementation details.
 
-- Discovers Tools, Skills, and MCP servers
-- Includes `mcp.json` discovery
-- Shows usage relationships across agents
-- Supports filtering and dashboard focus by capability
+### 🛠 Better DX Than Raw Config Files
 
-### Workflow orchestration
+- Move from scattered files to a guided in-editor experience.
+- Discover, edit, and organize agents with less friction.
+- Keep workflows readable as your system grows.
 
-- Create workflow definitions persisted under `.vscode/agent-studio/workflows`
-- Add agent steps, choose entry step, and connect steps visually
-- Use graph interactions with drag, connect, minimap, zoom, and pan
-- Run workflows through VS Code chat or planning mode
+### 📍 Native VS Code Experience
 
-### VS Code integration
+- Works directly in your editor, alongside your project.
+- Open agents in chat and move from design to execution quickly.
+- No context switching to external dashboards.
 
-- Opens an agent in chat for immediate use
-- Provides quick-find commands for agents, workflows, and capabilities
-- Adds contextual commands to tree items and view title actions
+## Screenshots
 
-## Commands
+> Replace these placeholders with real captures before Marketplace publication.
 
-Available commands contributed by the extension:
+![Agent Studio Dashboard placeholder](media/placeholder-dashboard.png)
+_Visual Agent Dashboard (placeholder)_
 
-- `Agent Studio: Open Dashboard`
-- `Agent Studio: Quick Find Agent`
-- `Agent Studio: Quick Find Workflow`
-- `Agent Studio: Quick Find Capability`
-- `Agent Studio: Create Agent`
-- `Agent Studio: Edit Agent`
-- `Agent Studio: Delete Agent`
-- `Agent Studio: Duplicate Agent`
-- `Agent Studio: Open Agent In Chat`
-- `Agent Studio: Create Workflow`
-- `Agent Studio: Start MCP Server`
-- `Agent Studio: Focus Capability In Dashboard`
-- `Agent Studio: Focus Workflow In Dashboard`
-- `Agent Studio: Refresh Studio`
-- `Agent Studio: Show Tools Guide`
+![Agent graph placeholder](media/placeholder-graph.png)
+_Agent relationships and workflow graph (placeholder)_
 
-## Extension Settings
+![Capabilities inspector placeholder](media/placeholder-capabilities.png)
+_Tools, Skills, and MCP visibility (placeholder)_
 
-This extension contributes the following setting:
+## Why Agent Studio?
 
-- `agentStudio.agentPaths`
-  Workspace-relative directories used to discover `.agent.md` files.
-  Default:
+If you are building with multiple AI agents, complexity grows fast. Agent Studio helps you stay in control.
+
+- Clear visual model of your agent ecosystem.
+- Faster debugging of orchestration issues.
+- Better collaboration across teams.
+- Reduced cognitive load versus manual configuration.
+
+## Installation
+
+### From VS Code Marketplace (recommended)
+
+1. Open **Extensions** in VS Code.
+2. Search for **Agent Studio**.
+3. Select the extension and click **Install**.
+
+### Manual install (VSIX)
+
+1. Download the latest `.vsix` package from your release channel.
+2. In VS Code, open the Command Palette.
+3. Run **Extensions: Install from VSIX...** and select the file.
+
+## Basic Usage
+
+### Quick Getting Started
+
+1. Open the **Agent Studio** icon in the Activity Bar.
+2. Run **Agent Studio: Open Dashboard**.
+3. Create your first agent with **Agent Studio: Create Agent**.
+4. Add or inspect capabilities (tools, skills, MCP servers).
+5. Create a workflow and connect agent steps visually.
+6. Open an agent in chat and execute your flow.
+
+### Typical first workflow
+
+1. Create an agent for planning.
+2. Create an agent for implementation.
+3. Connect them in a workflow.
+4. Validate capabilities from the dashboard inspector.
+5. Launch from chat and iterate.
+
+## Available Commands
+
+- **Agent Studio: Open Dashboard**
+- **Agent Studio: Quick Find Agent**
+- **Agent Studio: Quick Find Workflow**
+- **Agent Studio: Quick Find Capability**
+- **Agent Studio: Create Agent**
+- **Agent Studio: Edit Agent**
+- **Agent Studio: Delete Agent**
+- **Agent Studio: Duplicate Agent**
+- **Agent Studio: Open Agent In Chat**
+- **Agent Studio: Create Workflow**
+- **Agent Studio: Start MCP Server**
+- **Agent Studio: Focus Capability In Dashboard**
+- **Agent Studio: Focus Workflow In Dashboard**
+- **Agent Studio: Refresh Studio**
+- **Agent Studio: Show Tools Guide**
+
+## Configuration
+
+Agent Studio supports workspace configuration for agent discovery paths.
+
+- `agentStudio.agentPaths`: Additional workspace-relative directories to discover `.agent.md` files.
+
+Default:
 
 ```json
 {
@@ -88,103 +128,19 @@ This extension contributes the following setting:
 }
 ```
 
-## Workspace Files Used by Agent Studio
+## Roadmap
 
-Agent Studio works with these workspace artifacts:
+Planned improvements include:
 
-- `.github/agents/*.agent.md`
-- `.vscode/agent-studio/workflows/*.json`
-- `mcp.json`
+- More advanced workflow orchestration controls.
+- Richer validation and diagnostics for agent setups.
+- Expanded templates for common agent architectures.
+- Enhanced observability for multi-agent execution.
 
-Sample content included in this repo:
+## Contributing
 
-- `.github/agents/planner.agent.md`
-- `.github/agents/backend-implementer.agent.md`
-- `.github/agents/reviewer.agent.md`
-- `.vscode/agent-studio/workflows/feature-delivery-flow.json`
+Contributions are welcome. For contribution guidelines, issue reporting, and collaboration flow, check the project documentation and open a pull request.
 
-## Getting Started
+## License
 
-1. Open the workspace in VS Code.
-2. Run `npm install`.
-3. Build the extension and webview:
-
-```bash
-npm run build
-```
-
-4. Press `F5` to launch an **Extension Development Host**.
-5. In the new VS Code window, open the **Agent Studio** activity bar item.
-6. Run `Agent Studio: Open Dashboard` from the Command Palette if the dashboard is not already open.
-
-## Typical Usage Flow
-
-1. Create or discover agents from the **Agents** view.
-2. Open the dashboard and edit an agent in **Agent Builder**.
-3. Assign handoffs, Tools, Skills, and MCP servers.
-4. Create a workflow and add agent steps.
-5. Connect the steps in **Workflow Graph**.
-6. Run the workflow or open an agent directly in chat.
-
-## Development
-
-Install dependencies:
-
-```bash
-npm install
-```
-
-Build everything:
-
-```bash
-npm run build
-```
-
-Type-check:
-
-```bash
-npm run check
-```
-
-Build extension only:
-
-```bash
-npm run build:extension
-```
-
-Build webview only:
-
-```bash
-npm run build:webview
-```
-
-## Project Structure
-
-### Extension host
-
-- `src/extension.ts`
-- `src/commands/registerCommands.ts`
-- `src/services/agentRegistryService.ts`
-- `src/services/agentMarkdownService.ts`
-- `src/services/workflowService.ts`
-- `src/services/capabilityService.ts`
-- `src/services/chatBridgeService.ts`
-- `src/services/sampleDataService.ts`
-- `src/views/treeProviders.ts`
-- `src/views/dashboardPanel.ts`
-
-### Webview app
-
-- React + Vite + Zustand + React Flow
-- `webview/app/pages/DashboardPage.tsx`
-- `webview/app/components/AgentBuilder.tsx`
-- `webview/app/components/WorkflowBuilder.tsx`
-- `webview/app/components/GraphCanvas.tsx`
-- `webview/app/components/InspectorPanel.tsx`
-- `webview/app/store/useStudioStore.ts`
-
-## Notes
-
-- Local-first: no backend service is required.
-- Agent definitions are stored as markdown with frontmatter plus instructions body.
-- Chat integration relies on VS Code chat and copies context for reliable handoff.
+MIT License. See [LICENSE](LICENSE) for details.
