@@ -348,6 +348,10 @@ export function AgentBuilder(): React.JSX.Element {
             <div className="capability-form-grid">
               <div className="helper-card">
                 <p>Add or update a Tool</p>
+                <p className="field-hint">
+                  Create a tool entry when the agent needs permission to perform
+                  a concrete action.
+                </p>
                 <label>
                   Tool ID
                   <input
@@ -380,9 +384,28 @@ export function AgentBuilder(): React.JSX.Element {
                     <option value="mcp">mcp</option>
                   </select>
                 </label>
-                <button onClick={addToolFromForm} disabled={!newToolId.trim()}>
+                <button
+                  title="Create or update this tool definition in the current agent draft."
+                  onClick={addToolFromForm}
+                  disabled={!newToolId.trim()}
+                >
                   Add Tool
                 </button>
+              </div>
+              <div className="helper-card">
+                <p>Tool kinds explained</p>
+                <p>
+                  <strong>built-in</strong>: native actions like reading files,
+                  editing code, or running commands.
+                </p>
+                <p>
+                  <strong>extension</strong>: commands provided by a VS Code
+                  extension.
+                </p>
+                <p>
+                  <strong>mcp</strong>: tools exposed by an MCP server
+                  configured for the workspace.
+                </p>
               </div>
               <div className="helper-card">
                 <p>Install Skills</p>

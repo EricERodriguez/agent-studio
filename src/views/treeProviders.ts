@@ -29,13 +29,27 @@ function createStatusIcon(hasCriticalIssue: boolean): vscode.ThemeIcon {
 function summarizeAgentStatus(
   agent: AgentDefinition,
   allAgents: AgentDefinition[],
+  workflows: WorkflowDefinition[],
 ): { statusText: string; tooltip: string; hasIssue: boolean } {
   const issues: string[] = [];
+  const workflowCoverage = workflows.filter((workflow) =>
+    workflow.nodes.some((node) => node.agentId === agent.id),
+  ).length;
+  const inboundHandoffs = allAgents.filter((candidate) =>
+    candidate.handoffs.includes(agent.id),
+  ).length;
+
   if (agent.capabilities.tools.length === 0) {
     issues.push("no tools");
   }
   if (!agent.instructions.trim()) {
     issues.push("no instructions");
+  }
+  if (agent.capabilities.skills.length === 0) {
+    issues.push("missing skills");
+  }
+  if (agent.capabilities.mcpServers.length === 0) {
+    issues.push("missing mcp");
   }
   const brokenHandoffs = agent.handoffs.filter(
     (handoffId) =>
@@ -46,15 +60,29 @@ function summarizeAgentStatus(
   if (brokenHandoffs.length > 0) {
     issues.push("broken handoffs");
   }
+  if (workflowCoverage === 0) {
+    issues.push("no workflow coverage");
+  }
+  if (
+    workflowCoverage === 0 &&
+    inboundHandoffs === 0 &&
+    agent.handoffs.length === 0
+  ) {
+    issues.push("orphan");
+  }
 
-  const statusText = issues.length > 0 ? issues.join(" · ") : "ready";
+  const statusText =
+    issues.length > 0 ? issues.slice(0, 3).join(" · ") : "ready";
   const tooltip = [
     `${agent.name}`,
     `Role: ${agent.role || "n/a"}`,
     `Tools: ${agent.capabilities.tools.length}`,
     `Skills: ${agent.capabilities.skills.length}`,
     `MCP: ${agent.capabilities.mcpServers.length}`,
-    `Status: ${statusText}`,
+    `Workflow coverage: ${workflowCoverage}`,
+    `Inbound handoffs: ${inboundHandoffs}`,
+    `Outbound handoffs: ${agent.handoffs.length}`,
+    `Status: ${issues.length > 0 ? issues.join(" · ") : "ready"}`,
     "Click to open this agent directly in Agent Builder.",
   ].join("\n");
 
@@ -65,10 +93,14 @@ export class AgentsTreeProvider implements vscode.TreeDataProvider<BaseItem> {
   private readonly onDidChangeTreeDataEmitter = new vscode.EventEmitter<void>();
   readonly onDidChangeTreeData = this.onDidChangeTreeDataEmitter.event;
 
-  constructor(private agents: AgentDefinition[] = []) {}
+  constructor(
+    private agents: AgentDefinition[] = [],
+    private workflows: WorkflowDefinition[] = [],
+  ) {}
 
-  setAgents(agents: AgentDefinition[]): void {
+  setData(agents: AgentDefinition[], workflows: WorkflowDefinition[]): void {
     this.agents = agents;
+    this.workflows = workflows;
     this.onDidChangeTreeDataEmitter.fire();
   }
 
@@ -83,7 +115,7 @@ export class AgentsTreeProvider implements vscode.TreeDataProvider<BaseItem> {
 
     return Promise.resolve(
       this.agents.map((agent) => {
-        const status = summarizeAgentStatus(agent, this.agents);
+        const status = summarizeAgentStatus(agent, this.agents, this.workflows);
         const item = new BaseItem(agent.name);
         item.description = [agent.role || "no role", status.statusText].join(
           " · ",
@@ -99,6 +131,74 @@ export class AgentsTreeProvider implements vscode.TreeDataProvider<BaseItem> {
         return item;
       }),
     );
+  }
+}
+
+export class OnboardingTreeProvider implements vscode.TreeDataProvider<BaseItem> {
+  private readonly onDidChangeTreeDataEmitter = new vscode.EventEmitter<void>();
+  readonly onDidChangeTreeData = this.onDidChangeTreeDataEmitter.event;
+
+  getTreeItem(element: BaseItem): vscode.TreeItem {
+    return element;
+  }
+
+  getChildren(element?: BaseItem): Thenable<BaseItem[]> {
+    if (element) {
+      return Promise.resolve([]);
+    }
+
+    const openDashboard = new BaseItem("1. Open the dashboard");
+    openDashboard.description = "main workspace";
+    openDashboard.tooltip =
+      "Start here to manage agents, workflows, filters, graphs, and inspection panels in one place.";
+    openDashboard.command = {
+      command: "agentStudio.openDashboard",
+      title: "Open Dashboard",
+    };
+
+    const createAgent = new BaseItem("2. Create your first agent");
+    createAgent.description = "identity + prompt";
+    createAgent.tooltip =
+      "Create an agent, then define its name, role, instructions, context, and capabilities in Agent Builder.";
+    createAgent.command = {
+      command: "agentStudio.createAgent",
+      title: "Create Agent",
+    };
+
+    const toolsGuide = new BaseItem("3. Learn tools and capabilities");
+    toolsGuide.description = "tools, skills, mcp";
+    toolsGuide.tooltip =
+      "Open the built-in guide to understand tools, skills, MCP servers, and how they are assigned to agents.";
+    toolsGuide.command = {
+      command: "agentStudio.showToolsGuide",
+      title: "Show Tools Guide",
+    };
+
+    const createWorkflow = new BaseItem("4. Build a workflow");
+    createWorkflow.description = "connect agents";
+    createWorkflow.tooltip =
+      "Create a workflow, add agent steps, mark an entry point, and wire edges between steps.";
+    createWorkflow.command = {
+      command: "agentStudio.createWorkflow",
+      title: "Create Workflow",
+    };
+
+    const refresh = new BaseItem("5. Refresh after manual edits");
+    refresh.description = "reload registry";
+    refresh.tooltip =
+      "If you changed files by hand, refresh Agent Studio to rediscover agents, workflows, tools, skills, and MCP servers.";
+    refresh.command = {
+      command: "agentStudio.refreshStudio",
+      title: "Refresh Studio",
+    };
+
+    return Promise.resolve([
+      openDashboard,
+      createAgent,
+      toolsGuide,
+      createWorkflow,
+      refresh,
+    ]);
   }
 }
 

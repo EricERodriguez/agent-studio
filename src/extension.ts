@@ -12,6 +12,7 @@ import { WorkflowService } from "./services/workflowService";
 import {
   AgentsTreeProvider,
   CapabilitiesTreeProvider,
+  OnboardingTreeProvider,
   QuickActionsTreeProvider,
   TemplatesTreeProvider,
   WorkflowsTreeProvider,
@@ -62,10 +63,15 @@ export async function activate(
   const agentsTreeProvider = new AgentsTreeProvider();
   const workflowsTreeProvider = new WorkflowsTreeProvider();
   const capabilitiesTreeProvider = new CapabilitiesTreeProvider();
+  const onboardingTreeProvider = new OnboardingTreeProvider();
   const quickActionsTreeProvider = new QuickActionsTreeProvider();
   const templatesTreeProvider = new TemplatesTreeProvider();
 
   context.subscriptions.push(
+    vscode.window.registerTreeDataProvider(
+      "agentStudio.onboardingView",
+      onboardingTreeProvider,
+    ),
     vscode.window.registerTreeDataProvider(
       "agentStudio.quickActionsView",
       quickActionsTreeProvider,
@@ -165,7 +171,7 @@ export async function activate(
     const capabilityGraph =
       await capabilityService.buildCapabilityGraph(agents);
 
-    agentsTreeProvider.setAgents(agents);
+    agentsTreeProvider.setData(agents, workflows);
     workflowsTreeProvider.setWorkflows(workflows);
     capabilitiesTreeProvider.setCapabilityGraph(capabilityGraph);
     dashboard.postState(agents, workflows, capabilityGraph);

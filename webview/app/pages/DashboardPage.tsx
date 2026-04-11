@@ -19,9 +19,21 @@ export function DashboardPage(): React.JSX.Element {
   const selectAgent = useStudioStore((s) => s.selectAgent);
   const selectWorkflow = useStudioStore((s) => s.selectWorkflow);
   const toggleCapabilityGraph = useStudioStore((s) => s.toggleCapabilityGraph);
+  const setCapabilityGraphVisible = useStudioStore(
+    (s) => s.setCapabilityGraphVisible,
+  );
   const setFilter = useStudioStore((s) => s.setFilter);
   const setSelectedCapability = useStudioStore((s) => s.setSelectedCapability);
   const autoLayoutWorkflow = useStudioStore((s) => s.autoLayoutWorkflow);
+  const [agentSearch, setAgentSearch] = React.useState("");
+  const [workflowSearch, setWorkflowSearch] = React.useState("");
+  const [capabilitySearch, setCapabilitySearch] = React.useState("");
+
+  const deferredAgentSearch = React.useDeferredValue(agentSearch.trim());
+  const deferredWorkflowSearch = React.useDeferredValue(workflowSearch.trim());
+  const deferredCapabilitySearch = React.useDeferredValue(
+    capabilitySearch.trim(),
+  );
 
   const selectedWorkflow = workflows.find(
     (workflow) => workflow.id === selectedWorkflowId,
@@ -88,10 +100,97 @@ export function DashboardPage(): React.JSX.Element {
 
   const hasActiveFilters = activeFilters.length > 0;
 
+  const agentMatches = React.useMemo(() => {
+    if (!deferredAgentSearch) {
+      return [];
+    }
+    const query = deferredAgentSearch.toLowerCase();
+    return agents
+      .filter(
+        (agent) =>
+          agent.name.toLowerCase().includes(query) ||
+          agent.id.toLowerCase().includes(query) ||
+          agent.description.toLowerCase().includes(query) ||
+          agent.role?.toLowerCase().includes(query),
+      )
+      .slice(0, 6);
+  }, [agents, deferredAgentSearch]);
+
+  const workflowMatches = React.useMemo(() => {
+    if (!deferredWorkflowSearch) {
+      return [];
+    }
+    const query = deferredWorkflowSearch.toLowerCase();
+    return workflows
+      .filter(
+        (workflow) =>
+          workflow.name.toLowerCase().includes(query) ||
+          workflow.id.toLowerCase().includes(query) ||
+          workflow.description?.toLowerCase().includes(query),
+      )
+      .slice(0, 6);
+  }, [deferredWorkflowSearch, workflows]);
+
+  const capabilityMatches = React.useMemo(() => {
+    if (!deferredCapabilitySearch) {
+      return [];
+    }
+    const query = deferredCapabilitySearch.toLowerCase();
+    return [
+      ...graph.tools
+        .filter(
+          (tool) =>
+            tool.label.toLowerCase().includes(query) ||
+            tool.id.toLowerCase().includes(query),
+        )
+        .map((tool) => ({
+          id: tool.id,
+          label: tool.label,
+          detail: tool.kind,
+          kind: "tool" as const,
+        })),
+      ...graph.skills
+        .filter(
+          (skill) =>
+            skill.label.toLowerCase().includes(query) ||
+            skill.id.toLowerCase().includes(query),
+        )
+        .map((skill) => ({
+          id: skill.id,
+          label: skill.label,
+          detail: "skill",
+          kind: "skill" as const,
+        })),
+      ...graph.mcpServers
+        .filter(
+          (server) =>
+            server.label.toLowerCase().includes(query) ||
+            server.id.toLowerCase().includes(query),
+        )
+        .map((server) => ({
+          id: server.id,
+          label: server.label,
+          detail: "mcp",
+          kind: "mcp" as const,
+        })),
+    ].slice(0, 9);
+  }, [deferredCapabilitySearch, graph.mcpServers, graph.skills, graph.tools]);
+
   const clearAllFilters = (): void => {
     setFilter("toolId", undefined);
     setFilter("skillId", undefined);
     setFilter("mcpId", undefined);
+  };
+
+  const focusCapabilityResult = (
+    kind: "tool" | "skill" | "mcp",
+    id: string,
+  ): void => {
+    setCapabilityGraphVisible(true);
+    setSelectedCapability(id);
+    setFilter("toolId", kind === "tool" ? id : undefined);
+    setFilter("skillId", kind === "skill" ? id : undefined);
+    setFilter("mcpId", kind === "mcp" ? id : undefined);
   };
 
   return (
@@ -137,6 +236,120 @@ export function DashboardPage(): React.JSX.Element {
       </header>
 
       <section className="toolbar">
+        <div className="toolbar-section search-section">
+          <div className="toolbar-title-row">
+            <h2 className="toolbar-title">Quick Search</h2>
+            <p className="field-hint">
+              Jump directly to agents, workflows, or capabilities without
+              hunting through the full lists.
+            </p>
+          </div>
+          <div className="search-grid">
+            <label>
+              Find agent
+              <input
+                title="Search agents by name, id, role, or description."
+                type="search"
+                value={agentSearch}
+                onChange={(e) => setAgentSearch(e.target.value)}
+                placeholder="Search agents"
+              />
+            </label>
+            <label>
+              Find workflow
+              <input
+                title="Search workflows by name, id, or description."
+                type="search"
+                value={workflowSearch}
+                onChange={(e) => setWorkflowSearch(e.target.value)}
+                placeholder="Search workflows"
+              />
+            </label>
+            <label>
+              Find capability
+              <input
+                title="Search tools, skills, or MCP servers and jump to the matching filter context."
+                type="search"
+                value={capabilitySearch}
+                onChange={(e) => setCapabilitySearch(e.target.value)}
+                placeholder="Search tools, skills, MCP"
+              />
+            </label>
+          </div>
+          <div className="search-results-grid">
+            <div className="search-result-card">
+              <h3>Agent Results</h3>
+              {deferredAgentSearch ? (
+                agentMatches.length > 0 ? (
+                  <div className="chip-row">
+                    {agentMatches.map((agent) => (
+                      <button
+                        key={agent.id}
+                        className="search-result-chip"
+                        title={`Select agent ${agent.name} in the builder and inspector.`}
+                        onClick={() => selectAgent(agent.id)}
+                      >
+                        {agent.name}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="field-hint">No matching agents.</p>
+                )
+              ) : (
+                <p className="field-hint">Type a name, role, or id.</p>
+              )}
+            </div>
+            <div className="search-result-card">
+              <h3>Workflow Results</h3>
+              {deferredWorkflowSearch ? (
+                workflowMatches.length > 0 ? (
+                  <div className="chip-row">
+                    {workflowMatches.map((workflow) => (
+                      <button
+                        key={workflow.id}
+                        className="search-result-chip"
+                        title={`Select workflow ${workflow.name} in the workflow editor and graph.`}
+                        onClick={() => selectWorkflow(workflow.id)}
+                      >
+                        {workflow.name}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="field-hint">No matching workflows.</p>
+                )
+              ) : (
+                <p className="field-hint">Type a workflow name or id.</p>
+              )}
+            </div>
+            <div className="search-result-card">
+              <h3>Capability Results</h3>
+              {deferredCapabilitySearch ? (
+                capabilityMatches.length > 0 ? (
+                  <div className="chip-row">
+                    {capabilityMatches.map((capability) => (
+                      <button
+                        key={`${capability.kind}-${capability.id}`}
+                        className="search-result-chip"
+                        title={`Focus ${capability.kind} ${capability.label} in the capability layer.`}
+                        onClick={() =>
+                          focusCapabilityResult(capability.kind, capability.id)
+                        }
+                      >
+                        {capability.label} ({capability.detail})
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="field-hint">No matching capabilities.</p>
+                )
+              ) : (
+                <p className="field-hint">Search a tool, skill, or MCP id.</p>
+              )}
+            </div>
+          </div>
+        </div>
         <div className="toolbar-section">
           <div className="toolbar-title-row">
             <h2 className="toolbar-title">Context Selection</h2>

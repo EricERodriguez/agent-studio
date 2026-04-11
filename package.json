@@ -27,6 +27,11 @@
         "views": {
             "agentStudio": [
                 {
+                    "id": "agentStudio.onboardingView",
+                    "name": "Getting Started",
+                    "icon": "media/agent-studio.svg"
+                },
+                {
                     "id": "agentStudio.quickActionsView",
                     "name": "Quick Actions",
                     "icon": "media/agent-studio.svg"
