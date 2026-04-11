@@ -88,7 +88,10 @@ export default defineConfig({
       },
     ],
     socialLinks: [
-      { icon: "github", link: "https://github.com/eric44/agent-studio" },
+      {
+        icon: "github",
+        link: "https://github.com/EricERodriguez/agent-studio",
+      },
     ],
     outline: {
       level: [2, 3],

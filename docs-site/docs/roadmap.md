@@ -71,10 +71,10 @@ Agent Studio is actively developed. Here's what's planned for upcoming releases.
 
 Have an idea or want to help? Here's how:
 
-1. **Report Issues**: Found a bug? [Open an issue](https://github.com/eric44/agent-studio/issues)
-2. **Request Features**: Want a capability on the roadmap sooner? [Submit a feature request](https://github.com/eric44/agent-studio/discussions)
-3. **Submit PRs**: Check the [contributing guide](https://github.com/eric44/agent-studio/blob/main/CONTRIBUTING.md) for development setup
-4. **Share Feedback**: Join the [discussions forum](https://github.com/eric44/agent-studio/discussions) and share how you're using Agent Studio
+1. **Report Issues**: Found a bug? [Open an issue](https://github.com/EricERodriguez/agent-studio/issues)
+2. **Request Features**: Want a capability on the roadmap sooner? [Submit a feature request](https://github.com/EricERodriguez/agent-studio/discussions)
+3. **Submit PRs**: Check the [contributing guide](https://github.com/EricERodriguez/agent-studio/blob/main/CONTRIBUTING.md) for development setup
+4. **Share Feedback**: Join the [discussions forum](https://github.com/EricERodriguez/agent-studio/discussions) and share how you're using Agent Studio
 
 ## Version History
 
@@ -86,4 +86,4 @@ Have an idea or want to help? Here's how:
 
 ---
 
-**[← Features](/features)** | **[Report a Bug →](https://github.com/eric44/agent-studio/issues)**
+**[← Features](/features)** | **[Report a Bug →](https://github.com/EricERodriguez/agent-studio/issues)**

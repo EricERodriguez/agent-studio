@@ -243,8 +243,8 @@ A:
 
 1. Open VS Code command palette (Cmd/Ctrl+Shift+P)
 2. Run "Agent Studio: Show Logs"
-3. Include logs when opening an issue on [GitHub](https://github.com/eric44/agent-studio/issues)
+3. Include logs when opening an issue on [GitHub](https://github.com/EricERodriguez/agent-studio/issues)
 
 ---
 
-Still have questions? [Open an issue on GitHub](https://github.com/eric44/agent-studio/issues) or start a discussion.
+Still have questions? [Open an issue on GitHub](https://github.com/EricERodriguez/agent-studio/issues) or start a discussion.

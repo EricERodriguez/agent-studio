@@ -10,7 +10,7 @@ Found an issue? Let us know.
 
 **How to report:**
 
-1. Check [existing issues](https://github.com/eric44/agent-studio/issues) to avoid duplicates
+1. Check [existing issues](https://github.com/EricERodriguez/agent-studio/issues) to avoid duplicates
 2. Describe:
    - What were you doing?
    - What did you expect?
@@ -42,7 +42,7 @@ Have an idea? Share it.
 
 **How to request:**
 
-1. Search [discussions](https://github.com/eric44/agent-studio/discussions) for similar requests
+1. Search [discussions](https://github.com/EricERodriguez/agent-studio/discussions) for similar requests
 2. Check the [roadmap](./roadmap.md) to see if it's planned
 3. Start a discussion with:
    - What problem does this solve?
@@ -68,7 +68,7 @@ Docs are always a work in progress. Help us improve.
 
 **How to contribute docs:**
 
-1. Fork the [repository](https://github.com/eric44/agent-studio)
+1. Fork the [repository](https://github.com/EricERodriguez/agent-studio)
 2. Edit files in `docs-site/docs/`
 3. Build and test locally: `cd docs-site && npm run docs:dev`
 4. Open a pull request with:
@@ -97,7 +97,7 @@ Want to dive in with code?
 ### Clone and Install
 
 ```bash
-git clone https://github.com/eric44/agent-studio.git
+git clone https://github.com/EricERodriguez/agent-studio.git
 cd agent-studio
 npm install
 ```
@@ -216,7 +216,7 @@ for (const agent of agents) {
 
 ### Before You Start
 
-1. Check [open issues](https://github.com/eric44/agent-studio/issues) to see if someone is already working on it
+1. Check [open issues](https://github.com/EricERodriguez/agent-studio/issues) to see if someone is already working on it
 2. If it's a significant change, open an issue first to discuss
 
 ### Branch Naming
@@ -302,8 +302,8 @@ By contributing, you agree that your code will be licensed under the same licens
 
 ## Questions?
 
-- [GitHub Discussions](https://github.com/eric44/agent-studio/discussions): Ask questions, share ideas
-- [GitHub Issues](https://github.com/eric44/agent-studio/issues): Report bugs
+- [GitHub Discussions](https://github.com/EricERodriguez/agent-studio/discussions): Ask questions, share ideas
+- [GitHub Issues](https://github.com/EricERodriguez/agent-studio/issues): Report bugs
 - [Email](mailto:hello@example.com): For security issues or urgent matters
 
 ---

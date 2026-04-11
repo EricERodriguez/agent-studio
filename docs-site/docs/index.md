@@ -193,7 +193,7 @@ features:
     <a href="/getting-started" class="as-cta secondary">
       Read the Docs
     </a>
-    <a href="https://github.com/eric44/agent-studio" class="as-cta secondary">
+    <a href="https://github.com/EricERodriguez/agent-studio" class="as-cta secondary">
       View on GitHub
     </a>
   </div>
