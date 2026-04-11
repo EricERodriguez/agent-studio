@@ -50,6 +50,13 @@ export class DashboardPanel {
       },
     );
 
+    // Use the project's logo for the webview panel icon
+    this.panel.iconPath = vscode.Uri.joinPath(
+      this.extensionUri,
+      "media",
+      "agent-studio.svg",
+    );
+
     this.panel.webview.html = this.getHtml(this.panel.webview);
 
     this.panel.webview.onDidReceiveMessage(
