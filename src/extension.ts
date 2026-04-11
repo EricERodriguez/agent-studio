@@ -236,27 +236,32 @@ export async function activate(
     const capabilityGraph =
       await capabilityService.buildCapabilityGraph(agents);
 
-    const options = [
+    type CapabilityQuickPickItem = vscode.QuickPickItem & {
+      capabilityKind: "tool" | "skill" | "mcp";
+      capabilityId: string;
+    };
+
+    const options: CapabilityQuickPickItem[] = [
       ...capabilityGraph.tools.map((tool) => ({
         label: tool.label,
         description: `Tool · ${tool.kind}`,
         detail: tool.id,
-        kind: "tool" as const,
-        id: tool.id,
+        capabilityKind: "tool" as const,
+        capabilityId: tool.id,
       })),
       ...capabilityGraph.skills.map((skill) => ({
         label: skill.label,
         description: "Skill",
         detail: skill.id,
-        kind: "skill" as const,
-        id: skill.id,
+        capabilityKind: "skill" as const,
+        capabilityId: skill.id,
       })),
       ...capabilityGraph.mcpServers.map((server) => ({
         label: server.label,
         description: "MCP Server",
         detail: server.id,
-        kind: "mcp" as const,
-        id: server.id,
+        capabilityKind: "mcp" as const,
+        capabilityId: server.id,
       })),
     ];
 
@@ -274,7 +279,7 @@ export async function activate(
     }
 
     dashboard.show();
-    dashboard.focusCapability(pick.kind, pick.id);
+    dashboard.focusCapability(pick.capabilityKind, pick.capabilityId);
   };
 
   const runWorkflow = async (
