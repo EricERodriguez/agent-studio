@@ -16,7 +16,7 @@ Included views:
 - Capabilities
 - Templates
 
-The extension also provides a dashboard webview where you can:
+The extension also provides a dashboard webview where you can.
 
 - create and edit agents
 - manage instructions, context, handoffs, and capabilities
