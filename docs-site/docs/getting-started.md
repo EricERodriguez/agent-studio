@@ -129,7 +129,7 @@ Congratulations! You've created your first agent. Now you're ready to:
 - **[Explore the Dashboard](./visual-dashboard.md)**: Learn all the features available
 - **[Create Multiple Agents](./creating-agents.md)**: Build a multi-agent team
 - **[Build Workflows](./workflows.md)**: Chain agents together for complex tasks
-- **[Register Tools](./tools-and-skills.md)**: Connect your own APIs and functions
+- **[Register Tools](./tools-and-skills)**: Connect your own APIs and functions
 
 You can also browse [Why Agent Studio](./why-agent-studio.md) to understand the philosophy behind the tool.
 

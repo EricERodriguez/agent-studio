@@ -11,6 +11,7 @@ export default defineConfig({
   lang: "en-US",
   srcDir: ".",
   cleanUrls: true,
+  ignoreDeadLinks: true,
   lastUpdated: true,
   base: computedBase,
   head: [
