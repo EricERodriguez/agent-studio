@@ -50,6 +50,50 @@ export function DashboardPage(): React.JSX.Element {
     return true;
   });
 
+  const activeFilters: Array<{
+    key: "toolId" | "skillId" | "mcpId";
+    label: string;
+    value: string;
+  }> = [];
+
+  if (filters.toolId) {
+    activeFilters.push({
+      key: "toolId",
+      label: "Tool",
+      value:
+        graph.tools.find((tool) => tool.id === filters.toolId)?.label ||
+        filters.toolId,
+    });
+  }
+
+  if (filters.skillId) {
+    activeFilters.push({
+      key: "skillId",
+      label: "Skill",
+      value:
+        graph.skills.find((skill) => skill.id === filters.skillId)?.label ||
+        filters.skillId,
+    });
+  }
+
+  if (filters.mcpId) {
+    activeFilters.push({
+      key: "mcpId",
+      label: "MCP",
+      value:
+        graph.mcpServers.find((server) => server.id === filters.mcpId)?.label ||
+        filters.mcpId,
+    });
+  }
+
+  const hasActiveFilters = activeFilters.length > 0;
+
+  const clearAllFilters = (): void => {
+    setFilter("toolId", undefined);
+    setFilter("skillId", undefined);
+    setFilter("mcpId", undefined);
+  };
+
   return (
     <div className="layout">
       <header className="header">
@@ -86,82 +130,131 @@ export function DashboardPage(): React.JSX.Element {
       </header>
 
       <section className="toolbar">
-        <div className="toolbar-row">
-          <label>
-            Agent
-            <select
-              value={selectedAgentId || ""}
-              onChange={(e) => selectAgent(e.target.value || undefined)}
-            >
-              {agents.map((agent) => (
-                <option key={agent.id} value={agent.id}>
-                  {agent.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Workflow
-            <select
-              value={selectedWorkflowId || ""}
-              onChange={(e) => selectWorkflow(e.target.value || undefined)}
-            >
-              {workflows.map((workflow) => (
-                <option key={workflow.id} value={workflow.id}>
-                  {workflow.name}
-                </option>
-              ))}
-            </select>
-          </label>
+        <div className="toolbar-section">
+          <div className="toolbar-title-row">
+            <h2 className="toolbar-title">Context Selection</h2>
+            <p className="field-hint">
+              Choose the active agent and workflow before editing or running.
+            </p>
+          </div>
+          <div className="toolbar-row">
+            <label>
+              Agent
+              <select
+                value={selectedAgentId || ""}
+                onChange={(e) => selectAgent(e.target.value || undefined)}
+              >
+                <option value="">No agent selected</option>
+                {agents.map((agent) => (
+                  <option key={agent.id} value={agent.id}>
+                    {agent.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Workflow
+              <select
+                value={selectedWorkflowId || ""}
+                onChange={(e) => selectWorkflow(e.target.value || undefined)}
+              >
+                <option value="">No workflow selected</option>
+                {workflows.map((workflow) => (
+                  <option key={workflow.id} value={workflow.id}>
+                    {workflow.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
         </div>
-        <div className="toolbar-row">
-          <label>
-            Tool filter
-            <select
-              value={filters.toolId || ""}
-              onChange={(e) => setFilter("toolId", e.target.value)}
+
+        <div className="toolbar-section filter-section">
+          <div className="toolbar-title-row">
+            <h2 className="toolbar-title">Capability Filters</h2>
+            <p className="field-hint">
+              Narrow the capability layer by tool, skill, and MCP server.
+            </p>
+          </div>
+
+          <div className="filter-grid">
+            <label>
+              Tool filter
+              <select
+                value={filters.toolId || ""}
+                onChange={(e) => setFilter("toolId", e.target.value)}
+              >
+                <option value="">All tools</option>
+                {graph.tools.map((tool) => (
+                  <option key={tool.id} value={tool.id}>
+                    {tool.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Skill filter
+              <select
+                value={filters.skillId || ""}
+                onChange={(e) => setFilter("skillId", e.target.value)}
+              >
+                <option value="">All skills</option>
+                {graph.skills.map((skill) => (
+                  <option key={skill.id} value={skill.id}>
+                    {skill.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              MCP filter
+              <select
+                value={filters.mcpId || ""}
+                onChange={(e) => setFilter("mcpId", e.target.value)}
+              >
+                <option value="">All MCP servers</option>
+                {graph.mcpServers.map((server) => (
+                  <option key={server.id} value={server.id}>
+                    {server.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          <div className="filter-actions">
+            <button
+              className="secondary-button"
+              onClick={clearAllFilters}
+              disabled={!hasActiveFilters}
             >
-              <option value="">All</option>
-              {graph.tools.map((tool) => (
-                <option key={tool.id} value={tool.id}>
-                  {tool.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Skill filter
-            <select
-              value={filters.skillId || ""}
-              onChange={(e) => setFilter("skillId", e.target.value)}
-            >
-              <option value="">All</option>
-              {graph.skills.map((skill) => (
-                <option key={skill.id} value={skill.id}>
-                  {skill.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            MCP filter
-            <select
-              value={filters.mcpId || ""}
-              onChange={(e) => setFilter("mcpId", e.target.value)}
-            >
-              <option value="">All</option>
-              {graph.mcpServers.map((server) => (
-                <option key={server.id} value={server.id}>
-                  {server.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <button onClick={toggleCapabilityGraph}>
-            {showCapabilityGraph
-              ? "Hide Capability Graph"
-              : "Show Capability Graph"}
-          </button>
+              Clear Filters
+            </button>
+            <button onClick={toggleCapabilityGraph}>
+              {showCapabilityGraph
+                ? "Hide Capability Graph"
+                : "Show Capability Graph"}
+            </button>
+          </div>
+
+          <div className="filter-feedback">
+            <span className="metric-chip">
+              Showing {filteredAgents.length} of {agents.length} agents
+            </span>
+            {hasActiveFilters && (
+              <div className="active-filter-chips">
+                {activeFilters.map((filter) => (
+                  <button
+                    key={filter.key}
+                    className="filter-chip"
+                    onClick={() => setFilter(filter.key, undefined)}
+                  >
+                    {filter.label}: {filter.value} x
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </section>
 

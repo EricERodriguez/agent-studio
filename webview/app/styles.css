@@ -214,8 +214,33 @@ h4 {
 
 .toolbar {
   display: grid;
-  gap: 10px;
+  gap: 12px;
   padding: 12px;
+}
+
+.toolbar-section {
+  border: 1px solid var(--studio-border);
+  border-radius: var(--studio-radius-md);
+  padding: 10px;
+  background: color-mix(in srgb, var(--studio-surface-1) 90%, transparent);
+}
+
+.toolbar-title-row {
+  display: grid;
+  gap: 3px;
+  margin-bottom: 8px;
+}
+
+.toolbar-title {
+  font-size: 14px;
+}
+
+.filter-section {
+  background: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--studio-accent) 10%, transparent),
+    color-mix(in srgb, var(--studio-surface-1) 92%, transparent)
+  );
 }
 
 .toolbar-row {
@@ -225,10 +250,56 @@ h4 {
 }
 
 .toolbar label {
-  display: inline-flex;
-  align-items: center;
+  display: grid;
   gap: 6px;
   font-size: 13px;
+  min-width: 200px;
+  flex: 1;
+}
+
+.filter-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.filter-actions,
+.filter-feedback,
+.active-filter-chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.filter-actions {
+  margin-top: 8px;
+}
+
+.filter-feedback {
+  margin-top: 10px;
+}
+
+.secondary-button {
+  background: var(--vscode-button-secondaryBackground);
+  color: var(--vscode-button-secondaryForeground);
+  border-color: color-mix(
+    in srgb,
+    var(--vscode-button-secondaryBackground) 76%,
+    #fff 24%
+  );
+}
+
+.secondary-button:hover {
+  background: var(--vscode-button-secondaryHoverBackground);
+}
+
+.filter-chip {
+  border-radius: 999px;
+  padding: 5px 10px;
+  background: color-mix(in srgb, var(--studio-accent) 14%, transparent);
+  border: 1px solid var(--studio-border);
+  font-size: 12px;
 }
 
 .main-grid {
@@ -524,6 +595,10 @@ ul {
   .main-grid {
     grid-template-columns: 1fr;
     min-height: auto;
+  }
+
+  .filter-grid {
+    grid-template-columns: 1fr;
   }
 
   .graph-canvas {
