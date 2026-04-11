@@ -3,7 +3,7 @@
     "displayName": "Agent Studio",
     "description": "Visual control plane for designing and orchestrating AI agents in VS Code.",
     "version": "0.1.0",
-    "publisher": "TU_PUBLISHER",
+    "publisher": "agentstudio-dev",
     "engines": {
         "vscode": "^1.100.0"
     },
