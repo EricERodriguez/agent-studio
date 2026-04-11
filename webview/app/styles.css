@@ -505,6 +505,18 @@ h4 {
   min-width: 200px;
 }
 
+.tool-template-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.tool-template-row .secondary-button {
+  font-size: 12px;
+  padding: 4px 8px;
+}
+
 .step-list {
   margin-bottom: 12px;
 }

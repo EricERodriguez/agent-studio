@@ -67,6 +67,12 @@ export function AgentBuilder(): React.JSX.Element {
   const [newToolLabel, setNewToolLabel] = useState("");
   const [newToolKind, setNewToolKind] = useState<ToolRef["kind"]>("built-in");
 
+  const applyToolTemplate = (tool: ToolRef): void => {
+    setNewToolId(tool.id);
+    setNewToolLabel(tool.label);
+    setNewToolKind(tool.kind);
+  };
+
   React.useEffect(() => {
     setDraft(selectedAgent);
     setNewToolId("");
@@ -375,12 +381,32 @@ export function AgentBuilder(): React.JSX.Element {
 
             {activeCapabilityPane === "tool" && (
               <>
+                <div className="helper-card">
+                  <p>How tools work</p>
+                  <p>
+                    A <strong>Tool</strong> is a concrete action the agent can
+                    call while running.
+                  </p>
+                  <p>
+                    Use this form when you want to allow a new action. Then
+                    assign that tool to this agent.
+                  </p>
+                  <p>
+                    Fill fields in this order: <strong>Tool ID</strong>, then
+                    <strong> Tool label</strong>, then{" "}
+                    <strong>Tool kind</strong>.
+                  </p>
+                  <p>
+                    If you are unsure, start with <strong>built-in</strong> and
+                    a known ID like <code>run_in_terminal</code>.
+                  </p>
+                </div>
                 <div className="capability-form-grid">
                   <div className="helper-card">
                     <p>Add or update a Tool</p>
                     <p className="field-hint">
-                      Create a tool entry when the agent needs permission to
-                      perform a concrete action.
+                      Create or update one callable action. If the same Tool ID
+                      already exists, this will update its label/kind.
                     </p>
                     <label>
                       Tool ID
@@ -390,6 +416,9 @@ export function AgentBuilder(): React.JSX.Element {
                         onChange={(e) => setNewToolId(e.target.value)}
                         placeholder="ex: run_in_terminal"
                       />
+                      <small className="field-hint">
+                        Machine id used by the runtime. Use snake_case.
+                      </small>
                     </label>
                     <label>
                       Tool label
@@ -399,6 +428,9 @@ export function AgentBuilder(): React.JSX.Element {
                         onChange={(e) => setNewToolLabel(e.target.value)}
                         placeholder="ex: Run in Terminal"
                       />
+                      <small className="field-hint">
+                        Human-readable name shown in UI.
+                      </small>
                     </label>
                     <label>
                       Tool kind
@@ -413,7 +445,53 @@ export function AgentBuilder(): React.JSX.Element {
                         <option value="extension">extension</option>
                         <option value="mcp">mcp</option>
                       </select>
+                      <small className="field-hint">
+                        built-in: native tool, extension: VS Code command, mcp:
+                        tool from MCP server.
+                      </small>
                     </label>
+                    <div className="tool-template-row">
+                      <span className="field-hint">Quick examples:</span>
+                      <button
+                        className="secondary-button"
+                        title="Prefill with a common built-in tool example."
+                        onClick={() =>
+                          applyToolTemplate({
+                            id: "run_in_terminal",
+                            label: "Run in Terminal",
+                            kind: "built-in",
+                          })
+                        }
+                      >
+                        Built-in Example
+                      </button>
+                      <button
+                        className="secondary-button"
+                        title="Prefill with a common extension command example."
+                        onClick={() =>
+                          applyToolTemplate({
+                            id: "vscode.executeCommand",
+                            label: "Execute VS Code Command",
+                            kind: "extension",
+                          })
+                        }
+                      >
+                        Extension Example
+                      </button>
+                      <button
+                        className="secondary-button"
+                        title="Prefill with a common MCP tool example."
+                        onClick={() =>
+                          applyToolTemplate({
+                            id: "mcp.fetch_webpage",
+                            label: "Fetch Webpage",
+                            kind: "mcp",
+                          })
+                        }
+                      >
+                        MCP Example
+                      </button>
+                    </div>
                     <button
                       title="Create or update this tool definition in the current agent draft."
                       onClick={addToolFromForm}
@@ -458,6 +536,10 @@ export function AgentBuilder(): React.JSX.Element {
                       })
                     }
                   />
+                  <small className="field-hint">
+                    Advanced mode: paste ids only. Labels and kinds will be
+                    inferred from discovered catalog when possible.
+                  </small>
                 </label>
                 <div className="capability-preview">
                   <p>Select tools (tag multi-select)</p>
