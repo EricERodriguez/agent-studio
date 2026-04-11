@@ -3,3 +3,9 @@ dist/
 webview-dist/
 *.vsix
 .vscode-test/
+
+# VitePress docs site
+docs-site/.vitepress/cache/
+docs-site/.vitepress/dist/
+.DS_Store
+Thumbs.db

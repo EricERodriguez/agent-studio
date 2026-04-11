@@ -1,0 +1,202 @@
+---
+layout: home
+
+hero:
+  name: "Agent Studio"
+  text: "Design and orchestrate AI agents in VS Code"
+  tagline: "A visual, inspectable control plane for agent infrastructure. No YAML. No CLI shenanigans. Just beautiful, intuitive editor."
+  image:
+    src: /hero-mock.png
+    alt: "Visual Agent Studio Dashboard"
+  actions:
+    - theme: brand
+      text: "Install from Marketplace"
+      link: "https://marketplace.visualstudio.com/items?itemName=local.agent-studio"
+    - theme: alt
+      text: "Explore Documentation →"
+      link: "/getting-started"
+
+features:
+  - title: "Visual Agent Builder"
+    details: "Create agents with dedicated tabs for identity, instructions, context, handoffs, and capabilities. Live markdown preview as you edit."
+    icon: "✨"
+  - title: "Capability Inspector"
+    details: "See all Tools, Skills, and MCP servers at a glance. Understand which agents use what and spot capability gaps instantly."
+    icon: "🔍"
+  - title: "Workflow Orchestration"
+    details: "Build multi-agent workflows visually. Drag agents into steps, connect them, and execute with one click through chat."
+    icon: "⚡"
+  - title: "Handoff Management"
+    details: "Define agent relationships elegantly. Create delegation chains that scale from 3 agents to 30 without confusion."
+    icon: "🔗"
+  - title: "Dashboard Graph"
+    details: "Interactive handoff and workflow graphs. Zoom, pan, and explore agent relationships on a beautiful canvas."
+    icon: "📊"
+  - title: "VS Code Native"
+    details: "Lives in your sidebar. No separate app. No cloud sync required. Your agents stay local, inspectable, and version-controlled."
+    icon: "🎯"
+---
+
+<div class="as-shell">
+
+<!-- Why Agent Studio -->
+<div class="as-panel">
+  <div class="as-kicker">Why Agent Studio</div>
+  <h2 style="margin-top: 8px; margin-bottom: 10px;">Agent infrastructure that feels human</h2>
+  <p class="as-lead">Traditional agent setups require YAML configs, CLI commands, and mental model juggling. Agent Studio replaces configuration complexity with **visual clarity and immediate feedback**.</p>
+
+  <div class="as-grid-2">
+    <div>
+      <h3 style="margin-top: 16px; margin-bottom: 8px;">The Problem</h3>
+      <ul style="margin: 0; padding: 0 0 0 18px; color: rgba(230, 240, 255, 0.68);">
+        <li>Writing YAML by hand is error-prone and unintuitive</li>
+        <li>Agent relationships are invisible until you try to run them</li>
+        <li>Capability gaps surface late, wasting engineering time</li>
+        <li>Onboarding new agents to a team is slow and fragile</li>
+      </ul>
+    </div>
+    <div>
+      <h3 style="margin-top: 16px; margin-bottom: 8px;">Agent Studio's Approach</h3>
+      <ul style="margin: 0; padding: 0 0 0 18px; color: rgba(230, 240, 255, 0.68);">
+        <li>Rich visual editor instead of raw config syntax</li>
+        <li>See handoffs and constraints in real time</li>
+        <li>Capability graph shows which tools feed which agents</li>
+        <li>Shareable, version-controlled agent definitions</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- The Dashboard -->
+<div class="as-panel">
+  <div class="as-kicker">Modern Dashboard</div>
+  <h2 style="margin-top: 8px; margin-bottom: 10px;">Everything you need in one workspace pane</h2>
+
+  <div class="as-mock">
+    <div class="as-mock-topbar">
+      <div class="as-dots">
+        <span></span>
+        <span></span>
+        <span></span>
+      </div>
+      <span style="font-size: 11px; color: rgba(196, 222, 255, 0.6);">Agent Studio Dashboard</span>
+      <span style="color: rgba(196, 222, 255, 0.4);">v1.0</span>
+    </div>
+    <div class="as-mock-body">
+      <div class="as-rail">
+        <div class="as-rail-item" style="background: rgba(108, 224, 255, 0.08); border-color: #67DCFF;">Quick Actions</div>
+        <div class="as-rail-item">Agents</div>
+        <div class="as-rail-item">Workflows</div>
+        <div class="as-rail-item">Capabilities</div>
+        <div class="as-rail-item">Templates</div>
+      </div>
+      <div class="as-canvas">
+        <div>
+          <div style="font-weight: 600; color: #EEF7FF; margin-bottom: 8px;">Agent Builder</div>
+          <div class="as-chip-row">
+            <div class="as-chip">Identity</div>
+            <div class="as-chip">Instructions</div>
+            <div class="as-chip">Capabilities</div>
+            <div class="as-chip">Handoffs</div>
+          </div>
+        </div>
+        <div>
+          <div style="font-size: 12px; color: rgba(228, 239, 255, 0.72); margin-bottom: 8px;">Active Capabilities</div>
+          <div class="as-chip-row">
+            <div class="as-chip" style="background: rgba(76, 192, 255, 0.14);">🛠️ 8 Tools</div>
+            <div class="as-chip" style="background: rgba(115, 93, 255, 0.14);">📚 3 Skills</div>
+            <div class="as-chip" style="background: rgba(115, 255, 184, 0.14);">🌐 2 MCP</div>
+          </div>
+        </div>
+        <div class="as-mini-grid">
+          <div class="as-mini-card" style="border-color: rgba(115, 255, 184, 0.18); background: rgba(115, 255, 184, 0.08); text-align: center;">
+            <div style="font-size: 14px; margin-bottom: 4px;">📊</div>
+            <div style="font-size: 11px; color: rgba(230, 240, 255, 0.72);">3 Agents</div>
+          </div>
+          <div class="as-mini-card" style="border-color: rgba(76, 192, 255, 0.18); background: rgba(76, 192, 255, 0.08); text-align: center;">
+            <div style="font-size: 14px; margin-bottom: 4px;">⚡</div>
+            <div style="font-size: 11px; color: rgba(230, 240, 255, 0.72);">2 Workflows</div>
+          </div>
+          <div class="as-mini-card" style="border-color: rgba(255, 172, 108, 0.18); background: rgba(255, 172, 108, 0.08); text-align: center;">
+            <div style="font-size: 14px; margin-bottom: 4px;">✓</div>
+            <div style="font-size: 11px; color: rgba(230, 240, 255, 0.72);">All Clear</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Features Deep Dive -->
+<div class="as-panel">
+  <div class="as-kicker">Key Capabilities</div>
+  <h2 style="margin-top: 8px; margin-bottom: 16px;">Built for production, designed for clarity</h2>
+
+  <div class="as-grid-3">
+    <div class="as-card">
+      <h3>🎭 Agent Builder</h3>
+      <p>Rich editor with tabs for identity, instructions, context, handoffs, and capabilities. Live `.agent.md` preview keeps you aligned with the source.</p>
+    </div>
+    <div class="as-card">
+      <h3>🔗 Handoff Graphs</h3>
+      <p>Visualize which agents can delegate to which. Interactive graph with zoom, pan, and minimap. Spot bottlenecks and circular dependencies at a glance.</p>
+    </div>
+    <div class="as-card">
+      <h3>🎯 Capabilities Layer</h3>
+      <p>See all Tools, Skills, and MCP servers. Inspect usage relationships. Filter agents by capability. Find gaps before runtime.</p>
+    </div>
+    <div class="as-card">
+      <h3>⚡ Workflow Orchestration</h3>
+      <p>Create multi-agent workflows visually. Add steps, mark entry points, connect steps, and run through VS Code chat in seconds.</p>
+    </div>
+    <div class="as-card">
+      <h3>📦 Local First</h3>
+      <p>No cloud, no sync, no backend required. Agents live as `.agent.md` files in your repo. Version-controlled and auditable.</p>
+    </div>
+    <div class="as-card">
+      <h3>💬 Chat Integration</h3>
+      <p>Open any agent in VS Code chat from your sidebar. Context is copied to clipboard for reliable, immediate use.</p>
+    </div>
+  </div>
+</div>
+
+<!-- Quick Stats -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 18px;">
+  <div class="as-card">
+    <div class="as-stat">
+      <strong>1 Dashboard</strong>
+      <p style="margin: 0; color: rgba(230, 240, 255, 0.6); font-size: 13px;">Complete agent control</p>
+    </div>
+  </div>
+  <div class="as-card">
+    <div class="as-stat">
+      <strong>30 seconds</strong>
+      <p style="margin: 0; color: rgba(230, 240, 255, 0.6); font-size: 13px;">From idea to first agent</p>
+    </div>
+  </div>
+  <div class="as-card">
+    <div class="as-stat">
+      <strong>Infinite Agents</strong>
+      <p style="margin: 0; color: rgba(230, 240, 255, 0.6); font-size: 13px;">Visual clarity at any scale</p>
+    </div>
+  </div>
+</div>
+
+<!-- CTA Banner -->
+<div class="as-panel">
+  <h2 style="margin-bottom: 14px;">Ready to think differently about agent infrastructure?</h2>
+  <p class="as-lead" style="margin-bottom: 16px;">Join developers and teams who are replacing config complexity with visual clarity.</p>
+  <div class="as-cta-row">
+    <a href="https://marketplace.visualstudio.com/items?itemName=local.agent-studio" class="as-cta primary">
+      Install Now (Free)
+    </a>
+    <a href="/getting-started" class="as-cta secondary">
+      Read the Docs
+    </a>
+    <a href="https://github.com/eric44/agent-studio" class="as-cta secondary">
+      View on GitHub
+    </a>
+  </div>
+</div>
+
+</div>
