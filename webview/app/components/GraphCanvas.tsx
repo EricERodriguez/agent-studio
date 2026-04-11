@@ -13,12 +13,14 @@ import ReactFlow, {
 } from "reactflow";
 import "reactflow/dist/style.css";
 import { useStudioStore, selectors } from "../store/useStudioStore";
+import { useI18n } from "../i18n";
 
 interface GraphCanvasProps {
   mode: "agent" | "workflow";
 }
 
 export function GraphCanvas({ mode }: GraphCanvasProps): React.JSX.Element {
+  const { tx } = useI18n();
   const agents = useStudioStore((s) => s.agents);
   const selectedWorkflow = useStudioStore(selectors.selectedWorkflow);
   const setWorkflowNodes = useStudioStore((s) => s.setWorkflowNodes);
@@ -154,15 +156,22 @@ export function GraphCanvas({ mode }: GraphCanvasProps): React.JSX.Element {
       <div className="graph-canvas empty-state">
         {isEmptyAgentGraph && (
           <p>
-            No agents found. Create one from Templates or place a{" "}
-            <code>.agent.md</code> file under <code>.github/agents</code> (or{" "}
-            <code>.github/chatmodes</code> for legacy files).
+            {tx(
+              "No agents found. Create one from Templates or place a",
+              "No se encontraron agents. Crea uno desde Templates o coloca un archivo",
+            )}{" "}
+            <code>.agent.md</code> {tx("file under", "debajo de")}{" "}
+            <code>.github/agents</code> ({tx("or", "o")}{" "}
+            <code>.github/chatmodes</code>{" "}
+            {tx("for legacy files).", "para archivos legacy).")}
           </p>
         )}
         {isEmptyWorkflowGraph && (
           <p>
-            No workflow to render. Create a workflow from the dashboard to see
-            nodes and connections here.
+            {tx(
+              "No workflow to render. Create a workflow from the dashboard to see nodes and connections here.",
+              "No hay workflow para renderizar. Crea un workflow desde el dashboard para ver aquí los nodos y conexiones.",
+            )}
           </p>
         )}
       </div>

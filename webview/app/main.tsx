@@ -5,6 +5,7 @@ import "./styles.css";
 import { useStudioStore } from "./store/useStudioStore";
 import type { ExtensionToWebviewMessage } from "./types";
 import { vscode } from "./hooks/useVsCodeApi";
+import { getStoredLanguage, translateForLanguage } from "./i18n";
 
 window.addEventListener(
   "message",
@@ -31,17 +32,27 @@ window.addEventListener(
       useStudioStore.getState().setWorkflowRun(message.payload);
     }
     if (message.type === "focusAgentEditor") {
+      const language = getStoredLanguage();
       useStudioStore.getState().selectAgent(message.payload.agentId);
       useStudioStore.getState().setTab(message.payload.tab || "Identity");
       useStudioStore.getState().setUiPanelOpen("agentBuilder", true);
       useStudioStore.getState().setUiPanelOpen("inspector", true);
-      useStudioStore.getState().setInfoMessage("Agent ready to edit.");
+      useStudioStore
+        .getState()
+        .setInfoMessage(
+          translateForLanguage(
+            language,
+            "Agent ready to edit.",
+            "Agent listo para editar.",
+          ),
+        );
       setTimeout(
         () => useStudioStore.getState().setInfoMessage(undefined),
         2000,
       );
     }
     if (message.type === "focusCapability") {
+      const language = getStoredLanguage();
       useStudioStore.getState().setCapabilityGraphVisible(true);
       useStudioStore.getState().setSelectedCapability(message.payload.id);
       useStudioStore.getState().setUiPanelOpen("agentBuilder", true);
@@ -69,17 +80,32 @@ window.addEventListener(
       useStudioStore.getState().setTab("Capabilities");
       useStudioStore
         .getState()
-        .setInfoMessage("Capability highlighted from sidebar.");
+        .setInfoMessage(
+          translateForLanguage(
+            language,
+            "Capability highlighted from sidebar.",
+            "Capability resaltada desde la barra lateral.",
+          ),
+        );
       setTimeout(
         () => useStudioStore.getState().setInfoMessage(undefined),
         2200,
       );
     }
     if (message.type === "focusWorkflow") {
+      const language = getStoredLanguage();
       useStudioStore.getState().selectWorkflow(message.payload.workflowId);
       useStudioStore.getState().setUiPanelOpen("workflowBuilder", true);
       useStudioStore.getState().setUiPanelOpen("workflowGraph", true);
-      useStudioStore.getState().setInfoMessage("Workflow ready to edit.");
+      useStudioStore
+        .getState()
+        .setInfoMessage(
+          translateForLanguage(
+            language,
+            "Workflow ready to edit.",
+            "Workflow listo para editar.",
+          ),
+        );
       setTimeout(
         () => useStudioStore.getState().setInfoMessage(undefined),
         2200,

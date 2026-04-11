@@ -1,8 +1,10 @@
 import React from "react";
 import { useStudioStore, selectors } from "../store/useStudioStore";
 import { vscode } from "../hooks/useVsCodeApi";
+import { useI18n } from "../i18n";
 
 export function InspectorPanel(): React.JSX.Element {
+  const { tx } = useI18n();
   const selectedAgent = useStudioStore(selectors.selectedAgent);
   const capabilityGraph = useStudioStore((s) => s.capabilityGraph);
   const selectedCapabilityId = useStudioStore((s) => s.selectedCapabilityId);
@@ -17,7 +19,11 @@ export function InspectorPanel(): React.JSX.Element {
     const mcp = capabilityGraph.mcpServers.find(
       (item) => item.id === selectedCapabilityId,
     );
-    const title = tool?.label || skill?.label || mcp?.label || "Capability";
+    const title =
+      tool?.label ||
+      skill?.label ||
+      mcp?.label ||
+      tx("Capability", "Capability");
     const users =
       capabilityGraph.usage.tools[selectedCapabilityId] ||
       capabilityGraph.usage.skills[selectedCapabilityId] ||
@@ -27,7 +33,9 @@ export function InspectorPanel(): React.JSX.Element {
     return (
       <aside className="inspector">
         <h3>{title}</h3>
-        <p>Used by {users.length} agents</p>
+        <p>
+          {tx("Used by", "Usado por")} {users.length} {tx("agents", "agents")}
+        </p>
         <ul>
           {users.map((id) => (
             <li key={id}>{id}</li>
@@ -40,8 +48,13 @@ export function InspectorPanel(): React.JSX.Element {
   if (!selectedAgent) {
     return (
       <aside className="inspector">
-        <h3>Inspector</h3>
-        <p>Select an agent, node, or capability to inspect details.</p>
+        <h3>{tx("Inspector", "Inspector")}</h3>
+        <p>
+          {tx(
+            "Select an agent, node, or capability to inspect details.",
+            "Selecciona un agent, nodo o capability para inspeccionar detalles.",
+          )}
+        </p>
       </aside>
     );
   }
@@ -49,9 +62,11 @@ export function InspectorPanel(): React.JSX.Element {
   return (
     <aside className="inspector">
       <h3>{selectedAgent.name}</h3>
-      <p>{selectedAgent.description || "No description"}</p>
       <p>
-        <strong>Role:</strong> {selectedAgent.role || "n/a"}
+        {selectedAgent.description || tx("No description", "Sin descripción")}
+      </p>
+      <p>
+        <strong>{tx("Role", "Role")}:</strong> {selectedAgent.role || "n/a"}
       </p>
       <p>
         <strong>Tools:</strong> {selectedAgent.capabilities.tools.length}
@@ -64,7 +79,10 @@ export function InspectorPanel(): React.JSX.Element {
       </p>
       <div className="inspector-actions">
         <button
-          title="Open this agent directly in chat to use it immediately."
+          title={tx(
+            "Open this agent directly in chat to use it immediately.",
+            "Abre este agent directamente en chat para usarlo de inmediato.",
+          )}
           onClick={() =>
             vscode?.postMessage({
               type: "openInChat",
@@ -72,10 +90,13 @@ export function InspectorPanel(): React.JSX.Element {
             })
           }
         >
-          Open in Chat
+          {tx("Open in Chat", "Abrir en Chat")}
         </button>
         <button
-          title="Open this agent in Agent Builder for editing."
+          title={tx(
+            "Open this agent in Agent Builder for editing.",
+            "Abre este agent en Agent Builder para editarlo.",
+          )}
           onClick={() =>
             vscode?.postMessage({
               type: "editAgent",
@@ -83,10 +104,13 @@ export function InspectorPanel(): React.JSX.Element {
             })
           }
         >
-          Edit
+          {tx("Edit", "Editar")}
         </button>
         <button
-          title="Reveal the source file that defines this agent."
+          title={tx(
+            "Reveal the source file that defines this agent.",
+            "Muestra el archivo fuente que define este agent.",
+          )}
           onClick={() =>
             vscode?.postMessage({
               type: "openRawAgent",
@@ -94,7 +118,7 @@ export function InspectorPanel(): React.JSX.Element {
             })
           }
         >
-          Reveal File
+          {tx("Reveal File", "Mostrar archivo")}
         </button>
       </div>
     </aside>

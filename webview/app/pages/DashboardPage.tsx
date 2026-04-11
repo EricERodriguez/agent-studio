@@ -5,8 +5,10 @@ import { WorkflowBuilder } from "../components/WorkflowBuilder";
 import { InspectorPanel } from "../components/InspectorPanel";
 import { useStudioStore } from "../store/useStudioStore";
 import { vscode } from "../hooks/useVsCodeApi";
+import { useI18n } from "../i18n";
 
 export function DashboardPage(): React.JSX.Element {
+  const { language, setLanguage, tx } = useI18n();
   const agents = useStudioStore((s) => s.agents);
   const workflows = useStudioStore((s) => s.workflows);
   const selectedAgentId = useStudioStore((s) => s.selectedAgentId);
@@ -263,16 +265,25 @@ export function DashboardPage(): React.JSX.Element {
     <div className="layout">
       <header className="header">
         <div className="header-copy">
-          <span className="header-kicker">Orchestration Workspace</span>
+          <span className="header-kicker">
+            {tx("Orchestration Workspace", "Workspace de orquestación")}
+          </span>
           <h1>Agent Studio</h1>
           <p className="header-subtitle">
-            Build agents, model handoffs, and run execution workflows.
+            {tx(
+              "Build agents, model handoffs, and run execution workflows.",
+              "Crea agents, modela handoffs y ejecuta workflows.",
+            )}
           </p>
           <div className="header-metrics">
-            <span className="metric-chip">Agents: {agents.length}</span>
-            <span className="metric-chip">Workflows: {workflows.length}</span>
             <span className="metric-chip">
-              Capabilities:{" "}
+              {tx("Agents", "Agents")}: {agents.length}
+            </span>
+            <span className="metric-chip">
+              {tx("Workflows", "Workflows")}: {workflows.length}
+            </span>
+            <span className="metric-chip">
+              {tx("Capabilities", "Capabilities")}:{" "}
               {graph.tools.length +
                 graph.skills.length +
                 graph.mcpServers.length}
@@ -280,33 +291,61 @@ export function DashboardPage(): React.JSX.Element {
           </div>
         </div>
         <div className="header-actions">
+          <label className="language-switcher">
+            <span>{tx("Language", "Idioma")}</span>
+            <select
+              title={tx(
+                "Choose the dashboard language.",
+                "Elige el idioma del dashboard.",
+              )}
+              value={language}
+              onChange={(e) => setLanguage(e.target.value as "en" | "es")}
+            >
+              <option value="en">English</option>
+              <option value="es">Español</option>
+            </select>
+          </label>
           <button
-            title="Create a new agent and open it in the builder."
+            title={tx(
+              "Create a new agent and open it in the builder.",
+              "Crea un nuevo agent y ábrelo en el builder.",
+            )}
             onClick={() => vscode?.postMessage({ type: "createAgent" })}
           >
-            Create Agent
+            {tx("Create Agent", "Crear Agent")}
           </button>
           <button
-            title="Create a new workflow graph starting from a default entry step."
+            title={tx(
+              "Create a new workflow graph starting from a default entry step.",
+              "Crea un nuevo graph de workflow empezando desde un step de entrada por defecto.",
+            )}
             onClick={() => vscode?.postMessage({ type: "createWorkflow" })}
           >
-            Create Workflow
+            {tx("Create Workflow", "Crear Workflow")}
           </button>
           <button
-            title="Reload agents, workflows, and capabilities from disk."
+            title={tx(
+              "Reload agents, workflows, and capabilities from disk.",
+              "Recarga agents, workflows y capabilities desde disco.",
+            )}
             onClick={() => vscode?.postMessage({ type: "refresh" })}
           >
-            Refresh
+            {tx("Refresh", "Recargar")}
           </button>
         </div>
       </header>
 
       <section className="toolbar" ref={toolbarRef}>
         <div className="section-toggle-row">
-          <h2 className="toolbar-title">Workspace Controls</h2>
+          <h2 className="toolbar-title">
+            {tx("Workspace Controls", "Controles del workspace")}
+          </h2>
           <button
             className="secondary-button"
-            title="Expand or collapse Quick Search, Context Selection, and Capability Filters."
+            title={tx(
+              "Expand or collapse Quick Search, Context Selection, and Capability Filters.",
+              "Expande o colapsa Quick Search, Context Selection y Capability Filters.",
+            )}
             onClick={() => {
               const willOpen = !isToolbarExpanded;
               setIsToolbarExpanded(willOpen);
@@ -315,7 +354,9 @@ export function DashboardPage(): React.JSX.Element {
               }
             }}
           >
-            {isToolbarExpanded ? "Collapse" : "Expand"}
+            {isToolbarExpanded
+              ? tx("Collapse", "Colapsar")
+              : tx("Expand", "Expandir")}
           </button>
         </div>
 
@@ -323,47 +364,63 @@ export function DashboardPage(): React.JSX.Element {
           <>
             <div className="toolbar-section search-section">
               <div className="toolbar-title-row">
-                <h2 className="toolbar-title">Quick Search</h2>
+                <h2 className="toolbar-title">
+                  {tx("Quick Search", "Búsqueda rápida")}
+                </h2>
                 <p className="field-hint">
-                  Jump directly to agents, workflows, or capabilities without
-                  hunting through the full lists.
+                  {tx(
+                    "Jump directly to agents, workflows, or capabilities without hunting through the full lists.",
+                    "Salta directo a agents, workflows o capabilities sin recorrer listas completas.",
+                  )}
                 </p>
               </div>
               <div className="search-grid">
                 <label>
-                  Find agent
+                  {tx("Find agent", "Buscar agent")}
                   <input
-                    title="Search agents by name, id, role, or description."
+                    title={tx(
+                      "Search agents by name, id, role, or description.",
+                      "Busca agents por nombre, id, role o descripción.",
+                    )}
                     type="search"
                     value={agentSearch}
                     onChange={(e) => setAgentSearch(e.target.value)}
-                    placeholder="Search agents"
+                    placeholder={tx("Search agents", "Buscar agents")}
                   />
                 </label>
                 <label>
-                  Find workflow
+                  {tx("Find workflow", "Buscar workflow")}
                   <input
-                    title="Search workflows by name, id, or description."
+                    title={tx(
+                      "Search workflows by name, id, or description.",
+                      "Busca workflows por nombre, id o descripción.",
+                    )}
                     type="search"
                     value={workflowSearch}
                     onChange={(e) => setWorkflowSearch(e.target.value)}
-                    placeholder="Search workflows"
+                    placeholder={tx("Search workflows", "Buscar workflows")}
                   />
                 </label>
                 <label>
-                  Find capability
+                  {tx("Find capability", "Buscar capability")}
                   <input
-                    title="Search tools, skills, or MCP servers and jump to the matching filter context."
+                    title={tx(
+                      "Search tools, skills, or MCP servers and jump to the matching filter context.",
+                      "Busca Tool, Skill o MCP server y salta al contexto de filtro correspondiente.",
+                    )}
                     type="search"
                     value={capabilitySearch}
                     onChange={(e) => setCapabilitySearch(e.target.value)}
-                    placeholder="Search tools, skills, MCP"
+                    placeholder={tx(
+                      "Search tools, skills, MCP",
+                      "Buscar Tool, Skill, MCP",
+                    )}
                   />
                 </label>
               </div>
               <div className="search-results-grid">
                 <div className="search-result-card">
-                  <h3>Agent Results</h3>
+                  <h3>{tx("Agent Results", "Resultados de Agent")}</h3>
                   {deferredAgentSearch ? (
                     agentMatches.length > 0 ? (
                       <div className="chip-row">
@@ -371,7 +428,10 @@ export function DashboardPage(): React.JSX.Element {
                           <button
                             key={agent.id}
                             className="search-result-chip"
-                            title={`Select agent ${agent.name} in the builder and inspector.`}
+                            title={tx(
+                              `Select agent ${agent.name} in the builder and inspector.`,
+                              `Selecciona el agent ${agent.name} en el builder y el inspector.`,
+                            )}
                             onClick={() => selectAgent(agent.id)}
                           >
                             {agent.name}
@@ -379,14 +439,24 @@ export function DashboardPage(): React.JSX.Element {
                         ))}
                       </div>
                     ) : (
-                      <p className="field-hint">No matching agents.</p>
+                      <p className="field-hint">
+                        {tx(
+                          "No matching agents.",
+                          "No hay agents coincidentes.",
+                        )}
+                      </p>
                     )
                   ) : (
-                    <p className="field-hint">Type a name, role, or id.</p>
+                    <p className="field-hint">
+                      {tx(
+                        "Type a name, role, or id.",
+                        "Escribe un nombre, role o id.",
+                      )}
+                    </p>
                   )}
                 </div>
                 <div className="search-result-card">
-                  <h3>Workflow Results</h3>
+                  <h3>{tx("Workflow Results", "Resultados de Workflow")}</h3>
                   {deferredWorkflowSearch ? (
                     workflowMatches.length > 0 ? (
                       <div className="chip-row">
@@ -394,7 +464,10 @@ export function DashboardPage(): React.JSX.Element {
                           <button
                             key={workflow.id}
                             className="search-result-chip"
-                            title={`Select workflow ${workflow.name} in the workflow editor and graph.`}
+                            title={tx(
+                              `Select workflow ${workflow.name} in the workflow editor and graph.`,
+                              `Selecciona el workflow ${workflow.name} en el editor y el graph.`,
+                            )}
                             onClick={() => selectWorkflow(workflow.id)}
                           >
                             {workflow.name}
@@ -402,14 +475,26 @@ export function DashboardPage(): React.JSX.Element {
                         ))}
                       </div>
                     ) : (
-                      <p className="field-hint">No matching workflows.</p>
+                      <p className="field-hint">
+                        {tx(
+                          "No matching workflows.",
+                          "No hay workflows coincidentes.",
+                        )}
+                      </p>
                     )
                   ) : (
-                    <p className="field-hint">Type a workflow name or id.</p>
+                    <p className="field-hint">
+                      {tx(
+                        "Type a workflow name or id.",
+                        "Escribe un nombre o id de workflow.",
+                      )}
+                    </p>
                   )}
                 </div>
                 <div className="search-result-card">
-                  <h3>Capability Results</h3>
+                  <h3>
+                    {tx("Capability Results", "Resultados de Capability")}
+                  </h3>
                   {deferredCapabilitySearch ? (
                     capabilityMatches.length > 0 ? (
                       <div className="chip-row">
@@ -417,7 +502,10 @@ export function DashboardPage(): React.JSX.Element {
                           <button
                             key={`${capability.kind}-${capability.id}`}
                             className="search-result-chip"
-                            title={`Focus ${capability.kind} ${capability.label} in the capability layer.`}
+                            title={tx(
+                              `Focus ${capability.kind} ${capability.label} in the capability layer.`,
+                              `Enfoca ${capability.kind} ${capability.label} en la capa de capabilities.`,
+                            )}
                             onClick={() =>
                               focusCapabilityResult(
                                 capability.kind,
@@ -430,11 +518,19 @@ export function DashboardPage(): React.JSX.Element {
                         ))}
                       </div>
                     ) : (
-                      <p className="field-hint">No matching capabilities.</p>
+                      <p className="field-hint">
+                        {tx(
+                          "No matching capabilities.",
+                          "No hay capabilities coincidentes.",
+                        )}
+                      </p>
                     )
                   ) : (
                     <p className="field-hint">
-                      Search a tool, skill, or MCP id.
+                      {tx(
+                        "Search a tool, skill, or MCP id.",
+                        "Busca un id de Tool, Skill o MCP.",
+                      )}
                     </p>
                   )}
                 </div>
@@ -443,21 +539,30 @@ export function DashboardPage(): React.JSX.Element {
 
             <div className="toolbar-section">
               <div className="toolbar-title-row">
-                <h2 className="toolbar-title">Context Selection</h2>
+                <h2 className="toolbar-title">
+                  {tx("Context Selection", "Selección de contexto")}
+                </h2>
                 <p className="field-hint">
-                  Choose the active agent and workflow before editing or
-                  running.
+                  {tx(
+                    "Choose the active agent and workflow before editing or running.",
+                    "Elige el agent y el workflow activos antes de editar o ejecutar.",
+                  )}
                 </p>
               </div>
               <div className="toolbar-row">
                 <label>
-                  Agent
+                  {tx("Agent", "Agent")}
                   <select
-                    title="Choose which agent is active in the builder and inspector."
+                    title={tx(
+                      "Choose which agent is active in the builder and inspector.",
+                      "Elige qué agent está activo en el builder y el inspector.",
+                    )}
                     value={selectedAgentId || ""}
                     onChange={(e) => selectAgent(e.target.value || undefined)}
                   >
-                    <option value="">No agent selected</option>
+                    <option value="">
+                      {tx("No agent selected", "Ningún agent seleccionado")}
+                    </option>
                     {agents.map((agent) => (
                       <option key={agent.id} value={agent.id}>
                         {agent.name}
@@ -466,15 +571,23 @@ export function DashboardPage(): React.JSX.Element {
                   </select>
                 </label>
                 <label>
-                  Workflow
+                  {tx("Workflow", "Workflow")}
                   <select
-                    title="Choose which workflow is active in the workflow editor and graph."
+                    title={tx(
+                      "Choose which workflow is active in the workflow editor and graph.",
+                      "Elige qué workflow está activo en el editor y el graph.",
+                    )}
                     value={selectedWorkflowId || ""}
                     onChange={(e) =>
                       selectWorkflow(e.target.value || undefined)
                     }
                   >
-                    <option value="">No workflow selected</option>
+                    <option value="">
+                      {tx(
+                        "No workflow selected",
+                        "Ningún workflow seleccionado",
+                      )}
+                    </option>
                     {workflows.map((workflow) => (
                       <option key={workflow.id} value={workflow.id}>
                         {workflow.name}
@@ -487,21 +600,31 @@ export function DashboardPage(): React.JSX.Element {
 
             <div className="toolbar-section filter-section">
               <div className="toolbar-title-row">
-                <h2 className="toolbar-title">Capability Filters</h2>
+                <h2 className="toolbar-title">
+                  {tx("Capability Filters", "Filtros de Capability")}
+                </h2>
                 <p className="field-hint">
-                  Narrow the capability layer by tool, skill, and MCP server.
+                  {tx(
+                    "Narrow the capability layer by tool, skill, and MCP server.",
+                    "Acota la capa de capabilities por Tool, Skill y MCP server.",
+                  )}
                 </p>
               </div>
 
               <div className="filter-grid">
                 <label>
-                  Tool filter
+                  {tx("Tool filter", "Filtro de Tool")}
                   <select
-                    title="Show only agents connected to the selected tool in the capability layer."
+                    title={tx(
+                      "Show only agents connected to the selected tool in the capability layer.",
+                      "Muestra solo los agents conectados al Tool seleccionado en la capa de capabilities.",
+                    )}
                     value={filters.toolId || ""}
                     onChange={(e) => setFilter("toolId", e.target.value)}
                   >
-                    <option value="">All tools</option>
+                    <option value="">
+                      {tx("All tools", "Todos los Tools")}
+                    </option>
                     {graph.tools.map((tool) => (
                       <option key={tool.id} value={tool.id}>
                         {tool.label}
@@ -510,13 +633,18 @@ export function DashboardPage(): React.JSX.Element {
                   </select>
                 </label>
                 <label>
-                  Skill filter
+                  {tx("Skill filter", "Filtro de Skill")}
                   <select
-                    title="Show only agents connected to the selected skill in the capability layer."
+                    title={tx(
+                      "Show only agents connected to the selected skill in the capability layer.",
+                      "Muestra solo los agents conectados al Skill seleccionado en la capa de capabilities.",
+                    )}
                     value={filters.skillId || ""}
                     onChange={(e) => setFilter("skillId", e.target.value)}
                   >
-                    <option value="">All skills</option>
+                    <option value="">
+                      {tx("All skills", "Todos los Skills")}
+                    </option>
                     {graph.skills.map((skill) => (
                       <option key={skill.id} value={skill.id}>
                         {skill.label}
@@ -525,13 +653,18 @@ export function DashboardPage(): React.JSX.Element {
                   </select>
                 </label>
                 <label>
-                  MCP filter
+                  {tx("MCP filter", "Filtro de MCP")}
                   <select
-                    title="Show only agents connected to the selected MCP server in the capability layer."
+                    title={tx(
+                      "Show only agents connected to the selected MCP server in the capability layer.",
+                      "Muestra solo los agents conectados al MCP server seleccionado en la capa de capabilities.",
+                    )}
                     value={filters.mcpId || ""}
                     onChange={(e) => setFilter("mcpId", e.target.value)}
                   >
-                    <option value="">All MCP servers</option>
+                    <option value="">
+                      {tx("All MCP servers", "Todos los MCP servers")}
+                    </option>
                     {graph.mcpServers.map((server) => (
                       <option key={server.id} value={server.id}>
                         {server.label}
@@ -544,25 +677,32 @@ export function DashboardPage(): React.JSX.Element {
               <div className="filter-actions">
                 <button
                   className="secondary-button"
-                  title="Remove every active capability filter and show the full agent list again."
+                  title={tx(
+                    "Remove every active capability filter and show the full agent list again.",
+                    "Quita todos los filtros de capability activos y vuelve a mostrar la lista completa de agents.",
+                  )}
                   onClick={clearAllFilters}
                   disabled={!hasActiveFilters}
                 >
-                  Clear Filters
+                  {tx("Clear Filters", "Limpiar filtros")}
                 </button>
                 <button
-                  title="Show or hide the capability relationship panel on the right."
+                  title={tx(
+                    "Show or hide the capability relationship panel on the right.",
+                    "Muestra u oculta el panel de relaciones de capabilities a la derecha.",
+                  )}
                   onClick={toggleCapabilityGraph}
                 >
                   {showCapabilityGraph
-                    ? "Hide Capability Graph"
-                    : "Show Capability Graph"}
+                    ? tx("Hide Capability Graph", "Ocultar Capability Graph")
+                    : tx("Show Capability Graph", "Mostrar Capability Graph")}
                 </button>
               </div>
 
               <div className="filter-feedback">
                 <span className="metric-chip">
-                  Showing {filteredAgents.length} of {agents.length} agents
+                  {tx("Showing", "Mostrando")} {filteredAgents.length}{" "}
+                  {tx("of", "de")} {agents.length} {tx("agents", "agents")}
                 </span>
                 {hasActiveFilters && (
                   <div className="active-filter-chips">
@@ -570,7 +710,10 @@ export function DashboardPage(): React.JSX.Element {
                       <button
                         key={filter.key}
                         className="filter-chip"
-                        title={`Remove the ${filter.label} filter.`}
+                        title={tx(
+                          `Remove the ${filter.label} filter.`,
+                          `Quita el filtro ${filter.label}.`,
+                        )}
                         onClick={() => setFilter(filter.key, undefined)}
                       >
                         {filter.label}: {filter.value} x
@@ -591,10 +734,13 @@ export function DashboardPage(): React.JSX.Element {
         <div className="column">
           <section className="panel collapsible-shell" ref={agentBuilderRef}>
             <div className="section-toggle-row">
-              <h2>Agent Builder</h2>
+              <h2>{tx("Agent Builder", "Builder de Agent")}</h2>
               <button
                 className="secondary-button"
-                title="Expand or collapse Agent Builder section."
+                title={tx(
+                  "Expand or collapse Agent Builder section.",
+                  "Expande o colapsa la sección Builder de Agent.",
+                )}
                 onClick={() => {
                   const willOpen = !uiPanels.agentBuilder;
                   toggleUiPanel("agentBuilder");
@@ -603,7 +749,9 @@ export function DashboardPage(): React.JSX.Element {
                   }
                 }}
               >
-                {uiPanels.agentBuilder ? "Collapse" : "Expand"}
+                {uiPanels.agentBuilder
+                  ? tx("Collapse", "Colapsar")
+                  : tx("Expand", "Expandir")}
               </button>
             </div>
             {uiPanels.agentBuilder && <AgentBuilder />}
@@ -611,10 +759,13 @@ export function DashboardPage(): React.JSX.Element {
 
           <section className="panel collapsible-shell" ref={workflowBuilderRef}>
             <div className="section-toggle-row">
-              <h2>Workflow Editor</h2>
+              <h2>{tx("Workflow Editor", "Editor de Workflow")}</h2>
               <button
                 className="secondary-button"
-                title="Expand or collapse Workflow Editor section."
+                title={tx(
+                  "Expand or collapse Workflow Editor section.",
+                  "Expande o colapsa la sección Editor de Workflow.",
+                )}
                 onClick={() => {
                   const willOpen = !uiPanels.workflowBuilder;
                   toggleUiPanel("workflowBuilder");
@@ -623,7 +774,9 @@ export function DashboardPage(): React.JSX.Element {
                   }
                 }}
               >
-                {uiPanels.workflowBuilder ? "Collapse" : "Expand"}
+                {uiPanels.workflowBuilder
+                  ? tx("Collapse", "Colapsar")
+                  : tx("Expand", "Expandir")}
               </button>
             </div>
             {uiPanels.workflowBuilder && <WorkflowBuilder />}
@@ -632,10 +785,13 @@ export function DashboardPage(): React.JSX.Element {
         <div className="column graph-stack">
           <section className="panel collapsible-shell" ref={agentGraphRef}>
             <div className="section-toggle-row">
-              <h2>Agent Graph</h2>
+              <h2>{tx("Agent Graph", "Graph de Agents")}</h2>
               <button
                 className="secondary-button"
-                title="Expand or collapse Agent Graph section."
+                title={tx(
+                  "Expand or collapse Agent Graph section.",
+                  "Expande o colapsa la sección Graph de Agents.",
+                )}
                 onClick={() => {
                   const willOpen = !uiPanels.agentGraph;
                   toggleUiPanel("agentGraph");
@@ -644,17 +800,18 @@ export function DashboardPage(): React.JSX.Element {
                   }
                 }}
               >
-                {uiPanels.agentGraph ? "Collapse" : "Expand"}
+                {uiPanels.agentGraph
+                  ? tx("Collapse", "Colapsar")
+                  : tx("Expand", "Expandir")}
               </button>
             </div>
             {uiPanels.agentGraph && (
               <>
                 <p className="field-hint">
-                  Displays all discovered agents as nodes. Each node shows the
-                  agent name and its capability counts (T = Tools, S = Skills, M
-                  = MCP servers). Edges represent handoff relationships — an
-                  arrow from Agent A to Agent B means A can delegate tasks to B.
-                  Click a node to open that agent in the builder.
+                  {tx(
+                    "Displays all discovered agents as nodes. Each node shows the agent name and its capability counts (T = Tools, S = Skills, M = MCP servers). Edges represent handoff relationships and clicking a node opens that agent in the builder.",
+                    "Muestra todos los agents descubiertos como nodos. Cada nodo muestra el nombre del agent y sus cantidades de capabilities (T = Tools, S = Skills, M = MCP servers). Las aristas representan handoffs y al hacer click en un nodo se abre ese agent en el builder.",
+                  )}
                 </p>
                 <GraphCanvas mode="agent" />
               </>
@@ -662,10 +819,13 @@ export function DashboardPage(): React.JSX.Element {
           </section>
           <section className="panel collapsible-shell" ref={workflowGraphRef}>
             <div className="section-toggle-row">
-              <h2>Workflow Graph</h2>
+              <h2>{tx("Workflow Graph", "Graph de Workflow")}</h2>
               <button
                 className="secondary-button"
-                title="Expand or collapse Workflow Graph section."
+                title={tx(
+                  "Expand or collapse Workflow Graph section.",
+                  "Expande o colapsa la sección Graph de Workflow.",
+                )}
                 onClick={() => {
                   const willOpen = !uiPanels.workflowGraph;
                   toggleUiPanel("workflowGraph");
@@ -674,27 +834,34 @@ export function DashboardPage(): React.JSX.Element {
                   }
                 }}
               >
-                {uiPanels.workflowGraph ? "Collapse" : "Expand"}
+                {uiPanels.workflowGraph
+                  ? tx("Collapse", "Colapsar")
+                  : tx("Expand", "Expandir")}
               </button>
             </div>
             <div className="panel-title-row">
               <p className="field-hint">
-                Visualizes the selected workflow as a directed step graph. Each
-                node is an agent step; the green-bordered node is the entry
-                point. Edges define execution order between steps. Use{" "}
-                <strong>Auto Layout</strong> to reposition nodes automatically,
-                then <strong>Save Workflow</strong> to persist the layout.
+                {tx(
+                  "Visualizes the selected workflow as a directed step graph. Each node is an agent step; the green-bordered node is the entry point. Edges define execution order between steps. Use Auto Layout to reposition nodes automatically, then Save Workflow to persist the layout.",
+                  "Visualiza el workflow seleccionado como un graph dirigido de steps. Cada nodo es un step de agent; el nodo con borde verde es el punto de entrada. Las aristas definen el orden de ejecución entre steps. Usa Auto Layout para reubicar nodos automáticamente y luego Save Workflow para guardar el layout.",
+                )}
               </p>
               {selectedWorkflow && (
                 <>
                   <button
-                    title="Automatically reposition workflow nodes to a clean layout."
+                    title={tx(
+                      "Automatically reposition workflow nodes to a clean layout.",
+                      "Reubica automáticamente los nodos del workflow en un layout ordenado.",
+                    )}
                     onClick={() => autoLayoutWorkflow(selectedWorkflow.id)}
                   >
-                    Auto Layout
+                    {tx("Auto Layout", "Auto Layout")}
                   </button>
                   <button
-                    title="Persist current workflow nodes, edges, and layout to disk."
+                    title={tx(
+                      "Persist current workflow nodes, edges, and layout to disk.",
+                      "Guarda en disco los nodos, aristas y layout actuales del workflow.",
+                    )}
                     onClick={() =>
                       vscode?.postMessage({
                         type: "saveWorkflow",
@@ -702,7 +869,7 @@ export function DashboardPage(): React.JSX.Element {
                       })
                     }
                   >
-                    Save Workflow
+                    {tx("Save Workflow", "Guardar Workflow")}
                   </button>
                 </>
               )}
@@ -713,10 +880,13 @@ export function DashboardPage(): React.JSX.Element {
         <div className="column">
           <section className="panel collapsible-shell" ref={inspectorRef}>
             <div className="section-toggle-row">
-              <h2>Inspector</h2>
+              <h2>{tx("Inspector", "Inspector")}</h2>
               <button
                 className="secondary-button"
-                title="Expand or collapse Inspector section."
+                title={tx(
+                  "Expand or collapse Inspector section.",
+                  "Expande o colapsa la sección Inspector.",
+                )}
                 onClick={() => {
                   const willOpen = !uiPanels.inspector;
                   toggleUiPanel("inspector");
@@ -725,7 +895,9 @@ export function DashboardPage(): React.JSX.Element {
                   }
                 }}
               >
-                {uiPanels.inspector ? "Collapse" : "Expand"}
+                {uiPanels.inspector
+                  ? tx("Collapse", "Colapsar")
+                  : tx("Expand", "Expandir")}
               </button>
             </div>
             {uiPanels.inspector && <InspectorPanel />}
@@ -733,20 +905,22 @@ export function DashboardPage(): React.JSX.Element {
 
           {showCapabilityGraph && uiPanels.inspector && (
             <section className="inspector">
-              <h3>Capability Layer</h3>
+              <h3>{tx("Capability Layer", "Capa de Capabilities")}</h3>
               <p>
                 Tools: {graph.tools.length} | Skills: {graph.skills.length} |
                 MCP: {graph.mcpServers.length}
               </p>
               <div>
-                <h4>Agent to Tool/Skill/MCP</h4>
+                <h4>
+                  {tx("Agent to Tool/Skill/MCP", "Agent a Tool/Skill/MCP")}
+                </h4>
                 <ul>
                   {filteredAgents.map((agent) => (
                     <li key={agent.id}>
                       {agent.name}
                       {" -> "}
-                      {agent.capabilities.tools.length} tools,{" "}
-                      {agent.capabilities.skills.length} skills,{" "}
+                      {agent.capabilities.tools.length} Tools,{" "}
+                      {agent.capabilities.skills.length} Skills,{" "}
                       {agent.capabilities.mcpServers.length} mcp
                     </li>
                   ))}

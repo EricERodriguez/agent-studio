@@ -8,6 +8,7 @@ import type {
   MCPServerRef,
 } from "../types";
 import { vscode } from "../hooks/useVsCodeApi";
+import { useI18n } from "../i18n";
 
 const tabs: BuilderTab[] = [
   "Identity",
@@ -51,6 +52,7 @@ function parseCommaList(value: string): string[] {
 }
 
 export function AgentBuilder(): React.JSX.Element {
+  const { tx } = useI18n();
   const selectedAgent = useStudioStore(selectors.selectedAgent);
   const selectedTab = useStudioStore((s) => s.selectedTab);
   const setTab = useStudioStore((s) => s.setTab);
@@ -85,11 +87,20 @@ export function AgentBuilder(): React.JSX.Element {
     [draft],
   );
 
+  const tabLabels: Record<BuilderTab, string> = {
+    Identity: tx("Identity", "Identidad"),
+    Instructions: tx("Instructions", "Instrucciones"),
+    Context: tx("Context", "Contexto"),
+    Handoffs: tx("Handoffs", "Handoffs"),
+    Capabilities: tx("Capabilities", "Capabilities"),
+    "Source Preview": tx("Source Preview", "Vista previa del source"),
+  };
+
   if (!draft) {
     return (
       <section className="builder">
-        <h2>Agent Builder</h2>
-        <p>Select or create an agent.</p>
+        <h2>{tx("Agent Builder", "Builder de Agent")}</h2>
+        <p>{tx("Select or create an agent.", "Selecciona o crea un agent.")}</p>
       </section>
     );
   }
@@ -221,7 +232,7 @@ export function AgentBuilder(): React.JSX.Element {
         return (
           <div className="builder-form">
             <label>
-              Agent ID
+              {tx("Agent ID", "ID del Agent")}
               <input
                 value={draft.id}
                 readOnly
@@ -229,7 +240,7 @@ export function AgentBuilder(): React.JSX.Element {
               />
             </label>
             <label>
-              Name
+              {tx("Name", "Nombre")}
               <input
                 title="Human-friendly name shown in the sidebar and dashboard."
                 value={draft.name}
@@ -237,7 +248,7 @@ export function AgentBuilder(): React.JSX.Element {
               />
             </label>
             <label>
-              Description
+              {tx("Description", "Descripción")}
               <input
                 title="Short summary of what this agent does and when to use it."
                 value={draft.description}
@@ -245,7 +256,7 @@ export function AgentBuilder(): React.JSX.Element {
               />
             </label>
             <label>
-              Role
+              {tx("Role", "Role")}
               <input
                 title="Optional role label used as quick context in the sidebar."
                 value={draft.role || ""}
@@ -253,7 +264,7 @@ export function AgentBuilder(): React.JSX.Element {
               />
             </label>
             <label>
-              Tags (comma separated)
+              {tx("Tags (comma separated)", "Tags (separados por coma)")}
               <input
                 title="Optional labels that help group or find agents later."
                 value={draft.tags.join(", ")}
@@ -267,7 +278,7 @@ export function AgentBuilder(): React.JSX.Element {
       case "Instructions":
         return (
           <label className="block-label">
-            Instructions
+            {tx("Instructions", "Instrucciones")}
             <textarea
               title="Core behavior instructions for the agent. This is the main prompt content."
               value={draft.instructions}
@@ -279,7 +290,7 @@ export function AgentBuilder(): React.JSX.Element {
       case "Context":
         return (
           <label className="block-label">
-            Context
+            {tx("Context", "Contexto")}
             <textarea
               title="Extra context, constraints, or project-specific notes for this agent."
               value={draft.context || ""}
@@ -296,14 +307,21 @@ export function AgentBuilder(): React.JSX.Element {
         return (
           <div className="builder-form">
             <div className="helper-card">
-              <p>Define which agents this agent can delegate a task to.</p>
               <p>
-                When a handoff is configured, the current agent can transfer
-                control to the next agent to continue the flow.
+                {tx(
+                  "Define which agents this agent can delegate a task to.",
+                  "Define a qué agents puede delegar una tarea este agent.",
+                )}
+              </p>
+              <p>
+                {tx(
+                  "When a handoff is configured, the current agent can transfer control to the next agent to continue the flow.",
+                  "Cuando un handoff está configurado, el agent actual puede transferir el control al siguiente agent para continuar el flujo.",
+                )}
               </p>
             </div>
             <label className="block-label">
-              Handoff Agents
+              {tx("Handoff Agents", "Agents de handoff")}
               <select
                 title="Choose which other agents this agent can delegate work to."
                 multiple
@@ -325,7 +343,10 @@ export function AgentBuilder(): React.JSX.Element {
               </select>
             </label>
             <small className="field-hint">
-              Tip: use Ctrl/Cmd + click to select multiple agents.
+              {tx(
+                "Tip: use Ctrl/Cmd + click to select multiple agents.",
+                "Tip: usa Ctrl/Cmd + click para seleccionar varios agents.",
+              )}
             </small>
           </div>
         );
@@ -334,25 +355,39 @@ export function AgentBuilder(): React.JSX.Element {
           <div className="builder-form">
             <div className="helper-card">
               <p>
-                Tools are the actions an agent can execute (for example,
-                searching code, editing files, or running commands).
+                {tx(
+                  "Tools are the actions an agent can execute (for example, searching code, editing files, or running commands).",
+                  "Los Tools son acciones que un agent puede ejecutar (por ejemplo, buscar código, editar archivos o correr comandos).",
+                )}
               </p>
               <p>
-                Available tools are loaded from the capabilities declared in all
-                currently loaded agents and merged into a shared catalog.
+                {tx(
+                  "Available tools are loaded from the capabilities declared in all currently loaded agents and merged into a shared catalog.",
+                  "Los Tools disponibles se cargan desde las capabilities declaradas en todos los agents cargados actualmente y se unifican en un catálogo compartido.",
+                )}
               </p>
               <p>
-                Use tool IDs in this field. If you add or edit agent files,
-                refresh the dashboard to rebuild the catalog.
+                {tx(
+                  "Use tool IDs in this field. If you add or edit agent files, refresh the dashboard to rebuild the catalog.",
+                  "Usa IDs de Tool en este campo. Si agregas o editas archivos de agent, recarga el dashboard para reconstruir el catálogo.",
+                )}
               </p>
               <p>
-                Skills are discovered from agent capabilities and installed
-                skill folders (for example <code>.agents/skills</code> in the
-                current workspace and common global VS Code skills paths).
+                {tx(
+                  "Skills are discovered from agent capabilities and installed skill folders",
+                  "Los Skills se descubren desde las capabilities del agent y las carpetas de skills instaladas",
+                )}{" "}
+                ({tx("for example", "por ejemplo")} <code>.agents/skills</code>{" "}
+                {tx(
+                  "in the current workspace and common global VS Code skills paths).",
+                  "en el workspace actual y rutas globales comunes de skills de VS Code).",
+                )}
               </p>
               <p>
-                Skills are reusable guidance packs that help an agent perform
-                specialized tasks with better quality and consistency.
+                {tx(
+                  "Skills are reusable guidance packs that help an agent perform specialized tasks with better quality and consistency.",
+                  "Los Skills son paquetes reutilizables de guía que ayudan a un agent a realizar tareas especializadas con mejor calidad y consistencia.",
+                )}
               </p>
             </div>
             <div className="tab-row">
@@ -382,31 +417,47 @@ export function AgentBuilder(): React.JSX.Element {
             {activeCapabilityPane === "tool" && (
               <>
                 <div className="helper-card">
-                  <p>How tools work</p>
+                  <p>{tx("How tools work", "Cómo funcionan los Tools")}</p>
                   <p>
-                    A <strong>Tool</strong> is a concrete action the agent can
-                    call while running.
+                    {tx(
+                      "A Tool is a concrete action the agent can call while running.",
+                      "Un Tool es una acción concreta que el agent puede invocar mientras corre.",
+                    )}
                   </p>
                   <p>
-                    Use this form when you want to allow a new action. Then
-                    assign that tool to this agent.
+                    {tx(
+                      "Use this form when you want to allow a new action. Then assign that tool to this agent.",
+                      "Usa este formulario cuando quieras permitir una acción nueva. Luego asigna ese Tool a este agent.",
+                    )}
                   </p>
                   <p>
-                    Fill fields in this order: <strong>Tool ID</strong>, then
-                    <strong> Tool label</strong>, then{" "}
+                    {tx(
+                      "Fill fields in this order:",
+                      "Completa los campos en este orden:",
+                    )}{" "}
+                    <strong>Tool ID</strong>, <strong>Tool label</strong>,{" "}
                     <strong>Tool kind</strong>.
                   </p>
                   <p>
-                    If you are unsure, start with <strong>built-in</strong> and
-                    a known ID like <code>run_in_terminal</code>.
+                    {tx(
+                      "If you are unsure, start with built-in and a known ID like run_in_terminal.",
+                      "Si no estás seguro, empieza con built-in y un ID conocido como run_in_terminal.",
+                    )}
                   </p>
                 </div>
                 <div className="capability-form-grid">
                   <div className="helper-card">
-                    <p>Add or update a Tool</p>
+                    <p>
+                      {tx(
+                        "Add or update a Tool",
+                        "Agregar o actualizar un Tool",
+                      )}
+                    </p>
                     <p className="field-hint">
-                      Create or update one callable action. If the same Tool ID
-                      already exists, this will update its label/kind.
+                      {tx(
+                        "Create or update one callable action. If the same Tool ID already exists, this will update its label/kind.",
+                        "Crea o actualiza una acción invocable. Si el mismo Tool ID ya existe, esto actualizará su label/kind.",
+                      )}
                     </p>
                     <label>
                       Tool ID
@@ -417,7 +468,10 @@ export function AgentBuilder(): React.JSX.Element {
                         placeholder="ex: run_in_terminal"
                       />
                       <small className="field-hint">
-                        Machine id used by the runtime. Use snake_case.
+                        {tx(
+                          "Machine id used by the runtime. Use snake_case.",
+                          "ID técnico usado por el runtime. Usa snake_case.",
+                        )}
                       </small>
                     </label>
                     <label>
@@ -429,7 +483,10 @@ export function AgentBuilder(): React.JSX.Element {
                         placeholder="ex: Run in Terminal"
                       />
                       <small className="field-hint">
-                        Human-readable name shown in UI.
+                        {tx(
+                          "Human-readable name shown in UI.",
+                          "Nombre legible para personas que se muestra en la UI.",
+                        )}
                       </small>
                     </label>
                     <label>
@@ -446,12 +503,16 @@ export function AgentBuilder(): React.JSX.Element {
                         <option value="mcp">mcp</option>
                       </select>
                       <small className="field-hint">
-                        built-in: native tool, extension: VS Code command, mcp:
-                        tool from MCP server.
+                        {tx(
+                          "built-in: native tool, extension: VS Code command, mcp: tool from MCP server.",
+                          "built-in: Tool nativo, extension: comando de VS Code, mcp: Tool de un MCP server.",
+                        )}
                       </small>
                     </label>
                     <div className="tool-template-row">
-                      <span className="field-hint">Quick examples:</span>
+                      <span className="field-hint">
+                        {tx("Quick examples:", "Ejemplos rápidos:")}
+                      </span>
                       <button
                         className="secondary-button"
                         title="Prefill with a common built-in tool example."
@@ -463,7 +524,7 @@ export function AgentBuilder(): React.JSX.Element {
                           })
                         }
                       >
-                        Built-in Example
+                        {tx("Built-in Example", "Ejemplo built-in")}
                       </button>
                       <button
                         className="secondary-button"
@@ -476,7 +537,7 @@ export function AgentBuilder(): React.JSX.Element {
                           })
                         }
                       >
-                        Extension Example
+                        {tx("Extension Example", "Ejemplo extension")}
                       </button>
                       <button
                         className="secondary-button"
@@ -489,7 +550,7 @@ export function AgentBuilder(): React.JSX.Element {
                           })
                         }
                       >
-                        MCP Example
+                        {tx("MCP Example", "Ejemplo MCP")}
                       </button>
                     </div>
                     <button
@@ -497,11 +558,13 @@ export function AgentBuilder(): React.JSX.Element {
                       onClick={addToolFromForm}
                       disabled={!newToolId.trim()}
                     >
-                      Add Tool
+                      {tx("Add Tool", "Agregar Tool")}
                     </button>
                   </div>
                   <div className="helper-card">
-                    <p>Tool kinds explained</p>
+                    <p>
+                      {tx("Tool kinds explained", "Tipos de Tool explicados")}
+                    </p>
                     <p>
                       <strong>built-in</strong>: native actions like reading
                       files, editing code, or running commands.
@@ -517,7 +580,10 @@ export function AgentBuilder(): React.JSX.Element {
                   </div>
                 </div>
                 <label>
-                  Tools (ids, comma separated)
+                  {tx(
+                    "Tools (ids, comma separated)",
+                    "Tools (ids separados por coma)",
+                  )}
                   <input
                     title="Advanced input for pasting several tool ids at once."
                     value={draft.capabilities.tools
@@ -537,16 +603,25 @@ export function AgentBuilder(): React.JSX.Element {
                     }
                   />
                   <small className="field-hint">
-                    Advanced mode: paste ids only. Labels and kinds will be
-                    inferred from discovered catalog when possible.
+                    {tx(
+                      "Advanced mode: paste ids only. Labels and kinds will be inferred from discovered catalog when possible.",
+                      "Modo avanzado: pega solo ids. Los labels y kinds se inferirán del catálogo descubierto cuando sea posible.",
+                    )}
                   </small>
                 </label>
                 <div className="capability-preview">
-                  <p>Select tools (tag multi-select)</p>
+                  <p>
+                    {tx(
+                      "Select tools (tag multi-select)",
+                      "Selecciona Tools (multi-select por tags)",
+                    )}
+                  </p>
                   {graph.tools.length === 0 ? (
                     <p>
-                      No discovered tools yet. Refresh after adding tools to
-                      agents.
+                      {tx(
+                        "No discovered tools yet. Refresh after adding tools to agents.",
+                        "Todavía no hay Tools descubiertos. Recarga después de agregar Tools a los agents.",
+                      )}
                     </p>
                   ) : (
                     <div className="chip-row">
@@ -571,9 +646,16 @@ export function AgentBuilder(): React.JSX.Element {
                   )}
                 </div>
                 <div className="capability-preview">
-                  <p>Selected tools for this agent</p>
+                  <p>
+                    {tx(
+                      "Selected tools for this agent",
+                      "Tools seleccionados para este agent",
+                    )}
+                  </p>
                   {draft.capabilities.tools.length === 0 ? (
-                    <p>No tools selected.</p>
+                    <p>
+                      {tx("No tools selected.", "No hay Tools seleccionados.")}
+                    </p>
                   ) : (
                     <div className="chip-row removable-chip-row">
                       {draft.capabilities.tools.map((tool) => (
@@ -583,7 +665,7 @@ export function AgentBuilder(): React.JSX.Element {
                             title={`Remove tool ${tool.label} from this agent.`}
                             onClick={() => removeTool(tool.id)}
                           >
-                            Remove
+                            {tx("Remove", "Quitar")}
                           </button>
                         </span>
                       ))}
@@ -596,23 +678,28 @@ export function AgentBuilder(): React.JSX.Element {
             {activeCapabilityPane === "skill" && (
               <>
                 <div className="helper-card">
-                  <p>Install Skills</p>
+                  <p>{tx("Install Skills", "Instalar Skills")}</p>
                   <p>
                     Install skills in the current repo under
                     <code> .agents/skills </code>
                     or globally in your user skills folders.
                   </p>
                   <p>
-                    Example command:
+                    {tx("Example command:", "Comando de ejemplo:")}
                     <code> npx skills add softaworks/agent-toolkit </code>
                   </p>
                   <p>
-                    After installation, click <strong>Refresh</strong> and Agent
-                    Studio will detect them automatically.
+                    {tx(
+                      "After installation, click Refresh and Agent Studio will detect them automatically.",
+                      "Después de la instalación, haz click en Refresh y Agent Studio los detectará automáticamente.",
+                    )}
                   </p>
                 </div>
                 <label>
-                  Skills (ids, comma separated)
+                  {tx(
+                    "Skills (ids, comma separated)",
+                    "Skills (ids separados por coma)",
+                  )}
                   <input
                     title="Advanced input for pasting several skill ids at once."
                     value={draft.capabilities.skills
@@ -633,12 +720,23 @@ export function AgentBuilder(): React.JSX.Element {
                   />
                 </label>
                 <div className="capability-preview">
-                  <p>Select skills (tag multi-select)</p>
+                  <p>
+                    {tx(
+                      "Select skills (tag multi-select)",
+                      "Selecciona Skills (multi-select por tags)",
+                    )}
+                  </p>
                   {graph.skills.length === 0 ? (
                     <p>
-                      No discovered skills yet. Install a skill in
+                      {tx(
+                        "No discovered skills yet. Install a skill in",
+                        "Todavía no hay Skills descubiertos. Instala un Skill en",
+                      )}
                       <code> .agents/skills </code>
-                      or in a global skills path, then refresh.
+                      {tx(
+                        "or in a global skills path, then refresh.",
+                        "o en una ruta global de skills y luego recarga.",
+                      )}
                     </p>
                   ) : (
                     <div className="chip-row">
@@ -663,9 +761,19 @@ export function AgentBuilder(): React.JSX.Element {
                   )}
                 </div>
                 <div className="capability-preview">
-                  <p>Selected skills for this agent</p>
+                  <p>
+                    {tx(
+                      "Selected skills for this agent",
+                      "Skills seleccionados para este agent",
+                    )}
+                  </p>
                   {draft.capabilities.skills.length === 0 ? (
-                    <p>No skills selected.</p>
+                    <p>
+                      {tx(
+                        "No skills selected.",
+                        "No hay Skills seleccionados.",
+                      )}
+                    </p>
                   ) : (
                     <div className="chip-row removable-chip-row">
                       {draft.capabilities.skills.map((skill) => (
@@ -675,7 +783,7 @@ export function AgentBuilder(): React.JSX.Element {
                             title={`Remove skill ${skill.label} from this agent.`}
                             onClick={() => removeSkill(skill.id)}
                           >
-                            Remove
+                            {tx("Remove", "Quitar")}
                           </button>
                         </span>
                       ))}
@@ -688,7 +796,10 @@ export function AgentBuilder(): React.JSX.Element {
             {activeCapabilityPane === "mcp" && (
               <>
                 <label>
-                  MCP Servers (ids, comma separated)
+                  {tx(
+                    "MCP Servers (ids, comma separated)",
+                    "MCP Servers (ids separados por coma)",
+                  )}
                   <input
                     title="Advanced input for pasting several MCP server ids at once."
                     value={draft.capabilities.mcpServers
@@ -710,9 +821,19 @@ export function AgentBuilder(): React.JSX.Element {
                   />
                 </label>
                 <div className="capability-preview">
-                  <p>Select MCP servers (tag multi-select)</p>
+                  <p>
+                    {tx(
+                      "Select MCP servers (tag multi-select)",
+                      "Selecciona MCP servers (multi-select por tags)",
+                    )}
+                  </p>
                   {graph.mcpServers.length === 0 ? (
-                    <p>No MCP servers discovered. Add them to mcp.json.</p>
+                    <p>
+                      {tx(
+                        "No MCP servers discovered. Add them to mcp.json.",
+                        "No se descubrieron MCP servers. Agrégalos a mcp.json.",
+                      )}
+                    </p>
                   ) : (
                     <div className="chip-row">
                       {graph.mcpServers.map((server) => {
@@ -736,9 +857,19 @@ export function AgentBuilder(): React.JSX.Element {
                   )}
                 </div>
                 <div className="capability-preview">
-                  <p>Selected MCP servers for this agent</p>
+                  <p>
+                    {tx(
+                      "Selected MCP servers for this agent",
+                      "MCP servers seleccionados para este agent",
+                    )}
+                  </p>
                   {draft.capabilities.mcpServers.length === 0 ? (
-                    <p>No MCP servers selected.</p>
+                    <p>
+                      {tx(
+                        "No MCP servers selected.",
+                        "No hay MCP servers seleccionados.",
+                      )}
+                    </p>
                   ) : (
                     <div className="chip-row removable-chip-row">
                       {draft.capabilities.mcpServers.map((server) => (
@@ -748,7 +879,7 @@ export function AgentBuilder(): React.JSX.Element {
                             title={`Remove MCP server ${server.label} from this agent.`}
                             onClick={() => removeMcpServer(server.id)}
                           >
-                            Remove
+                            {tx("Remove", "Quitar")}
                           </button>
                         </span>
                       ))}
@@ -759,9 +890,18 @@ export function AgentBuilder(): React.JSX.Element {
             )}
 
             <div className="capability-preview">
-              <p>Available tools: {graph.tools.length}</p>
-              <p>Available skills: {graph.skills.length}</p>
-              <p>Discovered MCP servers: {graph.mcpServers.length}</p>
+              <p>
+                {tx("Available tools", "Tools disponibles")}:{" "}
+                {graph.tools.length}
+              </p>
+              <p>
+                {tx("Available skills", "Skills disponibles")}:{" "}
+                {graph.skills.length}
+              </p>
+              <p>
+                {tx("Discovered MCP servers", "MCP servers descubiertos")}:{" "}
+                {graph.mcpServers.length}
+              </p>
             </div>
           </div>
         );
@@ -789,16 +929,19 @@ export function AgentBuilder(): React.JSX.Element {
   return (
     <section className="builder">
       <div className="builder-header">
-        <h2>Agent Builder</h2>
+        <h2>{tx("Agent Builder", "Builder de Agent")}</h2>
         <div className="tab-row">
           {tabs.map((tab) => (
             <button
               key={tab}
               className={tab === selectedTab ? "active" : ""}
-              title={`Open the ${tab} section of the selected agent.`}
+              title={tx(
+                `Open the ${tab} section of the selected agent.`,
+                `Abre la sección ${tabLabels[tab]} del agent seleccionado.`,
+              )}
               onClick={() => setTab(tab)}
             >
-              {tab}
+              {tabLabels[tab]}
             </button>
           ))}
         </div>
@@ -807,17 +950,24 @@ export function AgentBuilder(): React.JSX.Element {
       <div className="validation-row">
         {!hasValidContent && (
           <span className="validation-error">
-            Agent name and instructions are required.
+            {tx(
+              "Agent name and instructions are required.",
+              "El nombre y las instrucciones del agent son obligatorios.",
+            )}
           </span>
         )}
         {hasValidContent && !hasCapabilities && (
           <span className="validation-warning">
-            Warning: no capabilities configured.
+            {tx(
+              "Warning: no capabilities configured.",
+              "Advertencia: no hay capabilities configuradas.",
+            )}
           </span>
         )}
         {brokenHandoffs.length > 0 && (
           <span className="validation-error">
-            Broken handoffs: {brokenHandoffs.join(", ")}
+            {tx("Broken handoffs", "Handoffs rotos")}:{" "}
+            {brokenHandoffs.join(", ")}
           </span>
         )}
       </div>
@@ -829,13 +979,13 @@ export function AgentBuilder(): React.JSX.Element {
             vscode?.postMessage({ type: "saveAgent", payload: draft })
           }
         >
-          Save
+          {tx("Save", "Guardar")}
         </button>
         <button
           title="Discard local edits and restore the last loaded version of this agent."
           onClick={() => setDraft(selectedAgent)}
         >
-          Cancel
+          {tx("Cancel", "Cancelar")}
         </button>
         <button
           title="Open the underlying .agent.md file in the editor."
@@ -846,7 +996,7 @@ export function AgentBuilder(): React.JSX.Element {
             })
           }
         >
-          Open raw file
+          {tx("Open raw file", "Abrir archivo raw")}
         </button>
       </div>
     </section>

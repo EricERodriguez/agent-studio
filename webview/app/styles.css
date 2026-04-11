@@ -212,6 +212,26 @@ h4 {
   flex-wrap: wrap;
 }
 
+.language-switcher {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 1px solid var(--studio-border);
+  border-radius: var(--studio-radius-md);
+  background: color-mix(in srgb, var(--studio-surface-2) 88%, transparent);
+  min-width: fit-content;
+}
+
+.language-switcher span {
+  font-size: 12px;
+  color: var(--vscode-descriptionForeground);
+}
+
+.language-switcher select {
+  min-width: 112px;
+}
+
 .toolbar {
   display: grid;
   gap: 12px;

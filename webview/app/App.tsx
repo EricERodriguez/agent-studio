@@ -1,6 +1,11 @@
 import React from "react";
 import { DashboardPage } from "./pages/DashboardPage";
+import { LanguageProvider } from "./i18n";
 
 export default function App(): React.JSX.Element {
-  return <DashboardPage />;
+  return (
+    <LanguageProvider>
+      <DashboardPage />
+    </LanguageProvider>
+  );
 }

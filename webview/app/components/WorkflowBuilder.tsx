@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { useStudioStore, selectors } from "../store/useStudioStore";
 import { vscode } from "../hooks/useVsCodeApi";
+import { useI18n } from "../i18n";
 
 export function WorkflowBuilder(): React.JSX.Element {
+  const { tx } = useI18n();
   const selectedWorkflow = useStudioStore(selectors.selectedWorkflow);
   const agents = useStudioStore((s) => s.agents);
   const workflowRun = useStudioStore((s) => s.workflowRun);
@@ -37,10 +39,12 @@ export function WorkflowBuilder(): React.JSX.Element {
   if (!selectedWorkflow) {
     return (
       <section className="panel">
-        <h2>Workflow Editor</h2>
+        <h2>{tx("Workflow Editor", "Editor de Workflow")}</h2>
         <p className="field-hint">
-          Select a workflow from the toolbar above, or create one with the{" "}
-          <strong>Create Workflow</strong> button.
+          {tx(
+            "Select a workflow from the toolbar above, or create one with the Create Workflow button.",
+            "Selecciona un workflow desde la barra superior o crea uno con el botón Create Workflow.",
+          )}
         </p>
       </section>
     );
@@ -48,15 +52,16 @@ export function WorkflowBuilder(): React.JSX.Element {
 
   return (
     <section className="panel">
-      <h2>Workflow Editor</h2>
+      <h2>{tx("Workflow Editor", "Editor de Workflow")}</h2>
       <p className="field-hint">
-        A workflow is a directed graph of agent steps. Add agents as steps, mark
-        one as the entry point, then draw connections between steps in the
-        Workflow Graph by dragging from one node's handle to another.
+        {tx(
+          "A workflow is a directed graph of agent steps. Add agents as steps, mark one as the entry point, then draw connections between steps in the Workflow Graph by dragging from one node's handle to another.",
+          "Un workflow es un graph dirigido de steps de agents. Agrega agents como steps, marca uno como punto de entrada y luego dibuja conexiones entre steps en el Workflow Graph arrastrando desde un handle a otro nodo.",
+        )}
       </p>
 
       <label>
-        Name
+        {tx("Name", "Nombre")}
         <input
           title="Workflow name shown in the sidebar and dashboard."
           value={name}
@@ -66,11 +71,11 @@ export function WorkflowBuilder(): React.JSX.Element {
       </label>
 
       <label>
-        Description
+        {tx("Description", "Descripción")}
         <input
           title="Optional description to explain the purpose of this workflow."
           value={description}
-          placeholder="Optional description"
+          placeholder={tx("Optional description", "Descripción opcional")}
           onChange={(e) => setDescription(e.target.value)}
           onBlur={() =>
             updateWorkflowMeta(selectedWorkflow.id, { description })
@@ -79,14 +84,21 @@ export function WorkflowBuilder(): React.JSX.Element {
       </label>
 
       <div className="helper-card">
-        <strong>Steps</strong> — each step runs a specific agent. The{" "}
-        <em>Entry</em> step is where the workflow starts. Connections between
-        steps define the execution order (draw them in the graph on the right).
+        <strong>{tx("Steps", "Steps")}</strong>{" "}
+        {tx(
+          "— each step runs a specific agent. The",
+          "— cada step ejecuta un agent específico. El",
+        )}{" "}
+        <em>{tx("Entry", "Entry")}</em>{" "}
+        {tx(
+          "step is where the workflow starts. Connections between steps define the execution order (draw them in the graph on the right).",
+          "step es donde empieza el workflow. Las conexiones entre steps definen el orden de ejecución (dibújalas en el graph de la derecha).",
+        )}
       </div>
 
       <div className="inline-form-row">
         <label className="grow">
-          Add Agent as Step
+          {tx("Add Agent as Step", "Agregar Agent como Step")}
           <select
             title="Pick an agent to add as a new workflow step."
             value={selectedAgentToAdd}
@@ -108,14 +120,16 @@ export function WorkflowBuilder(): React.JSX.Element {
           }}
           disabled={!selectedAgentToAdd}
         >
-          Add Step
+          {tx("Add Step", "Agregar Step")}
         </button>
       </div>
 
       {selectedWorkflow.nodes.length === 0 ? (
         <p className="field-hint">
-          No steps yet. Select an agent above and click{" "}
-          <strong>Add Step</strong>.
+          {tx(
+            "No steps yet. Select an agent above and click Add Step.",
+            "Todavía no hay steps. Selecciona un agent arriba y haz click en Add Step.",
+          )}
         </p>
       ) : (
         <ul className="compact-list step-list">
@@ -130,21 +144,27 @@ export function WorkflowBuilder(): React.JSX.Element {
                   <span className="skill-tag selected">Entry</span>
                 ) : (
                   <button
-                    title="Make this step the workflow entry point."
+                    title={tx(
+                      "Make this step the workflow entry point.",
+                      "Convierte este step en el punto de entrada del workflow.",
+                    )}
                     onClick={() =>
                       setWorkflowEntryStep(selectedWorkflow.id, node.id)
                     }
                   >
-                    Set Entry
+                    {tx("Set Entry", "Definir Entry")}
                   </button>
                 )}
                 <button
-                  title="Remove this step and any connected edges from the workflow."
+                  title={tx(
+                    "Remove this step and any connected edges from the workflow.",
+                    "Quita este step y cualquier arista conectada del workflow.",
+                  )}
                   onClick={() =>
                     removeWorkflowStep(selectedWorkflow.id, node.id)
                   }
                 >
-                  Remove
+                  {tx("Remove", "Quitar")}
                 </button>
               </li>
             );
@@ -153,20 +173,23 @@ export function WorkflowBuilder(): React.JSX.Element {
       )}
 
       <p className="field-hint">
-        To connect steps: in the Workflow Graph on the right, hover a node to
-        reveal its handles, then drag from one handle to another node to create
-        an edge.
+        {tx(
+          "To connect steps: in the Workflow Graph on the right, hover a node to reveal its handles, then drag from one handle to another node to create an edge.",
+          "Para conectar steps: en el Workflow Graph de la derecha, pasa por encima de un nodo para mostrar sus handles y luego arrastra desde un handle a otro nodo para crear una arista.",
+        )}
       </p>
 
       <div className="helper-card" style={{ marginBottom: 8 }}>
-        <strong>Execution</strong> - Run in <em>Chat</em> mode to open each step
-        agent in order, or in <em>Plan</em> mode to generate a step-by-step
-        execution plan without opening chat.
+        <strong>{tx("Execution", "Ejecución")}</strong>{" "}
+        {tx(
+          "- Run in Chat mode to open each step agent in order, or in Plan mode to generate a step-by-step execution plan without opening chat.",
+          "- Ejecuta en modo Chat para abrir cada agent step en orden, o en modo Plan para generar un plan de ejecución paso a paso sin abrir chat.",
+        )}
       </div>
 
       <div className="inline-form-row">
         <label>
-          Run mode
+          {tx("Run mode", "Modo de ejecución")}
           <select
             title="Choose whether the workflow opens agents in chat or generates a plan only."
             value={runMode}
@@ -187,15 +210,16 @@ export function WorkflowBuilder(): React.JSX.Element {
           }
         >
           {selectedWorkflowRun?.status === "running"
-            ? "Running..."
-            : "Run Workflow"}
+            ? tx("Running...", "Ejecutando...")
+            : tx("Run Workflow", "Ejecutar Workflow")}
         </button>
       </div>
 
       {selectedWorkflowRun && (
         <div className="capability-preview run-status">
           <h4>
-            Run Status: {selectedWorkflowRun.status.toUpperCase()} (
+            {tx("Run Status", "Estado de ejecución")}:{" "}
+            {selectedWorkflowRun.status.toUpperCase()} (
             {selectedWorkflowRun.mode})
           </h4>
           <ul className="compact-list">
@@ -210,7 +234,9 @@ export function WorkflowBuilder(): React.JSX.Element {
             <pre className="source-preview">{selectedWorkflowRun.planText}</pre>
           )}
           {selectedWorkflowRun.error && (
-            <p className="field-hint">Error: {selectedWorkflowRun.error}</p>
+            <p className="field-hint">
+              {tx("Error", "Error")}: {selectedWorkflowRun.error}
+            </p>
           )}
         </div>
       )}
@@ -224,7 +250,7 @@ export function WorkflowBuilder(): React.JSX.Element {
           })
         }
       >
-        Save Workflow
+        {tx("Save Workflow", "Guardar Workflow")}
       </button>
     </section>
   );
