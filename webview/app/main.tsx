@@ -33,6 +33,8 @@ window.addEventListener(
     if (message.type === "focusAgentEditor") {
       useStudioStore.getState().selectAgent(message.payload.agentId);
       useStudioStore.getState().setTab(message.payload.tab || "Identity");
+      useStudioStore.getState().setUiPanelOpen("agentBuilder", true);
+      useStudioStore.getState().setUiPanelOpen("inspector", true);
       useStudioStore.getState().setInfoMessage("Agent ready to edit.");
       setTimeout(
         () => useStudioStore.getState().setInfoMessage(undefined),
@@ -42,21 +44,26 @@ window.addEventListener(
     if (message.type === "focusCapability") {
       useStudioStore.getState().setCapabilityGraphVisible(true);
       useStudioStore.getState().setSelectedCapability(message.payload.id);
+      useStudioStore.getState().setUiPanelOpen("agentBuilder", true);
+      useStudioStore.getState().setUiPanelOpen("inspector", true);
 
       if (message.payload.kind === "tool") {
         useStudioStore.getState().setFilter("toolId", message.payload.id);
         useStudioStore.getState().setFilter("skillId", undefined);
         useStudioStore.getState().setFilter("mcpId", undefined);
+        useStudioStore.getState().setActiveCapabilityPane("tool");
       }
       if (message.payload.kind === "skill") {
         useStudioStore.getState().setFilter("toolId", undefined);
         useStudioStore.getState().setFilter("skillId", message.payload.id);
         useStudioStore.getState().setFilter("mcpId", undefined);
+        useStudioStore.getState().setActiveCapabilityPane("skill");
       }
       if (message.payload.kind === "mcp") {
         useStudioStore.getState().setFilter("toolId", undefined);
         useStudioStore.getState().setFilter("skillId", undefined);
         useStudioStore.getState().setFilter("mcpId", message.payload.id);
+        useStudioStore.getState().setActiveCapabilityPane("mcp");
       }
 
       useStudioStore.getState().setTab("Capabilities");
@@ -70,6 +77,8 @@ window.addEventListener(
     }
     if (message.type === "focusWorkflow") {
       useStudioStore.getState().selectWorkflow(message.payload.workflowId);
+      useStudioStore.getState().setUiPanelOpen("workflowBuilder", true);
+      useStudioStore.getState().setUiPanelOpen("workflowGraph", true);
       useStudioStore.getState().setInfoMessage("Workflow ready to edit.");
       setTimeout(
         () => useStudioStore.getState().setInfoMessage(undefined),

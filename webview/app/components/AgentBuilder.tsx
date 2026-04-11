@@ -54,6 +54,10 @@ export function AgentBuilder(): React.JSX.Element {
   const selectedAgent = useStudioStore(selectors.selectedAgent);
   const selectedTab = useStudioStore((s) => s.selectedTab);
   const setTab = useStudioStore((s) => s.setTab);
+  const activeCapabilityPane = useStudioStore((s) => s.activeCapabilityPane);
+  const setActiveCapabilityPane = useStudioStore(
+    (s) => s.setActiveCapabilityPane,
+  );
   const allAgents = useStudioStore((s) => s.agents);
   const graph = useStudioStore((s) => s.capabilityGraph);
   const [draft, setDraft] = useState<AgentDefinition | undefined>(
@@ -345,301 +349,333 @@ export function AgentBuilder(): React.JSX.Element {
                 specialized tasks with better quality and consistency.
               </p>
             </div>
-            <div className="capability-form-grid">
-              <div className="helper-card">
-                <p>Add or update a Tool</p>
-                <p className="field-hint">
-                  Create a tool entry when the agent needs permission to perform
-                  a concrete action.
-                </p>
+            <div className="tab-row">
+              <button
+                className={activeCapabilityPane === "tool" ? "active" : ""}
+                title="Expand tools editing section."
+                onClick={() => setActiveCapabilityPane("tool")}
+              >
+                Tools
+              </button>
+              <button
+                className={activeCapabilityPane === "skill" ? "active" : ""}
+                title="Expand skills editing section."
+                onClick={() => setActiveCapabilityPane("skill")}
+              >
+                Skills
+              </button>
+              <button
+                className={activeCapabilityPane === "mcp" ? "active" : ""}
+                title="Expand MCP editing section."
+                onClick={() => setActiveCapabilityPane("mcp")}
+              >
+                MCP Servers
+              </button>
+            </div>
+
+            {activeCapabilityPane === "tool" && (
+              <>
+                <div className="capability-form-grid">
+                  <div className="helper-card">
+                    <p>Add or update a Tool</p>
+                    <p className="field-hint">
+                      Create a tool entry when the agent needs permission to
+                      perform a concrete action.
+                    </p>
+                    <label>
+                      Tool ID
+                      <input
+                        title="Exact tool identifier, for example run_in_terminal or a custom MCP tool id."
+                        value={newToolId}
+                        onChange={(e) => setNewToolId(e.target.value)}
+                        placeholder="ex: run_in_terminal"
+                      />
+                    </label>
+                    <label>
+                      Tool label
+                      <input
+                        title="Readable name shown to users in Agent Studio."
+                        value={newToolLabel}
+                        onChange={(e) => setNewToolLabel(e.target.value)}
+                        placeholder="ex: Run in Terminal"
+                      />
+                    </label>
+                    <label>
+                      Tool kind
+                      <select
+                        title="Classify the tool as built-in, extension-provided, or MCP-based."
+                        value={newToolKind}
+                        onChange={(e) =>
+                          setNewToolKind(e.target.value as ToolRef["kind"])
+                        }
+                      >
+                        <option value="built-in">built-in</option>
+                        <option value="extension">extension</option>
+                        <option value="mcp">mcp</option>
+                      </select>
+                    </label>
+                    <button
+                      title="Create or update this tool definition in the current agent draft."
+                      onClick={addToolFromForm}
+                      disabled={!newToolId.trim()}
+                    >
+                      Add Tool
+                    </button>
+                  </div>
+                  <div className="helper-card">
+                    <p>Tool kinds explained</p>
+                    <p>
+                      <strong>built-in</strong>: native actions like reading
+                      files, editing code, or running commands.
+                    </p>
+                    <p>
+                      <strong>extension</strong>: commands provided by a VS Code
+                      extension.
+                    </p>
+                    <p>
+                      <strong>mcp</strong>: tools exposed by an MCP server
+                      configured for the workspace.
+                    </p>
+                  </div>
+                </div>
                 <label>
-                  Tool ID
+                  Tools (ids, comma separated)
                   <input
-                    title="Exact tool identifier, for example run_in_terminal or a custom MCP tool id."
-                    value={newToolId}
-                    onChange={(e) => setNewToolId(e.target.value)}
-                    placeholder="ex: run_in_terminal"
-                  />
-                </label>
-                <label>
-                  Tool label
-                  <input
-                    title="Readable name shown to users in Agent Studio."
-                    value={newToolLabel}
-                    onChange={(e) => setNewToolLabel(e.target.value)}
-                    placeholder="ex: Run in Terminal"
-                  />
-                </label>
-                <label>
-                  Tool kind
-                  <select
-                    title="Classify the tool as built-in, extension-provided, or MCP-based."
-                    value={newToolKind}
+                    title="Advanced input for pasting several tool ids at once."
+                    value={draft.capabilities.tools
+                      .map((tool) => tool.id)
+                      .join(", ")}
                     onChange={(e) =>
-                      setNewToolKind(e.target.value as ToolRef["kind"])
+                      update({
+                        capabilities: {
+                          ...draft.capabilities,
+                          tools: parseCommaList(e.target.value).map(
+                            (id) =>
+                              graph.tools.find((tool) => tool.id === id) ||
+                              ({ id, label: id, kind: "built-in" } as ToolRef),
+                          ),
+                        },
+                      })
                     }
-                  >
-                    <option value="built-in">built-in</option>
-                    <option value="extension">extension</option>
-                    <option value="mcp">mcp</option>
-                  </select>
+                  />
                 </label>
-                <button
-                  title="Create or update this tool definition in the current agent draft."
-                  onClick={addToolFromForm}
-                  disabled={!newToolId.trim()}
-                >
-                  Add Tool
-                </button>
-              </div>
-              <div className="helper-card">
-                <p>Tool kinds explained</p>
-                <p>
-                  <strong>built-in</strong>: native actions like reading files,
-                  editing code, or running commands.
-                </p>
-                <p>
-                  <strong>extension</strong>: commands provided by a VS Code
-                  extension.
-                </p>
-                <p>
-                  <strong>mcp</strong>: tools exposed by an MCP server
-                  configured for the workspace.
-                </p>
-              </div>
-              <div className="helper-card">
-                <p>Install Skills</p>
-                <p>
-                  Install skills in the current repo under
-                  <code> .agents/skills </code>
-                  or globally in your user skills folders.
-                </p>
-                <p>
-                  Example command:
-                  <code> npx skills add softaworks/agent-toolkit </code>
-                </p>
-                <p>
-                  After installation, click <strong>Refresh</strong> and Agent
-                  Studio will detect them automatically.
-                </p>
-              </div>
-            </div>
-            <label>
-              Tools (ids, comma separated)
-              <input
-                title="Advanced input for pasting several tool ids at once."
-                value={draft.capabilities.tools
-                  .map((tool) => tool.id)
-                  .join(", ")}
-                onChange={(e) =>
-                  update({
-                    capabilities: {
-                      ...draft.capabilities,
-                      tools: parseCommaList(e.target.value).map(
-                        (id) =>
-                          graph.tools.find((tool) => tool.id === id) ||
-                          ({ id, label: id, kind: "built-in" } as ToolRef),
-                      ),
-                    },
-                  })
-                }
-              />
-            </label>
-            <label>
-              Skills (ids, comma separated)
-              <input
-                title="Advanced input for pasting several skill ids at once."
-                value={draft.capabilities.skills
-                  .map((skill) => skill.id)
-                  .join(", ")}
-                onChange={(e) =>
-                  update({
-                    capabilities: {
-                      ...draft.capabilities,
-                      skills: parseCommaList(e.target.value).map(
-                        (id) =>
-                          graph.skills.find((skill) => skill.id === id) ||
-                          ({ id, label: id } as SkillRef),
-                      ),
-                    },
-                  })
-                }
-              />
-            </label>
-            <div className="capability-preview">
-              <p>Select tools (tag multi-select)</p>
-              {graph.tools.length === 0 ? (
-                <p>
-                  No discovered tools yet. Refresh after adding tools to agents.
-                </p>
-              ) : (
-                <div className="chip-row">
-                  {graph.tools.map((tool) => {
-                    const selected = draft.capabilities.tools.some(
-                      (current) => current.id === tool.id,
-                    );
-                    return (
-                      <button
-                        key={tool.id}
-                        className={
-                          selected ? "skill-tag selected" : "skill-tag"
-                        }
-                        title={`Add or remove tool ${tool.label} (${tool.kind}).`}
-                        onClick={() => toggleTool(tool)}
-                      >
-                        {tool.label}
-                      </button>
-                    );
-                  })}
+                <div className="capability-preview">
+                  <p>Select tools (tag multi-select)</p>
+                  {graph.tools.length === 0 ? (
+                    <p>
+                      No discovered tools yet. Refresh after adding tools to
+                      agents.
+                    </p>
+                  ) : (
+                    <div className="chip-row">
+                      {graph.tools.map((tool) => {
+                        const selected = draft.capabilities.tools.some(
+                          (current) => current.id === tool.id,
+                        );
+                        return (
+                          <button
+                            key={tool.id}
+                            className={
+                              selected ? "skill-tag selected" : "skill-tag"
+                            }
+                            title={`Add or remove tool ${tool.label} (${tool.kind}).`}
+                            onClick={() => toggleTool(tool)}
+                          >
+                            {tool.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
-              )}
-              <small className="field-hint">
-                Click tags to add or remove tools quickly, just like skills.
-              </small>
-            </div>
-            <div className="capability-preview">
-              <p>Selected tools for this agent</p>
-              {draft.capabilities.tools.length === 0 ? (
-                <p>No tools selected.</p>
-              ) : (
-                <div className="chip-row removable-chip-row">
-                  {draft.capabilities.tools.map((tool) => (
-                    <span key={tool.id} className="selected-chip">
-                      {tool.label} ({tool.id})
-                      <button
-                        title={`Remove tool ${tool.label} from this agent.`}
-                        onClick={() => removeTool(tool.id)}
-                      >
-                        Remove
-                      </button>
-                    </span>
-                  ))}
+                <div className="capability-preview">
+                  <p>Selected tools for this agent</p>
+                  {draft.capabilities.tools.length === 0 ? (
+                    <p>No tools selected.</p>
+                  ) : (
+                    <div className="chip-row removable-chip-row">
+                      {draft.capabilities.tools.map((tool) => (
+                        <span key={tool.id} className="selected-chip">
+                          {tool.label} ({tool.id})
+                          <button
+                            title={`Remove tool ${tool.label} from this agent.`}
+                            onClick={() => removeTool(tool.id)}
+                          >
+                            Remove
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-            <div className="capability-preview">
-              <p>Select skills (tag multi-select)</p>
-              {graph.skills.length === 0 ? (
-                <p>
-                  No discovered skills yet. Install a skill in
-                  <code> .agents/skills </code>
-                  or in a global skills path, then refresh.
-                </p>
-              ) : (
-                <div className="chip-row">
-                  {graph.skills.map((skill) => {
-                    const selected = draft.capabilities.skills.some(
-                      (current) => current.id === skill.id,
-                    );
-                    return (
-                      <button
-                        key={skill.id}
-                        className={
-                          selected ? "skill-tag selected" : "skill-tag"
-                        }
-                        title={`Add or remove skill ${skill.label}.`}
-                        onClick={() => toggleSkill(skill)}
-                      >
-                        {skill.label}
-                      </button>
-                    );
-                  })}
+              </>
+            )}
+
+            {activeCapabilityPane === "skill" && (
+              <>
+                <div className="helper-card">
+                  <p>Install Skills</p>
+                  <p>
+                    Install skills in the current repo under
+                    <code> .agents/skills </code>
+                    or globally in your user skills folders.
+                  </p>
+                  <p>
+                    Example command:
+                    <code> npx skills add softaworks/agent-toolkit </code>
+                  </p>
+                  <p>
+                    After installation, click <strong>Refresh</strong> and Agent
+                    Studio will detect them automatically.
+                  </p>
                 </div>
-              )}
-              <small className="field-hint">
-                Click tags to add or remove multiple skills quickly.
-              </small>
-            </div>
-            <div className="capability-preview">
-              <p>Selected skills for this agent</p>
-              {draft.capabilities.skills.length === 0 ? (
-                <p>No skills selected.</p>
-              ) : (
-                <div className="chip-row removable-chip-row">
-                  {draft.capabilities.skills.map((skill) => (
-                    <span key={skill.id} className="selected-chip">
-                      {skill.label} ({skill.id})
-                      <button
-                        title={`Remove skill ${skill.label} from this agent.`}
-                        onClick={() => removeSkill(skill.id)}
-                      >
-                        Remove
-                      </button>
-                    </span>
-                  ))}
+                <label>
+                  Skills (ids, comma separated)
+                  <input
+                    title="Advanced input for pasting several skill ids at once."
+                    value={draft.capabilities.skills
+                      .map((skill) => skill.id)
+                      .join(", ")}
+                    onChange={(e) =>
+                      update({
+                        capabilities: {
+                          ...draft.capabilities,
+                          skills: parseCommaList(e.target.value).map(
+                            (id) =>
+                              graph.skills.find((skill) => skill.id === id) ||
+                              ({ id, label: id } as SkillRef),
+                          ),
+                        },
+                      })
+                    }
+                  />
+                </label>
+                <div className="capability-preview">
+                  <p>Select skills (tag multi-select)</p>
+                  {graph.skills.length === 0 ? (
+                    <p>
+                      No discovered skills yet. Install a skill in
+                      <code> .agents/skills </code>
+                      or in a global skills path, then refresh.
+                    </p>
+                  ) : (
+                    <div className="chip-row">
+                      {graph.skills.map((skill) => {
+                        const selected = draft.capabilities.skills.some(
+                          (current) => current.id === skill.id,
+                        );
+                        return (
+                          <button
+                            key={skill.id}
+                            className={
+                              selected ? "skill-tag selected" : "skill-tag"
+                            }
+                            title={`Add or remove skill ${skill.label}.`}
+                            onClick={() => toggleSkill(skill)}
+                          >
+                            {skill.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-            <label>
-              MCP Servers (ids, comma separated)
-              <input
-                title="Advanced input for pasting several MCP server ids at once."
-                value={draft.capabilities.mcpServers
-                  .map((server) => server.id)
-                  .join(", ")}
-                onChange={(e) =>
-                  update({
-                    capabilities: {
-                      ...draft.capabilities,
-                      mcpServers: parseCommaList(e.target.value).map(
-                        (id) =>
-                          graph.mcpServers.find((server) => server.id === id) ||
-                          ({ id, label: id } as MCPServerRef),
-                      ),
-                    },
-                  })
-                }
-              />
-            </label>
-            <div className="capability-preview">
-              <p>Select MCP servers (tag multi-select)</p>
-              {graph.mcpServers.length === 0 ? (
-                <p>No MCP servers discovered. Add them to mcp.json.</p>
-              ) : (
-                <div className="chip-row">
-                  {graph.mcpServers.map((server) => {
-                    const selected = draft.capabilities.mcpServers.some(
-                      (current) => current.id === server.id,
-                    );
-                    return (
-                      <button
-                        key={server.id}
-                        className={
-                          selected ? "skill-tag selected" : "skill-tag"
-                        }
-                        title={`Add or remove MCP server ${server.label}.`}
-                        onClick={() => toggleMcpServer(server)}
-                      >
-                        {server.label}
-                      </button>
-                    );
-                  })}
+                <div className="capability-preview">
+                  <p>Selected skills for this agent</p>
+                  {draft.capabilities.skills.length === 0 ? (
+                    <p>No skills selected.</p>
+                  ) : (
+                    <div className="chip-row removable-chip-row">
+                      {draft.capabilities.skills.map((skill) => (
+                        <span key={skill.id} className="selected-chip">
+                          {skill.label} ({skill.id})
+                          <button
+                            title={`Remove skill ${skill.label} from this agent.`}
+                            onClick={() => removeSkill(skill.id)}
+                          >
+                            Remove
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              )}
-              <small className="field-hint">
-                Click tags to associate MCP servers quickly.
-              </small>
-            </div>
-            <div className="capability-preview">
-              <p>Selected MCP servers for this agent</p>
-              {draft.capabilities.mcpServers.length === 0 ? (
-                <p>No MCP servers selected.</p>
-              ) : (
-                <div className="chip-row removable-chip-row">
-                  {draft.capabilities.mcpServers.map((server) => (
-                    <span key={server.id} className="selected-chip">
-                      {server.label} ({server.id})
-                      <button
-                        title={`Remove MCP server ${server.label} from this agent.`}
-                        onClick={() => removeMcpServer(server.id)}
-                      >
-                        Remove
-                      </button>
-                    </span>
-                  ))}
+              </>
+            )}
+
+            {activeCapabilityPane === "mcp" && (
+              <>
+                <label>
+                  MCP Servers (ids, comma separated)
+                  <input
+                    title="Advanced input for pasting several MCP server ids at once."
+                    value={draft.capabilities.mcpServers
+                      .map((server) => server.id)
+                      .join(", ")}
+                    onChange={(e) =>
+                      update({
+                        capabilities: {
+                          ...draft.capabilities,
+                          mcpServers: parseCommaList(e.target.value).map(
+                            (id) =>
+                              graph.mcpServers.find(
+                                (server) => server.id === id,
+                              ) || ({ id, label: id } as MCPServerRef),
+                          ),
+                        },
+                      })
+                    }
+                  />
+                </label>
+                <div className="capability-preview">
+                  <p>Select MCP servers (tag multi-select)</p>
+                  {graph.mcpServers.length === 0 ? (
+                    <p>No MCP servers discovered. Add them to mcp.json.</p>
+                  ) : (
+                    <div className="chip-row">
+                      {graph.mcpServers.map((server) => {
+                        const selected = draft.capabilities.mcpServers.some(
+                          (current) => current.id === server.id,
+                        );
+                        return (
+                          <button
+                            key={server.id}
+                            className={
+                              selected ? "skill-tag selected" : "skill-tag"
+                            }
+                            title={`Add or remove MCP server ${server.label}.`}
+                            onClick={() => toggleMcpServer(server)}
+                          >
+                            {server.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
+                <div className="capability-preview">
+                  <p>Selected MCP servers for this agent</p>
+                  {draft.capabilities.mcpServers.length === 0 ? (
+                    <p>No MCP servers selected.</p>
+                  ) : (
+                    <div className="chip-row removable-chip-row">
+                      {draft.capabilities.mcpServers.map((server) => (
+                        <span key={server.id} className="selected-chip">
+                          {server.label} ({server.id})
+                          <button
+                            title={`Remove MCP server ${server.label} from this agent.`}
+                            onClick={() => removeMcpServer(server.id)}
+                          >
+                            Remove
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+
             <div className="capability-preview">
               <p>Available tools: {graph.tools.length}</p>
               <p>Available skills: {graph.skills.length}</p>

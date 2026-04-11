@@ -22,8 +22,14 @@ export function DashboardPage(): React.JSX.Element {
   const setCapabilityGraphVisible = useStudioStore(
     (s) => s.setCapabilityGraphVisible,
   );
+  const uiPanels = useStudioStore((s) => s.uiPanels);
+  const toggleUiPanel = useStudioStore((s) => s.toggleUiPanel);
+  const setUiPanelOpen = useStudioStore((s) => s.setUiPanelOpen);
   const setFilter = useStudioStore((s) => s.setFilter);
   const setSelectedCapability = useStudioStore((s) => s.setSelectedCapability);
+  const setActiveCapabilityPane = useStudioStore(
+    (s) => s.setActiveCapabilityPane,
+  );
   const autoLayoutWorkflow = useStudioStore((s) => s.autoLayoutWorkflow);
   const [agentSearch, setAgentSearch] = React.useState("");
   const [workflowSearch, setWorkflowSearch] = React.useState("");
@@ -187,7 +193,10 @@ export function DashboardPage(): React.JSX.Element {
     id: string,
   ): void => {
     setCapabilityGraphVisible(true);
+    setUiPanelOpen("agentBuilder", true);
+    setUiPanelOpen("inspector", true);
     setSelectedCapability(id);
+    setActiveCapabilityPane(kind);
     setFilter("toolId", kind === "tool" ? id : undefined);
     setFilter("skillId", kind === "skill" ? id : undefined);
     setFilter("mcpId", kind === "mcp" ? id : undefined);
@@ -493,24 +502,69 @@ export function DashboardPage(): React.JSX.Element {
 
       <main className="main-grid">
         <div className="column">
-          <AgentBuilder />
-          <WorkflowBuilder />
+          <section className="panel collapsible-shell">
+            <div className="section-toggle-row">
+              <h2>Agent Builder</h2>
+              <button
+                className="secondary-button"
+                title="Expand or collapse Agent Builder section."
+                onClick={() => toggleUiPanel("agentBuilder")}
+              >
+                {uiPanels.agentBuilder ? "Collapse" : "Expand"}
+              </button>
+            </div>
+            {uiPanels.agentBuilder && <AgentBuilder />}
+          </section>
+
+          <section className="panel collapsible-shell">
+            <div className="section-toggle-row">
+              <h2>Workflow Editor</h2>
+              <button
+                className="secondary-button"
+                title="Expand or collapse Workflow Editor section."
+                onClick={() => toggleUiPanel("workflowBuilder")}
+              >
+                {uiPanels.workflowBuilder ? "Collapse" : "Expand"}
+              </button>
+            </div>
+            {uiPanels.workflowBuilder && <WorkflowBuilder />}
+          </section>
         </div>
         <div className="column graph-stack">
-          <section className="panel">
-            <h2>Agent Graph</h2>
-            <p className="field-hint">
-              Displays all discovered agents as nodes. Each node shows the agent
-              name and its capability counts (T = Tools, S = Skills, M = MCP
-              servers). Edges represent handoff relationships — an arrow from
-              Agent A to Agent B means A can delegate tasks to B. Click a node
-              to open that agent in the builder.
-            </p>
-            <GraphCanvas mode="agent" />
+          <section className="panel collapsible-shell">
+            <div className="section-toggle-row">
+              <h2>Agent Graph</h2>
+              <button
+                className="secondary-button"
+                title="Expand or collapse Agent Graph section."
+                onClick={() => toggleUiPanel("agentGraph")}
+              >
+                {uiPanels.agentGraph ? "Collapse" : "Expand"}
+              </button>
+            </div>
+            {uiPanels.agentGraph && (
+              <>
+                <p className="field-hint">
+                  Displays all discovered agents as nodes. Each node shows the
+                  agent name and its capability counts (T = Tools, S = Skills, M
+                  = MCP servers). Edges represent handoff relationships — an
+                  arrow from Agent A to Agent B means A can delegate tasks to B.
+                  Click a node to open that agent in the builder.
+                </p>
+                <GraphCanvas mode="agent" />
+              </>
+            )}
           </section>
-          <section className="panel">
+          <section className="panel collapsible-shell">
             <div className="panel-title-row">
               <h2>Workflow Graph</h2>
+              <button
+                className="secondary-button"
+                title="Expand or collapse Workflow Graph section."
+                onClick={() => toggleUiPanel("workflowGraph")}
+              >
+                {uiPanels.workflowGraph ? "Collapse" : "Expand"}
+              </button>
               <p className="field-hint">
                 Visualizes the selected workflow as a directed step graph. Each
                 node is an agent step; the green-bordered node is the entry
@@ -540,12 +594,25 @@ export function DashboardPage(): React.JSX.Element {
                 </>
               )}
             </div>
-            <GraphCanvas mode="workflow" />
+            {uiPanels.workflowGraph && <GraphCanvas mode="workflow" />}
           </section>
         </div>
         <div className="column">
-          <InspectorPanel />
-          {showCapabilityGraph && (
+          <section className="panel collapsible-shell">
+            <div className="section-toggle-row">
+              <h2>Inspector</h2>
+              <button
+                className="secondary-button"
+                title="Expand or collapse Inspector section."
+                onClick={() => toggleUiPanel("inspector")}
+              >
+                {uiPanels.inspector ? "Collapse" : "Expand"}
+              </button>
+            </div>
+            {uiPanels.inspector && <InspectorPanel />}
+          </section>
+
+          {showCapabilityGraph && uiPanels.inspector && (
             <section className="inspector">
               <h3>Capability Layer</h3>
               <p>

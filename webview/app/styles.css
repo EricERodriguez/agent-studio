@@ -361,6 +361,24 @@ h4 {
   padding: 12px;
 }
 
+.collapsible-shell {
+  display: grid;
+  gap: 10px;
+}
+
+.section-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.section-toggle-row h3 {
+  margin: 0;
+  font-size: 13px;
+}
+
 .graph-stack .panel {
   flex: 1;
 }

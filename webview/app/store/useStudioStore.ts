@@ -14,6 +14,14 @@ interface Filters {
   mcpId?: string;
 }
 
+interface UiPanels {
+  agentBuilder: boolean;
+  workflowBuilder: boolean;
+  agentGraph: boolean;
+  workflowGraph: boolean;
+  inspector: boolean;
+}
+
 interface StudioState {
   agents: AgentDefinition[];
   workflows: WorkflowDefinition[];
@@ -22,8 +30,10 @@ interface StudioState {
   selectedWorkflowId?: string;
   selectedNodeId?: string;
   selectedCapabilityId?: string;
+  activeCapabilityPane: "tool" | "skill" | "mcp";
   selectedTab: BuilderTab;
   showCapabilityGraph: boolean;
+  uiPanels: UiPanels;
   filters: Filters;
   infoMessage?: string;
   errorMessage?: string;
@@ -58,8 +68,11 @@ interface StudioState {
   ) => void;
   setFilter: (key: keyof Filters, value?: string) => void;
   setSelectedCapability: (capabilityId?: string) => void;
+  setActiveCapabilityPane: (pane: "tool" | "skill" | "mcp") => void;
   toggleCapabilityGraph: () => void;
   setCapabilityGraphVisible: (visible: boolean) => void;
+  toggleUiPanel: (panel: keyof UiPanels) => void;
+  setUiPanelOpen: (panel: keyof UiPanels, open: boolean) => void;
   autoLayoutWorkflow: (workflowId: string) => void;
   setInfoMessage: (message?: string) => void;
   setErrorMessage: (message?: string) => void;
@@ -78,7 +91,15 @@ export const useStudioStore = create<StudioState>((set, get) => ({
   workflows: [],
   capabilityGraph: emptyGraph,
   selectedTab: "Identity",
+  activeCapabilityPane: "tool",
   showCapabilityGraph: false,
+  uiPanels: {
+    agentBuilder: true,
+    workflowBuilder: true,
+    agentGraph: true,
+    workflowGraph: true,
+    inspector: true,
+  },
   filters: {},
   setStateFromExtension: ({ agents, workflows, capabilityGraph }) =>
     set((state) => ({
@@ -216,10 +237,26 @@ export const useStudioStore = create<StudioState>((set, get) => ({
     })),
   setSelectedCapability: (selectedCapabilityId) =>
     set({ selectedCapabilityId }),
+  setActiveCapabilityPane: (activeCapabilityPane) =>
+    set({ activeCapabilityPane }),
   toggleCapabilityGraph: () =>
     set((state) => ({ showCapabilityGraph: !state.showCapabilityGraph })),
   setCapabilityGraphVisible: (showCapabilityGraph) =>
     set({ showCapabilityGraph }),
+  toggleUiPanel: (panel) =>
+    set((state) => ({
+      uiPanels: {
+        ...state.uiPanels,
+        [panel]: !state.uiPanels[panel],
+      },
+    })),
+  setUiPanelOpen: (panel, open) =>
+    set((state) => ({
+      uiPanels: {
+        ...state.uiPanels,
+        [panel]: open,
+      },
+    })),
   autoLayoutWorkflow: (workflowId) =>
     set((state) => ({
       workflows: state.workflows.map((workflow) => {
