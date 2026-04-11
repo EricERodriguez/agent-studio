@@ -82,15 +82,8 @@ export function WorkflowBuilder(): React.JSX.Element {
         steps define the execution order (draw them in the graph on the right).
       </div>
 
-      <div
-        style={{
-          display: "flex",
-          gap: 8,
-          alignItems: "flex-end",
-          marginBottom: 8,
-        }}
-      >
-        <label style={{ flex: 1, marginBottom: 0 }}>
+      <div className="inline-form-row">
+        <label className="grow">
           Add Agent as Step
           <select
             value={selectedAgentToAdd}
@@ -121,12 +114,14 @@ export function WorkflowBuilder(): React.JSX.Element {
           <strong>Add Step</strong>.
         </p>
       ) : (
-        <ul className="compact-list" style={{ marginBottom: 12 }}>
+        <ul className="compact-list step-list">
           {selectedWorkflow.nodes.map((node) => {
             const agent = agents.find((a) => a.id === node.agentId);
             return (
-              <li key={node.id} className="removable-chip-row">
-                <span style={{ flex: 1 }}>{agent?.name ?? node.agentId}</span>
+              <li key={node.id} className="removable-chip-row step-item">
+                <span className="step-item-name">
+                  {agent?.name ?? node.agentId}
+                </span>
                 {node.isEntry ? (
                   <span className="skill-tag selected">Entry</span>
                 ) : (
@@ -163,15 +158,8 @@ export function WorkflowBuilder(): React.JSX.Element {
         execution plan without opening chat.
       </div>
 
-      <div
-        style={{
-          display: "flex",
-          gap: 8,
-          alignItems: "flex-end",
-          marginBottom: 8,
-        }}
-      >
-        <label style={{ marginBottom: 0 }}>
+      <div className="inline-form-row">
+        <label>
           Run mode
           <select
             value={runMode}
@@ -197,7 +185,7 @@ export function WorkflowBuilder(): React.JSX.Element {
       </div>
 
       {selectedWorkflowRun && (
-        <div className="capability-preview" style={{ marginBottom: 8 }}>
+        <div className="capability-preview run-status">
           <h4>
             Run Status: {selectedWorkflowRun.status.toUpperCase()} (
             {selectedWorkflowRun.mode})
@@ -211,9 +199,7 @@ export function WorkflowBuilder(): React.JSX.Element {
             ))}
           </ul>
           {selectedWorkflowRun.planText && (
-            <pre style={{ whiteSpace: "pre-wrap", marginTop: 8 }}>
-              {selectedWorkflowRun.planText}
-            </pre>
+            <pre className="source-preview">{selectedWorkflowRun.planText}</pre>
           )}
           {selectedWorkflowRun.error && (
             <p className="field-hint">Error: {selectedWorkflowRun.error}</p>

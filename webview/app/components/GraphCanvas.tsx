@@ -189,9 +189,11 @@ export function GraphCanvas({ mode }: GraphCanvasProps): React.JSX.Element {
       >
         <MiniMap
           pannable
-          style={{ backgroundColor: "#1e1e2e" }}
-          nodeColor="#6c6f93"
-          maskColor="rgba(0,0,0,0.4)"
+          style={{
+            backgroundColor: "var(--vscode-editorWidget-background)",
+          }}
+          nodeColor="var(--vscode-charts-blue)"
+          maskColor="color-mix(in srgb, var(--vscode-editor-background) 60%, transparent)"
         />
         <Controls />
         <Background />

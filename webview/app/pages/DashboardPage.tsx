@@ -53,7 +53,23 @@ export function DashboardPage(): React.JSX.Element {
   return (
     <div className="layout">
       <header className="header">
-        <h1>Agent Studio</h1>
+        <div className="header-copy">
+          <span className="header-kicker">Orchestration Workspace</span>
+          <h1>Agent Studio</h1>
+          <p className="header-subtitle">
+            Build agents, model handoffs, and run execution workflows.
+          </p>
+          <div className="header-metrics">
+            <span className="metric-chip">Agents: {agents.length}</span>
+            <span className="metric-chip">Workflows: {workflows.length}</span>
+            <span className="metric-chip">
+              Capabilities:{" "}
+              {graph.tools.length +
+                graph.skills.length +
+                graph.mcpServers.length}
+            </span>
+          </div>
+        </div>
         <div className="header-actions">
           <button onClick={() => vscode?.postMessage({ type: "createAgent" })}>
             Create Agent
@@ -70,7 +86,7 @@ export function DashboardPage(): React.JSX.Element {
       </header>
 
       <section className="toolbar">
-        <div>
+        <div className="toolbar-row">
           <label>
             Agent
             <select
@@ -98,7 +114,7 @@ export function DashboardPage(): React.JSX.Element {
             </select>
           </label>
         </div>
-        <div className="header-actions">
+        <div className="toolbar-row">
           <label>
             Tool filter
             <select
