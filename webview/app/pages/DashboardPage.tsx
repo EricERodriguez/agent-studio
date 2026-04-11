@@ -35,9 +35,9 @@ export function DashboardPage(): React.JSX.Element {
   const [agentSearch, setAgentSearch] = React.useState("");
   const [workflowSearch, setWorkflowSearch] = React.useState("");
   const [capabilitySearch, setCapabilitySearch] = React.useState("");
-  const [isSearchExpanded, setIsSearchExpanded] = React.useState(true);
+  const [isToolbarExpanded, setIsToolbarExpanded] = React.useState(true);
   const didMountRef = React.useRef(false);
-  const searchSectionRef = React.useRef<HTMLDivElement | null>(null);
+  const toolbarRef = React.useRef<HTMLElement | null>(null);
   const agentBuilderRef = React.useRef<HTMLElement | null>(null);
   const workflowBuilderRef = React.useRef<HTMLElement | null>(null);
   const agentGraphRef = React.useRef<HTMLElement | null>(null);
@@ -301,32 +301,34 @@ export function DashboardPage(): React.JSX.Element {
         </div>
       </header>
 
-      <section className="toolbar">
-        <div className="toolbar-section search-section">
-          <div className="section-toggle-row" ref={searchSectionRef}>
-            <div className="toolbar-title-row">
-              <h2 className="toolbar-title">Quick Search</h2>
-              <p className="field-hint">
-                Jump directly to agents, workflows, or capabilities without
-                hunting through the full lists.
-              </p>
-            </div>
-            <button
-              className="secondary-button"
-              title="Expand or collapse Quick Search section."
-              onClick={() => {
-                const willOpen = !isSearchExpanded;
-                setIsSearchExpanded(willOpen);
-                if (willOpen) {
-                  scrollToSection(searchSectionRef);
-                }
-              }}
-            >
-              {isSearchExpanded ? "Collapse" : "Expand"}
-            </button>
-          </div>
-          {isSearchExpanded && (
-            <>
+      <section className="toolbar" ref={toolbarRef}>
+        <div className="section-toggle-row">
+          <h2 className="toolbar-title">Workspace Controls</h2>
+          <button
+            className="secondary-button"
+            title="Expand or collapse Quick Search, Context Selection, and Capability Filters."
+            onClick={() => {
+              const willOpen = !isToolbarExpanded;
+              setIsToolbarExpanded(willOpen);
+              if (willOpen) {
+                scrollToSection(toolbarRef);
+              }
+            }}
+          >
+            {isToolbarExpanded ? "Collapse" : "Expand"}
+          </button>
+        </div>
+
+        {isToolbarExpanded && (
+          <>
+            <div className="toolbar-section search-section">
+              <div className="toolbar-title-row">
+                <h2 className="toolbar-title">Quick Search</h2>
+                <p className="field-hint">
+                  Jump directly to agents, workflows, or capabilities without
+                  hunting through the full lists.
+                </p>
+              </div>
               <div className="search-grid">
                 <label>
                   Find agent
@@ -437,145 +439,149 @@ export function DashboardPage(): React.JSX.Element {
                   )}
                 </div>
               </div>
-            </>
-          )}
-        </div>
-        <div className="toolbar-section">
-          <div className="toolbar-title-row">
-            <h2 className="toolbar-title">Context Selection</h2>
-            <p className="field-hint">
-              Choose the active agent and workflow before editing or running.
-            </p>
-          </div>
-          <div className="toolbar-row">
-            <label>
-              Agent
-              <select
-                title="Choose which agent is active in the builder and inspector."
-                value={selectedAgentId || ""}
-                onChange={(e) => selectAgent(e.target.value || undefined)}
-              >
-                <option value="">No agent selected</option>
-                {agents.map((agent) => (
-                  <option key={agent.id} value={agent.id}>
-                    {agent.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Workflow
-              <select
-                title="Choose which workflow is active in the workflow editor and graph."
-                value={selectedWorkflowId || ""}
-                onChange={(e) => selectWorkflow(e.target.value || undefined)}
-              >
-                <option value="">No workflow selected</option>
-                {workflows.map((workflow) => (
-                  <option key={workflow.id} value={workflow.id}>
-                    {workflow.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-        </div>
+            </div>
 
-        <div className="toolbar-section filter-section">
-          <div className="toolbar-title-row">
-            <h2 className="toolbar-title">Capability Filters</h2>
-            <p className="field-hint">
-              Narrow the capability layer by tool, skill, and MCP server.
-            </p>
-          </div>
-
-          <div className="filter-grid">
-            <label>
-              Tool filter
-              <select
-                title="Show only agents connected to the selected tool in the capability layer."
-                value={filters.toolId || ""}
-                onChange={(e) => setFilter("toolId", e.target.value)}
-              >
-                <option value="">All tools</option>
-                {graph.tools.map((tool) => (
-                  <option key={tool.id} value={tool.id}>
-                    {tool.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Skill filter
-              <select
-                title="Show only agents connected to the selected skill in the capability layer."
-                value={filters.skillId || ""}
-                onChange={(e) => setFilter("skillId", e.target.value)}
-              >
-                <option value="">All skills</option>
-                {graph.skills.map((skill) => (
-                  <option key={skill.id} value={skill.id}>
-                    {skill.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              MCP filter
-              <select
-                title="Show only agents connected to the selected MCP server in the capability layer."
-                value={filters.mcpId || ""}
-                onChange={(e) => setFilter("mcpId", e.target.value)}
-              >
-                <option value="">All MCP servers</option>
-                {graph.mcpServers.map((server) => (
-                  <option key={server.id} value={server.id}>
-                    {server.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-
-          <div className="filter-actions">
-            <button
-              className="secondary-button"
-              title="Remove every active capability filter and show the full agent list again."
-              onClick={clearAllFilters}
-              disabled={!hasActiveFilters}
-            >
-              Clear Filters
-            </button>
-            <button
-              title="Show or hide the capability relationship panel on the right."
-              onClick={toggleCapabilityGraph}
-            >
-              {showCapabilityGraph
-                ? "Hide Capability Graph"
-                : "Show Capability Graph"}
-            </button>
-          </div>
-
-          <div className="filter-feedback">
-            <span className="metric-chip">
-              Showing {filteredAgents.length} of {agents.length} agents
-            </span>
-            {hasActiveFilters && (
-              <div className="active-filter-chips">
-                {activeFilters.map((filter) => (
-                  <button
-                    key={filter.key}
-                    className="filter-chip"
-                    title={`Remove the ${filter.label} filter.`}
-                    onClick={() => setFilter(filter.key, undefined)}
-                  >
-                    {filter.label}: {filter.value} x
-                  </button>
-                ))}
+            <div className="toolbar-section">
+              <div className="toolbar-title-row">
+                <h2 className="toolbar-title">Context Selection</h2>
+                <p className="field-hint">
+                  Choose the active agent and workflow before editing or
+                  running.
+                </p>
               </div>
-            )}
-          </div>
-        </div>
+              <div className="toolbar-row">
+                <label>
+                  Agent
+                  <select
+                    title="Choose which agent is active in the builder and inspector."
+                    value={selectedAgentId || ""}
+                    onChange={(e) => selectAgent(e.target.value || undefined)}
+                  >
+                    <option value="">No agent selected</option>
+                    {agents.map((agent) => (
+                      <option key={agent.id} value={agent.id}>
+                        {agent.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Workflow
+                  <select
+                    title="Choose which workflow is active in the workflow editor and graph."
+                    value={selectedWorkflowId || ""}
+                    onChange={(e) =>
+                      selectWorkflow(e.target.value || undefined)
+                    }
+                  >
+                    <option value="">No workflow selected</option>
+                    {workflows.map((workflow) => (
+                      <option key={workflow.id} value={workflow.id}>
+                        {workflow.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            </div>
+
+            <div className="toolbar-section filter-section">
+              <div className="toolbar-title-row">
+                <h2 className="toolbar-title">Capability Filters</h2>
+                <p className="field-hint">
+                  Narrow the capability layer by tool, skill, and MCP server.
+                </p>
+              </div>
+
+              <div className="filter-grid">
+                <label>
+                  Tool filter
+                  <select
+                    title="Show only agents connected to the selected tool in the capability layer."
+                    value={filters.toolId || ""}
+                    onChange={(e) => setFilter("toolId", e.target.value)}
+                  >
+                    <option value="">All tools</option>
+                    {graph.tools.map((tool) => (
+                      <option key={tool.id} value={tool.id}>
+                        {tool.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Skill filter
+                  <select
+                    title="Show only agents connected to the selected skill in the capability layer."
+                    value={filters.skillId || ""}
+                    onChange={(e) => setFilter("skillId", e.target.value)}
+                  >
+                    <option value="">All skills</option>
+                    {graph.skills.map((skill) => (
+                      <option key={skill.id} value={skill.id}>
+                        {skill.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  MCP filter
+                  <select
+                    title="Show only agents connected to the selected MCP server in the capability layer."
+                    value={filters.mcpId || ""}
+                    onChange={(e) => setFilter("mcpId", e.target.value)}
+                  >
+                    <option value="">All MCP servers</option>
+                    {graph.mcpServers.map((server) => (
+                      <option key={server.id} value={server.id}>
+                        {server.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              <div className="filter-actions">
+                <button
+                  className="secondary-button"
+                  title="Remove every active capability filter and show the full agent list again."
+                  onClick={clearAllFilters}
+                  disabled={!hasActiveFilters}
+                >
+                  Clear Filters
+                </button>
+                <button
+                  title="Show or hide the capability relationship panel on the right."
+                  onClick={toggleCapabilityGraph}
+                >
+                  {showCapabilityGraph
+                    ? "Hide Capability Graph"
+                    : "Show Capability Graph"}
+                </button>
+              </div>
+
+              <div className="filter-feedback">
+                <span className="metric-chip">
+                  Showing {filteredAgents.length} of {agents.length} agents
+                </span>
+                {hasActiveFilters && (
+                  <div className="active-filter-chips">
+                    {activeFilters.map((filter) => (
+                      <button
+                        key={filter.key}
+                        className="filter-chip"
+                        title={`Remove the ${filter.label} filter.`}
+                        onClick={() => setFilter(filter.key, undefined)}
+                      >
+                        {filter.label}: {filter.value} x
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </>
+        )}
       </section>
 
       {infoMessage && <div className="message info">{infoMessage}</div>}
