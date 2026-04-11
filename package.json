@@ -3,14 +3,14 @@
     "displayName": "Agent Studio",
     "description": "Visual control plane for designing and orchestrating AI agents in VS Code.",
     "version": "0.1.0",
-    "publisher": "agentstudio-dev",
+    "publisher": "AgentstudioIA",
     "engines": {
         "vscode": "^1.110.0"
     },
     "icon": "assets/icon.png",
     "repository": {
         "type": "git",
-        "url": "https://github.com/TU_USUARIO/TU_REPO.git"
+        "url": "https://github.com/EricERodriguez/agent-studio"
     },
     "categories": [
         "Other"
