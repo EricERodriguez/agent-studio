@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -58,6 +58,7 @@ jobs:
       - name: Deploy to gh-pages
         uses: peaceiris/actions-gh-pages@v3
         with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: docs-site/docs/.vitepress/dist
           publish_branch: gh-pages
           # usa GITHUB_TOKEN por defecto; si prefieres un PAT usa: personal_token: ${{ secrets.PERSONAL_TOKEN }}
