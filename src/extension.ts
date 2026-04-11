@@ -15,6 +15,7 @@ import {
   OnboardingTreeProvider,
   QuickActionsTreeProvider,
   TemplatesTreeProvider,
+  WorkspaceHealthTreeProvider,
   WorkflowsTreeProvider,
 } from "./views/treeProviders";
 import { DashboardPanel } from "./views/dashboardPanel";
@@ -65,6 +66,7 @@ export async function activate(
   const capabilitiesTreeProvider = new CapabilitiesTreeProvider();
   const onboardingTreeProvider = new OnboardingTreeProvider();
   const quickActionsTreeProvider = new QuickActionsTreeProvider();
+  const workspaceHealthTreeProvider = new WorkspaceHealthTreeProvider();
   const templatesTreeProvider = new TemplatesTreeProvider();
 
   context.subscriptions.push(
@@ -75,6 +77,10 @@ export async function activate(
     vscode.window.registerTreeDataProvider(
       "agentStudio.quickActionsView",
       quickActionsTreeProvider,
+    ),
+    vscode.window.registerTreeDataProvider(
+      "agentStudio.healthView",
+      workspaceHealthTreeProvider,
     ),
     vscode.window.registerTreeDataProvider(
       "agentStudio.agentsView",
@@ -174,7 +180,101 @@ export async function activate(
     agentsTreeProvider.setData(agents, workflows);
     workflowsTreeProvider.setWorkflows(workflows);
     capabilitiesTreeProvider.setCapabilityGraph(capabilityGraph);
+    workspaceHealthTreeProvider.setData(agents, workflows, capabilityGraph);
     dashboard.postState(agents, workflows, capabilityGraph);
+  };
+
+  const quickPickAgents = async (): Promise<void> => {
+    if (agents.length === 0) {
+      void vscode.window.showWarningMessage("No agents available.");
+      return;
+    }
+
+    const pick = await vscode.window.showQuickPick(
+      agents.map((agent) => ({
+        label: agent.name,
+        description: agent.role || agent.id,
+        detail: agent.description,
+        id: agent.id,
+      })),
+      { placeHolder: "Search and open an agent" },
+    );
+
+    if (!pick) {
+      return;
+    }
+
+    dashboard.show();
+    dashboard.focusAgentEditor(pick.id, "Identity");
+  };
+
+  const quickPickWorkflows = async (): Promise<void> => {
+    if (workflows.length === 0) {
+      void vscode.window.showWarningMessage("No workflows available.");
+      return;
+    }
+
+    const pick = await vscode.window.showQuickPick(
+      workflows.map((workflow) => ({
+        label: workflow.name,
+        description: `${workflow.nodes.length} nodes · ${workflow.edges.length} edges`,
+        detail: workflow.description,
+        id: workflow.id,
+      })),
+      { placeHolder: "Search and focus a workflow" },
+    );
+
+    if (!pick) {
+      return;
+    }
+
+    dashboard.show();
+    dashboard.focusWorkflow(pick.id);
+  };
+
+  const quickPickCapabilities = async (): Promise<void> => {
+    const capabilityGraph =
+      await capabilityService.buildCapabilityGraph(agents);
+
+    const options = [
+      ...capabilityGraph.tools.map((tool) => ({
+        label: tool.label,
+        description: `Tool · ${tool.kind}`,
+        detail: tool.id,
+        kind: "tool" as const,
+        id: tool.id,
+      })),
+      ...capabilityGraph.skills.map((skill) => ({
+        label: skill.label,
+        description: "Skill",
+        detail: skill.id,
+        kind: "skill" as const,
+        id: skill.id,
+      })),
+      ...capabilityGraph.mcpServers.map((server) => ({
+        label: server.label,
+        description: "MCP Server",
+        detail: server.id,
+        kind: "mcp" as const,
+        id: server.id,
+      })),
+    ];
+
+    if (options.length === 0) {
+      void vscode.window.showWarningMessage("No capabilities available.");
+      return;
+    }
+
+    const pick = await vscode.window.showQuickPick(options, {
+      placeHolder: "Search and focus a capability",
+    });
+
+    if (!pick) {
+      return;
+    }
+
+    dashboard.show();
+    dashboard.focusCapability(pick.kind, pick.id);
   };
 
   const runWorkflow = async (
@@ -591,6 +691,9 @@ export async function activate(
       void refreshState();
     },
     refreshStudio,
+    quickPickAgents,
+    quickPickWorkflows,
+    quickPickCapabilities,
     createAgent,
     editAgent,
     deleteAgent,

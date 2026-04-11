@@ -37,6 +37,11 @@
                     "icon": "media/agent-studio.svg"
                 },
                 {
+                    "id": "agentStudio.healthView",
+                    "name": "Workspace Health",
+                    "icon": "media/agent-studio.svg"
+                },
+                {
                     "id": "agentStudio.agentsView",
                     "name": "Agents",
                     "icon": "media/agent-studio.svg"
@@ -62,6 +67,18 @@
             {
                 "command": "agentStudio.openDashboard",
                 "title": "Agent Studio: Open Dashboard"
+            },
+            {
+                "command": "agentStudio.quickPickAgents",
+                "title": "Agent Studio: Quick Find Agent"
+            },
+            {
+                "command": "agentStudio.quickPickWorkflows",
+                "title": "Agent Studio: Quick Find Workflow"
+            },
+            {
+                "command": "agentStudio.quickPickCapabilities",
+                "title": "Agent Studio: Quick Find Capability"
             },
             {
                 "command": "agentStudio.createAgent",
@@ -116,9 +133,24 @@
                     "group": "navigation"
                 },
                 {
+                    "command": "agentStudio.refreshStudio",
+                    "when": "view == agentStudio.healthView",
+                    "group": "navigation"
+                },
+                {
+                    "command": "agentStudio.quickPickAgents",
+                    "when": "view == agentStudio.agentsView",
+                    "group": "navigation@2"
+                },
+                {
                     "command": "agentStudio.createAgent",
                     "when": "view == agentStudio.agentsView",
                     "group": "navigation"
+                },
+                {
+                    "command": "agentStudio.quickPickWorkflows",
+                    "when": "view == agentStudio.workflowsView",
+                    "group": "navigation@2"
                 },
                 {
                     "command": "agentStudio.createWorkflow",
@@ -134,6 +166,11 @@
                     "command": "agentStudio.showToolsGuide",
                     "when": "view == agentStudio.capabilitiesView",
                     "group": "navigation"
+                },
+                {
+                    "command": "agentStudio.quickPickCapabilities",
+                    "when": "view == agentStudio.capabilitiesView",
+                    "group": "navigation@2"
                 }
             ],
             "view/item/context": [

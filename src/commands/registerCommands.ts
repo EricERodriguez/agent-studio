@@ -4,6 +4,9 @@ import type { AgentDefinition, WorkflowDefinition } from "../domain/models";
 export interface CommandHandlers {
   openDashboard: () => void;
   refreshStudio: () => Promise<void>;
+  quickPickAgents: () => Promise<void>;
+  quickPickWorkflows: () => Promise<void>;
+  quickPickCapabilities: () => Promise<void>;
   createAgent: (templateName?: string) => Promise<void>;
   editAgent: (agentId?: string) => Promise<void>;
   deleteAgent: (agentId?: string) => Promise<void>;
@@ -26,6 +29,12 @@ export function registerCommands(
   const defs: Array<[string, (...args: unknown[]) => unknown]> = [
     ["agentStudio.openDashboard", () => handlers.openDashboard()],
     ["agentStudio.refreshStudio", () => handlers.refreshStudio()],
+    ["agentStudio.quickPickAgents", () => handlers.quickPickAgents()],
+    ["agentStudio.quickPickWorkflows", () => handlers.quickPickWorkflows()],
+    [
+      "agentStudio.quickPickCapabilities",
+      () => handlers.quickPickCapabilities(),
+    ],
     [
       "agentStudio.createAgent",
       (templateName) =>

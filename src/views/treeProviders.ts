@@ -14,24 +14,62 @@ class BaseItem extends vscode.TreeItem {
   }
 }
 
-function createStatusIcon(hasCriticalIssue: boolean): vscode.ThemeIcon {
-  return hasCriticalIssue
-    ? new vscode.ThemeIcon(
-        "warning",
-        new vscode.ThemeColor("problemsWarningIcon.foreground"),
-      )
-    : new vscode.ThemeIcon(
-        "check",
-        new vscode.ThemeColor("testing.iconPassed"),
-      );
+type AgentIssueKind =
+  | "broken-handoffs"
+  | "no-instructions"
+  | "orphan"
+  | "no-workflow-coverage"
+  | "no-tools"
+  | "missing-skills"
+  | "missing-mcp";
+
+interface AgentIssue {
+  kind: AgentIssueKind;
+  label: string;
+}
+
+function createStatusIcon(primaryIssue?: AgentIssueKind): vscode.ThemeIcon {
+  if (!primaryIssue) {
+    return new vscode.ThemeIcon(
+      "check",
+      new vscode.ThemeColor("testing.iconPassed"),
+    );
+  }
+
+  const iconByIssue: Record<AgentIssueKind, { id: string; color: string }> = {
+    "broken-handoffs": { id: "error", color: "problemsErrorIcon.foreground" },
+    "no-instructions": {
+      id: "warning",
+      color: "problemsWarningIcon.foreground",
+    },
+    orphan: { id: "issues", color: "problemsWarningIcon.foreground" },
+    "no-workflow-coverage": {
+      id: "debug-disconnect",
+      color: "charts.orange",
+    },
+    "no-tools": { id: "tools", color: "charts.yellow" },
+    "missing-skills": { id: "lightbulb", color: "charts.blue" },
+    "missing-mcp": { id: "plug", color: "charts.purple" },
+  };
+
+  const selected = iconByIssue[primaryIssue];
+  return new vscode.ThemeIcon(
+    selected.id,
+    new vscode.ThemeColor(selected.color),
+  );
 }
 
 function summarizeAgentStatus(
   agent: AgentDefinition,
   allAgents: AgentDefinition[],
   workflows: WorkflowDefinition[],
-): { statusText: string; tooltip: string; hasIssue: boolean } {
-  const issues: string[] = [];
+): {
+  statusText: string;
+  tooltip: string;
+  hasIssue: boolean;
+  primaryIssue?: AgentIssueKind;
+} {
+  const issues: AgentIssue[] = [];
   const workflowCoverage = workflows.filter((workflow) =>
     workflow.nodes.some((node) => node.agentId === agent.id),
   ).length;
@@ -40,16 +78,16 @@ function summarizeAgentStatus(
   ).length;
 
   if (agent.capabilities.tools.length === 0) {
-    issues.push("no tools");
+    issues.push({ kind: "no-tools", label: "no tools" });
   }
   if (!agent.instructions.trim()) {
-    issues.push("no instructions");
+    issues.push({ kind: "no-instructions", label: "no instructions" });
   }
   if (agent.capabilities.skills.length === 0) {
-    issues.push("missing skills");
+    issues.push({ kind: "missing-skills", label: "missing skills" });
   }
   if (agent.capabilities.mcpServers.length === 0) {
-    issues.push("missing mcp");
+    issues.push({ kind: "missing-mcp", label: "missing mcp" });
   }
   const brokenHandoffs = agent.handoffs.filter(
     (handoffId) =>
@@ -58,21 +96,42 @@ function summarizeAgentStatus(
       ),
   );
   if (brokenHandoffs.length > 0) {
-    issues.push("broken handoffs");
+    issues.push({ kind: "broken-handoffs", label: "broken handoffs" });
   }
   if (workflowCoverage === 0) {
-    issues.push("no workflow coverage");
+    issues.push({
+      kind: "no-workflow-coverage",
+      label: "no workflow coverage",
+    });
   }
   if (
     workflowCoverage === 0 &&
     inboundHandoffs === 0 &&
     agent.handoffs.length === 0
   ) {
-    issues.push("orphan");
+    issues.push({ kind: "orphan", label: "orphan" });
   }
 
+  const priority: AgentIssueKind[] = [
+    "broken-handoffs",
+    "no-instructions",
+    "orphan",
+    "no-workflow-coverage",
+    "no-tools",
+    "missing-skills",
+    "missing-mcp",
+  ];
+  const primaryIssue = priority.find((kind) =>
+    issues.some((issue) => issue.kind === kind),
+  );
+
   const statusText =
-    issues.length > 0 ? issues.slice(0, 3).join(" · ") : "ready";
+    issues.length > 0
+      ? issues
+          .slice(0, 2)
+          .map((issue) => issue.label)
+          .join(" · ")
+      : "ready";
   const tooltip = [
     `${agent.name}`,
     `Role: ${agent.role || "n/a"}`,
@@ -82,11 +141,16 @@ function summarizeAgentStatus(
     `Workflow coverage: ${workflowCoverage}`,
     `Inbound handoffs: ${inboundHandoffs}`,
     `Outbound handoffs: ${agent.handoffs.length}`,
-    `Status: ${issues.length > 0 ? issues.join(" · ") : "ready"}`,
+    `Status: ${issues.length > 0 ? issues.map((issue) => issue.label).join(" · ") : "ready"}`,
     "Click to open this agent directly in Agent Builder.",
   ].join("\n");
 
-  return { statusText, tooltip, hasIssue: issues.length > 0 };
+  return {
+    statusText,
+    tooltip,
+    hasIssue: issues.length > 0,
+    primaryIssue,
+  };
 }
 
 export class AgentsTreeProvider implements vscode.TreeDataProvider<BaseItem> {
@@ -121,7 +185,7 @@ export class AgentsTreeProvider implements vscode.TreeDataProvider<BaseItem> {
           " · ",
         );
         item.tooltip = status.tooltip;
-        item.iconPath = createStatusIcon(status.hasIssue);
+        item.iconPath = createStatusIcon(status.primaryIssue);
         item.contextValue = "agentStudio.agent";
         item.command = {
           command: "agentStudio.editAgent",
@@ -131,6 +195,185 @@ export class AgentsTreeProvider implements vscode.TreeDataProvider<BaseItem> {
         return item;
       }),
     );
+  }
+}
+
+export class WorkspaceHealthTreeProvider implements vscode.TreeDataProvider<BaseItem> {
+  private readonly onDidChangeTreeDataEmitter = new vscode.EventEmitter<void>();
+  readonly onDidChangeTreeData = this.onDidChangeTreeDataEmitter.event;
+
+  private agents: AgentDefinition[] = [];
+  private workflows: WorkflowDefinition[] = [];
+  private capabilityGraph: CapabilityGraph = {
+    tools: [],
+    skills: [],
+    mcpServers: [],
+    usage: { tools: {}, skills: {}, mcpServers: {} },
+  };
+
+  setData(
+    agents: AgentDefinition[],
+    workflows: WorkflowDefinition[],
+    capabilityGraph: CapabilityGraph,
+  ): void {
+    this.agents = agents;
+    this.workflows = workflows;
+    this.capabilityGraph = capabilityGraph;
+    this.onDidChangeTreeDataEmitter.fire();
+  }
+
+  getTreeItem(element: BaseItem): vscode.TreeItem {
+    return element;
+  }
+
+  getChildren(element?: BaseItem): Thenable<BaseItem[]> {
+    if (!element) {
+      return Promise.resolve([
+        new BaseItem("Summary", vscode.TreeItemCollapsibleState.Expanded),
+        new BaseItem("Agents", vscode.TreeItemCollapsibleState.Collapsed),
+        new BaseItem("Workflows", vscode.TreeItemCollapsibleState.Collapsed),
+        new BaseItem("Capabilities", vscode.TreeItemCollapsibleState.Collapsed),
+      ]);
+    }
+
+    const workflowCoverageByAgent = new Map<string, number>();
+    for (const agent of this.agents) {
+      workflowCoverageByAgent.set(
+        agent.id,
+        this.workflows.filter((workflow) =>
+          workflow.nodes.some((node) => node.agentId === agent.id),
+        ).length,
+      );
+    }
+
+    const orphanAgents = this.agents.filter((agent) => {
+      const inboundHandoffs = this.agents.filter((candidate) =>
+        candidate.handoffs.includes(agent.id),
+      ).length;
+      const coverage = workflowCoverageByAgent.get(agent.id) || 0;
+      return (
+        coverage === 0 && inboundHandoffs === 0 && agent.handoffs.length === 0
+      );
+    }).length;
+
+    const workflowsWithoutEntry = this.workflows.filter(
+      (workflow) => !workflow.nodes.some((node) => node.isEntry),
+    ).length;
+
+    const unusedTools = this.capabilityGraph.tools.filter(
+      (tool) => (this.capabilityGraph.usage.tools[tool.id] || []).length === 0,
+    ).length;
+    const unusedSkills = this.capabilityGraph.skills.filter(
+      (skill) =>
+        (this.capabilityGraph.usage.skills[skill.id] || []).length === 0,
+    ).length;
+    const unusedMcp = this.capabilityGraph.mcpServers.filter(
+      (mcp) =>
+        (this.capabilityGraph.usage.mcpServers[mcp.id] || []).length === 0,
+    ).length;
+
+    const missingInstructions = this.agents.filter(
+      (agent) => !agent.instructions.trim(),
+    ).length;
+    const missingTools = this.agents.filter(
+      (agent) => agent.capabilities.tools.length === 0,
+    ).length;
+    const missingSkills = this.agents.filter(
+      (agent) => agent.capabilities.skills.length === 0,
+    ).length;
+    const missingMcp = this.agents.filter(
+      (agent) => agent.capabilities.mcpServers.length === 0,
+    ).length;
+
+    const metricItem = (
+      label: string,
+      value: number,
+      tooltip: string,
+    ): BaseItem => {
+      const item = new BaseItem(`${label}: ${value}`);
+      item.description = value === 0 ? "ok" : "attention";
+      item.tooltip = tooltip;
+      item.iconPath = new vscode.ThemeIcon(
+        value === 0 ? "check" : "warning",
+        new vscode.ThemeColor(
+          value === 0 ? "testing.iconPassed" : "problemsWarningIcon.foreground",
+        ),
+      );
+      return item;
+    };
+
+    if (element.label === "Summary") {
+      return Promise.resolve([
+        metricItem(
+          "Orphan agents",
+          orphanAgents,
+          "Agents with no workflow coverage and no inbound/outbound handoffs.",
+        ),
+        metricItem(
+          "Workflows without entry",
+          workflowsWithoutEntry,
+          "Workflows that have no step marked as entry point.",
+        ),
+        metricItem(
+          "Unused capabilities",
+          unusedTools + unusedSkills + unusedMcp,
+          "Total capabilities not referenced by any agent.",
+        ),
+      ]);
+    }
+
+    if (element.label === "Agents") {
+      return Promise.resolve([
+        metricItem(
+          "Missing instructions",
+          missingInstructions,
+          "Agents without instruction content.",
+        ),
+        metricItem("Missing tools", missingTools, "Agents with zero tools."),
+        metricItem("Missing skills", missingSkills, "Agents with zero skills."),
+        metricItem("Missing MCP", missingMcp, "Agents with zero MCP servers."),
+      ]);
+    }
+
+    if (element.label === "Workflows") {
+      const emptyWorkflows = this.workflows.filter(
+        (workflow) => workflow.nodes.length === 0,
+      ).length;
+      return Promise.resolve([
+        metricItem(
+          "Workflows without entry",
+          workflowsWithoutEntry,
+          "Workflows that have no entry step.",
+        ),
+        metricItem(
+          "Empty workflows",
+          emptyWorkflows,
+          "Workflows that currently have zero nodes.",
+        ),
+      ]);
+    }
+
+    if (element.label === "Capabilities") {
+      return Promise.resolve([
+        metricItem(
+          "Unused tools",
+          unusedTools,
+          "Tools discovered but not used by any agent.",
+        ),
+        metricItem(
+          "Unused skills",
+          unusedSkills,
+          "Skills discovered but not used by any agent.",
+        ),
+        metricItem(
+          "Unused MCP servers",
+          unusedMcp,
+          "MCP servers discovered but not used by any agent.",
+        ),
+      ]);
+    }
+
+    return Promise.resolve([]);
   }
 }
 
