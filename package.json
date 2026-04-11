@@ -1,6 +1,6 @@
 {
     "name": "agent-studio-ia",
-    "displayName": "Agent Studio",
+    "displayName": "Agent Studio IA",
     "description": "Visual control plane for designing and orchestrating AI agents in VS Code.",
     "version": "0.1.0",
     "publisher": "AgentstudioIA",
