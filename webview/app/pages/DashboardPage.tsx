@@ -11,6 +11,7 @@ export function DashboardPage(): React.JSX.Element {
   const workflows = useStudioStore((s) => s.workflows);
   const selectedAgentId = useStudioStore((s) => s.selectedAgentId);
   const selectedWorkflowId = useStudioStore((s) => s.selectedWorkflowId);
+  const selectedTab = useStudioStore((s) => s.selectedTab);
   const showCapabilityGraph = useStudioStore((s) => s.showCapabilityGraph);
   const filters = useStudioStore((s) => s.filters);
   const graph = useStudioStore((s) => s.capabilityGraph);
@@ -34,6 +35,24 @@ export function DashboardPage(): React.JSX.Element {
   const [agentSearch, setAgentSearch] = React.useState("");
   const [workflowSearch, setWorkflowSearch] = React.useState("");
   const [capabilitySearch, setCapabilitySearch] = React.useState("");
+  const didMountRef = React.useRef(false);
+  const agentBuilderRef = React.useRef<HTMLElement | null>(null);
+  const workflowBuilderRef = React.useRef<HTMLElement | null>(null);
+  const agentGraphRef = React.useRef<HTMLElement | null>(null);
+  const workflowGraphRef = React.useRef<HTMLElement | null>(null);
+  const inspectorRef = React.useRef<HTMLElement | null>(null);
+
+  const scrollToSection = React.useCallback(
+    (ref: React.RefObject<HTMLElement | null>) => {
+      window.requestAnimationFrame(() => {
+        ref.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      });
+    },
+    [],
+  );
 
   const deferredAgentSearch = React.useDeferredValue(agentSearch.trim());
   const deferredWorkflowSearch = React.useDeferredValue(workflowSearch.trim());
@@ -200,7 +219,43 @@ export function DashboardPage(): React.JSX.Element {
     setFilter("toolId", kind === "tool" ? id : undefined);
     setFilter("skillId", kind === "skill" ? id : undefined);
     setFilter("mcpId", kind === "mcp" ? id : undefined);
+    scrollToSection(agentBuilderRef);
   };
+
+  React.useEffect(() => {
+    if (!didMountRef.current) {
+      didMountRef.current = true;
+      return;
+    }
+
+    if (selectedTab === "Capabilities" && uiPanels.agentBuilder) {
+      scrollToSection(agentBuilderRef);
+    }
+  }, [scrollToSection, selectedTab, uiPanels.agentBuilder]);
+
+  React.useEffect(() => {
+    if (!didMountRef.current) {
+      return;
+    }
+
+    if (selectedWorkflowId && uiPanels.workflowBuilder) {
+      scrollToSection(workflowBuilderRef);
+    }
+  }, [scrollToSection, selectedWorkflowId, uiPanels.workflowBuilder]);
+
+  React.useEffect(() => {
+    if (!didMountRef.current) {
+      return;
+    }
+
+    if (
+      selectedAgentId &&
+      selectedTab !== "Capabilities" &&
+      uiPanels.agentBuilder
+    ) {
+      scrollToSection(agentBuilderRef);
+    }
+  }, [scrollToSection, selectedAgentId, selectedTab, uiPanels.agentBuilder]);
 
   return (
     <div className="layout">
@@ -502,13 +557,19 @@ export function DashboardPage(): React.JSX.Element {
 
       <main className="main-grid">
         <div className="column">
-          <section className="panel collapsible-shell">
+          <section className="panel collapsible-shell" ref={agentBuilderRef}>
             <div className="section-toggle-row">
               <h2>Agent Builder</h2>
               <button
                 className="secondary-button"
                 title="Expand or collapse Agent Builder section."
-                onClick={() => toggleUiPanel("agentBuilder")}
+                onClick={() => {
+                  const willOpen = !uiPanels.agentBuilder;
+                  toggleUiPanel("agentBuilder");
+                  if (willOpen) {
+                    scrollToSection(agentBuilderRef);
+                  }
+                }}
               >
                 {uiPanels.agentBuilder ? "Collapse" : "Expand"}
               </button>
@@ -516,13 +577,19 @@ export function DashboardPage(): React.JSX.Element {
             {uiPanels.agentBuilder && <AgentBuilder />}
           </section>
 
-          <section className="panel collapsible-shell">
+          <section className="panel collapsible-shell" ref={workflowBuilderRef}>
             <div className="section-toggle-row">
               <h2>Workflow Editor</h2>
               <button
                 className="secondary-button"
                 title="Expand or collapse Workflow Editor section."
-                onClick={() => toggleUiPanel("workflowBuilder")}
+                onClick={() => {
+                  const willOpen = !uiPanels.workflowBuilder;
+                  toggleUiPanel("workflowBuilder");
+                  if (willOpen) {
+                    scrollToSection(workflowBuilderRef);
+                  }
+                }}
               >
                 {uiPanels.workflowBuilder ? "Collapse" : "Expand"}
               </button>
@@ -531,13 +598,19 @@ export function DashboardPage(): React.JSX.Element {
           </section>
         </div>
         <div className="column graph-stack">
-          <section className="panel collapsible-shell">
+          <section className="panel collapsible-shell" ref={agentGraphRef}>
             <div className="section-toggle-row">
               <h2>Agent Graph</h2>
               <button
                 className="secondary-button"
                 title="Expand or collapse Agent Graph section."
-                onClick={() => toggleUiPanel("agentGraph")}
+                onClick={() => {
+                  const willOpen = !uiPanels.agentGraph;
+                  toggleUiPanel("agentGraph");
+                  if (willOpen) {
+                    scrollToSection(agentGraphRef);
+                  }
+                }}
               >
                 {uiPanels.agentGraph ? "Collapse" : "Expand"}
               </button>
@@ -555,13 +628,19 @@ export function DashboardPage(): React.JSX.Element {
               </>
             )}
           </section>
-          <section className="panel collapsible-shell">
+          <section className="panel collapsible-shell" ref={workflowGraphRef}>
             <div className="panel-title-row">
               <h2>Workflow Graph</h2>
               <button
                 className="secondary-button"
                 title="Expand or collapse Workflow Graph section."
-                onClick={() => toggleUiPanel("workflowGraph")}
+                onClick={() => {
+                  const willOpen = !uiPanels.workflowGraph;
+                  toggleUiPanel("workflowGraph");
+                  if (willOpen) {
+                    scrollToSection(workflowGraphRef);
+                  }
+                }}
               >
                 {uiPanels.workflowGraph ? "Collapse" : "Expand"}
               </button>
@@ -598,13 +677,19 @@ export function DashboardPage(): React.JSX.Element {
           </section>
         </div>
         <div className="column">
-          <section className="panel collapsible-shell">
+          <section className="panel collapsible-shell" ref={inspectorRef}>
             <div className="section-toggle-row">
               <h2>Inspector</h2>
               <button
                 className="secondary-button"
                 title="Expand or collapse Inspector section."
-                onClick={() => toggleUiPanel("inspector")}
+                onClick={() => {
+                  const willOpen = !uiPanels.inspector;
+                  toggleUiPanel("inspector");
+                  if (willOpen) {
+                    scrollToSection(inspectorRef);
+                  }
+                }}
               >
                 {uiPanels.inspector ? "Collapse" : "Expand"}
               </button>
