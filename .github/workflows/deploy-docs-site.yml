@@ -52,30 +52,7 @@ jobs:
           echo "Listing built files:"
           ls -la docs-site/docs/.vitepress/dist || true
 
-      - name: Setup Pages
-        id: setup-pages
-        uses: actions/configure-pages@v4
-        with:
-          enablement: actions
-
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: "docs-site/docs/.vitepress/dist"
-
-      - name: List uploaded artifacts via API
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-        run: |
-          echo "Querying artifacts for run ${GITHUB_RUN_ID}"
-          curl -s -H "Authorization: Bearer ${GITHUB_TOKEN}" \
-            -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/artifacts" | sed -n '1,200p'
-
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v3
+      # Deploy using peaceiris/actions-gh-pages: publish built files to gh-pages branch
 
       # Publica a la rama gh-pages (usa GITHUB_TOKEN)
       - name: Deploy to gh-pages
