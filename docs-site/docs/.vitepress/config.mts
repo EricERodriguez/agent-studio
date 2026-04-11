@@ -15,7 +15,7 @@ export default defineConfig({
   lastUpdated: true,
   base: computedBase,
   head: [
-    ["link", { rel: "icon", href: "/mark.svg", type: "image/svg+xml" }],
+    ["link", { rel: "icon", href: `${computedBase}mark.svg`, type: "image/svg+xml" }],
     ["meta", { name: "theme-color", content: "#0a1020" }],
     ["meta", { property: "og:title", content: "Agent Studio" }],
     [
@@ -29,7 +29,7 @@ export default defineConfig({
     ["meta", { name: "twitter:card", content: "summary_large_image" }],
   ],
   themeConfig: {
-    logo: "/mark.svg",
+    logo: `${computedBase}mark.svg`,
     siteTitle: "Agent Studio",
     search: {
       provider: "local",
