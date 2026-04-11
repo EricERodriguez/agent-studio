@@ -46,15 +46,19 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
 
       - name: Setup Pages
+        id: setup-pages
         uses: actions/configure-pages@v4
         with:
           enablement: actions
+        continue-on-error: true
 
       - name: Upload artifact
+        if: steps.setup-pages.outcome == 'success'
         uses: actions/upload-pages-artifact@v3
         with:
           path: "docs-site/docs/.vitepress/dist"
 
       - name: Deploy to GitHub Pages
+        if: steps.setup-pages.outcome == 'success'
         id: deployment
         uses: actions/deploy-pages@v3
