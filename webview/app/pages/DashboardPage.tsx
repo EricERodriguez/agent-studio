@@ -35,7 +35,9 @@ export function DashboardPage(): React.JSX.Element {
   const [agentSearch, setAgentSearch] = React.useState("");
   const [workflowSearch, setWorkflowSearch] = React.useState("");
   const [capabilitySearch, setCapabilitySearch] = React.useState("");
+  const [isSearchExpanded, setIsSearchExpanded] = React.useState(true);
   const didMountRef = React.useRef(false);
+  const searchSectionRef = React.useRef<HTMLDivElement | null>(null);
   const agentBuilderRef = React.useRef<HTMLElement | null>(null);
   const workflowBuilderRef = React.useRef<HTMLElement | null>(null);
   const agentGraphRef = React.useRef<HTMLElement | null>(null);
@@ -301,118 +303,142 @@ export function DashboardPage(): React.JSX.Element {
 
       <section className="toolbar">
         <div className="toolbar-section search-section">
-          <div className="toolbar-title-row">
-            <h2 className="toolbar-title">Quick Search</h2>
-            <p className="field-hint">
-              Jump directly to agents, workflows, or capabilities without
-              hunting through the full lists.
-            </p>
-          </div>
-          <div className="search-grid">
-            <label>
-              Find agent
-              <input
-                title="Search agents by name, id, role, or description."
-                type="search"
-                value={agentSearch}
-                onChange={(e) => setAgentSearch(e.target.value)}
-                placeholder="Search agents"
-              />
-            </label>
-            <label>
-              Find workflow
-              <input
-                title="Search workflows by name, id, or description."
-                type="search"
-                value={workflowSearch}
-                onChange={(e) => setWorkflowSearch(e.target.value)}
-                placeholder="Search workflows"
-              />
-            </label>
-            <label>
-              Find capability
-              <input
-                title="Search tools, skills, or MCP servers and jump to the matching filter context."
-                type="search"
-                value={capabilitySearch}
-                onChange={(e) => setCapabilitySearch(e.target.value)}
-                placeholder="Search tools, skills, MCP"
-              />
-            </label>
-          </div>
-          <div className="search-results-grid">
-            <div className="search-result-card">
-              <h3>Agent Results</h3>
-              {deferredAgentSearch ? (
-                agentMatches.length > 0 ? (
-                  <div className="chip-row">
-                    {agentMatches.map((agent) => (
-                      <button
-                        key={agent.id}
-                        className="search-result-chip"
-                        title={`Select agent ${agent.name} in the builder and inspector.`}
-                        onClick={() => selectAgent(agent.id)}
-                      >
-                        {agent.name}
-                      </button>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="field-hint">No matching agents.</p>
-                )
-              ) : (
-                <p className="field-hint">Type a name, role, or id.</p>
-              )}
+          <div className="section-toggle-row" ref={searchSectionRef}>
+            <div className="toolbar-title-row">
+              <h2 className="toolbar-title">Quick Search</h2>
+              <p className="field-hint">
+                Jump directly to agents, workflows, or capabilities without
+                hunting through the full lists.
+              </p>
             </div>
-            <div className="search-result-card">
-              <h3>Workflow Results</h3>
-              {deferredWorkflowSearch ? (
-                workflowMatches.length > 0 ? (
-                  <div className="chip-row">
-                    {workflowMatches.map((workflow) => (
-                      <button
-                        key={workflow.id}
-                        className="search-result-chip"
-                        title={`Select workflow ${workflow.name} in the workflow editor and graph.`}
-                        onClick={() => selectWorkflow(workflow.id)}
-                      >
-                        {workflow.name}
-                      </button>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="field-hint">No matching workflows.</p>
-                )
-              ) : (
-                <p className="field-hint">Type a workflow name or id.</p>
-              )}
-            </div>
-            <div className="search-result-card">
-              <h3>Capability Results</h3>
-              {deferredCapabilitySearch ? (
-                capabilityMatches.length > 0 ? (
-                  <div className="chip-row">
-                    {capabilityMatches.map((capability) => (
-                      <button
-                        key={`${capability.kind}-${capability.id}`}
-                        className="search-result-chip"
-                        title={`Focus ${capability.kind} ${capability.label} in the capability layer.`}
-                        onClick={() =>
-                          focusCapabilityResult(capability.kind, capability.id)
-                        }
-                      >
-                        {capability.label} ({capability.detail})
-                      </button>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="field-hint">No matching capabilities.</p>
-                )
-              ) : (
-                <p className="field-hint">Search a tool, skill, or MCP id.</p>
-              )}
-            </div>
+            <button
+              className="secondary-button"
+              title="Expand or collapse Quick Search section."
+              onClick={() => {
+                const willOpen = !isSearchExpanded;
+                setIsSearchExpanded(willOpen);
+                if (willOpen) {
+                  scrollToSection(searchSectionRef);
+                }
+              }}
+            >
+              {isSearchExpanded ? "Collapse" : "Expand"}
+            </button>
           </div>
+          {isSearchExpanded && (
+            <>
+              <div className="search-grid">
+                <label>
+                  Find agent
+                  <input
+                    title="Search agents by name, id, role, or description."
+                    type="search"
+                    value={agentSearch}
+                    onChange={(e) => setAgentSearch(e.target.value)}
+                    placeholder="Search agents"
+                  />
+                </label>
+                <label>
+                  Find workflow
+                  <input
+                    title="Search workflows by name, id, or description."
+                    type="search"
+                    value={workflowSearch}
+                    onChange={(e) => setWorkflowSearch(e.target.value)}
+                    placeholder="Search workflows"
+                  />
+                </label>
+                <label>
+                  Find capability
+                  <input
+                    title="Search tools, skills, or MCP servers and jump to the matching filter context."
+                    type="search"
+                    value={capabilitySearch}
+                    onChange={(e) => setCapabilitySearch(e.target.value)}
+                    placeholder="Search tools, skills, MCP"
+                  />
+                </label>
+              </div>
+              <div className="search-results-grid">
+                <div className="search-result-card">
+                  <h3>Agent Results</h3>
+                  {deferredAgentSearch ? (
+                    agentMatches.length > 0 ? (
+                      <div className="chip-row">
+                        {agentMatches.map((agent) => (
+                          <button
+                            key={agent.id}
+                            className="search-result-chip"
+                            title={`Select agent ${agent.name} in the builder and inspector.`}
+                            onClick={() => selectAgent(agent.id)}
+                          >
+                            {agent.name}
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="field-hint">No matching agents.</p>
+                    )
+                  ) : (
+                    <p className="field-hint">Type a name, role, or id.</p>
+                  )}
+                </div>
+                <div className="search-result-card">
+                  <h3>Workflow Results</h3>
+                  {deferredWorkflowSearch ? (
+                    workflowMatches.length > 0 ? (
+                      <div className="chip-row">
+                        {workflowMatches.map((workflow) => (
+                          <button
+                            key={workflow.id}
+                            className="search-result-chip"
+                            title={`Select workflow ${workflow.name} in the workflow editor and graph.`}
+                            onClick={() => selectWorkflow(workflow.id)}
+                          >
+                            {workflow.name}
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="field-hint">No matching workflows.</p>
+                    )
+                  ) : (
+                    <p className="field-hint">Type a workflow name or id.</p>
+                  )}
+                </div>
+                <div className="search-result-card">
+                  <h3>Capability Results</h3>
+                  {deferredCapabilitySearch ? (
+                    capabilityMatches.length > 0 ? (
+                      <div className="chip-row">
+                        {capabilityMatches.map((capability) => (
+                          <button
+                            key={`${capability.kind}-${capability.id}`}
+                            className="search-result-chip"
+                            title={`Focus ${capability.kind} ${capability.label} in the capability layer.`}
+                            onClick={() =>
+                              focusCapabilityResult(
+                                capability.kind,
+                                capability.id,
+                              )
+                            }
+                          >
+                            {capability.label} ({capability.detail})
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="field-hint">No matching capabilities.</p>
+                    )
+                  ) : (
+                    <p className="field-hint">
+                      Search a tool, skill, or MCP id.
+                    </p>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
         </div>
         <div className="toolbar-section">
           <div className="toolbar-title-row">
@@ -629,7 +655,7 @@ export function DashboardPage(): React.JSX.Element {
             )}
           </section>
           <section className="panel collapsible-shell" ref={workflowGraphRef}>
-            <div className="panel-title-row">
+            <div className="section-toggle-row">
               <h2>Workflow Graph</h2>
               <button
                 className="secondary-button"
@@ -644,6 +670,8 @@ export function DashboardPage(): React.JSX.Element {
               >
                 {uiPanels.workflowGraph ? "Collapse" : "Expand"}
               </button>
+            </div>
+            <div className="panel-title-row">
               <p className="field-hint">
                 Visualizes the selected workflow as a directed step graph. Each
                 node is an agent step; the green-bordered node is the entry

@@ -374,6 +374,7 @@ h4 {
   flex-wrap: wrap;
 }
 
+.section-toggle-row h2,
 .section-toggle-row h3 {
   margin: 0;
   font-size: 13px;
