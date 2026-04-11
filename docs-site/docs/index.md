@@ -6,7 +6,7 @@ hero:
   text: "Design and orchestrate AI agents in VS Code"
   tagline: "A visual, inspectable control plane for agent infrastructure. No YAML. No CLI shenanigans. Just beautiful, intuitive editor."
   image:
-    src: /hero-mock.png
+    src: /mark.svg
     alt: "Visual Agent Studio Dashboard"
   actions:
     - theme: brand

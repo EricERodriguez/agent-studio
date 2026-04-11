@@ -15,6 +15,7 @@ export default defineConfig({
   lastUpdated: true,
   base: computedBase,
   head: [
+    ["link", { rel: "icon", href: "/mark.svg", type: "image/svg+xml" }],
     ["meta", { name: "theme-color", content: "#0a1020" }],
     ["meta", { property: "og:title", content: "Agent Studio" }],
     [
