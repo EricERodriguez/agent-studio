@@ -11,7 +11,7 @@ hero:
   actions:
     - theme: brand
       text: "Install from Marketplace"
-      link: "https://marketplace.visualstudio.com/items?itemName=local.agent-studio"
+      link: "https://marketplace.visualstudio.com/items?itemName=AgentstudioIA.agent-studio-ia"
     - theme: alt
       text: "Explore Documentation →"
       link: "/getting-started"
@@ -187,7 +187,7 @@ features:
   <h2 style="margin-bottom: 14px;">Ready to think differently about agent infrastructure?</h2>
   <p class="as-lead" style="margin-bottom: 16px;">Join developers and teams who are replacing config complexity with visual clarity.</p>
   <div class="as-cta-row">
-    <a href="https://marketplace.visualstudio.com/items?itemName=local.agent-studio" class="as-cta primary">
+    <a href="https://marketplace.visualstudio.com/items?itemName=AgentstudioIA.agent-studio-ia" class="as-cta primary">
       Install Now (Free)
     </a>
     <a href="/getting-started" class="as-cta secondary">

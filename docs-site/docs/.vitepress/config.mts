@@ -15,7 +15,10 @@ export default defineConfig({
   lastUpdated: true,
   base: computedBase,
   head: [
-    ["link", { rel: "icon", href: `${computedBase}mark.svg`, type: "image/svg+xml" }],
+    [
+      "link",
+      { rel: "icon", href: `${computedBase}mark.svg`, type: "image/svg+xml" },
+    ],
     ["meta", { name: "theme-color", content: "#0a1020" }],
     ["meta", { property: "og:title", content: "Agent Studio" }],
     [
@@ -59,7 +62,7 @@ export default defineConfig({
       { text: "Contributing", link: "/contributing" },
       {
         text: "Marketplace",
-        link: "https://marketplace.visualstudio.com/items?itemName=local.agent-studio",
+        link: "https://marketplace.visualstudio.com/items?itemName=AgentstudioIA.agent-studio-ia",
       },
     ],
     sidebar: [
