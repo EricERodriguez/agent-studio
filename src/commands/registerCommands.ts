@@ -10,6 +10,11 @@ export interface CommandHandlers {
   openInChat: (agentId?: string) => Promise<void>;
   createWorkflow: () => Promise<void>;
   startMcpServer: (mcpId?: string) => Promise<void>;
+  focusCapability: (
+    kind: "tool" | "skill" | "mcp",
+    id?: string,
+  ) => Promise<void>;
+  showToolsGuide: () => Promise<void>;
 }
 
 export function registerCommands(
@@ -44,6 +49,15 @@ export function registerCommands(
       "agentStudio.startMcpServer",
       (mcpId) => handlers.startMcpServer(mcpId as string | undefined),
     ],
+    [
+      "agentStudio.focusCapability",
+      (kind, id) =>
+        handlers.focusCapability(
+          kind as "tool" | "skill" | "mcp",
+          id as string | undefined,
+        ),
+    ],
+    ["agentStudio.showToolsGuide", () => handlers.showToolsGuide()],
   ];
 
   for (const [command, cb] of defs) {

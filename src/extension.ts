@@ -383,14 +383,59 @@ export async function activate(
       if (!picked) {
         return;
       }
+      dashboard.focusAgentEditor(picked.id, "Identity");
       dashboard.postInfo(`Editing ${picked.name} in Agent Builder.`);
       return;
     }
 
     const picked = agents.find((agent) => agent.id === agentId);
     if (picked) {
+      dashboard.focusAgentEditor(picked.id, "Identity");
       dashboard.postInfo(`Editing ${picked.name} in Agent Builder.`);
     }
+  };
+
+  const focusCapability = async (
+    kind: "tool" | "skill" | "mcp",
+    id?: string,
+  ): Promise<void> => {
+    if (!id) {
+      return;
+    }
+    dashboard.show();
+    dashboard.focusCapability(kind, id);
+  };
+
+  const showToolsGuide = async (): Promise<void> => {
+    const guide = [
+      "# Agent Studio - Tools Guide",
+      "",
+      "## What is a Tool?",
+      "A tool is an action an agent can execute, such as `read_file`, `run_in_terminal`, or any MCP tool.",
+      "",
+      "## How to add tools to an agent",
+      "1. Open Agent Studio dashboard.",
+      "2. Select your agent.",
+      "3. Go to the **Capabilities** tab.",
+      "4. In **Add or update a Tool**, fill Tool ID, label, and kind.",
+      "5. Click **Add Tool** and then **Save**.",
+      "",
+      "## Tool ID format",
+      "- Built-in example: `run_in_terminal`",
+      "- Extension example: `someExtension.someCommand`",
+      "- MCP example: `mcp_server.tool_name`",
+      "",
+      "## Tips",
+      "- Use consistent naming for labels.",
+      "- Keep tool lists short and task-focused per agent.",
+      "- Refresh dashboard after changing files manually.",
+    ].join("\n");
+
+    const doc = await vscode.workspace.openTextDocument({
+      language: "markdown",
+      content: guide,
+    });
+    await vscode.window.showTextDocument(doc, { preview: false });
   };
 
   const deleteAgent = async (agentId?: string): Promise<void> => {
@@ -521,6 +566,8 @@ export async function activate(
     openInChat,
     createWorkflow,
     startMcpServer,
+    focusCapability,
+    showToolsGuide,
   });
 
   await refreshState();

@@ -135,6 +135,29 @@ export class DashboardPanel {
     this.postMessage({ type: "workflowRunUpdate", payload });
   }
 
+  focusAgentEditor(
+    agentId: string,
+    tab?:
+      | "Identity"
+      | "Instructions"
+      | "Context"
+      | "Handoffs"
+      | "Capabilities"
+      | "Source Preview",
+  ): void {
+    this.postMessage({
+      type: "focusAgentEditor",
+      payload: { agentId, tab },
+    });
+  }
+
+  focusCapability(kind: "tool" | "skill" | "mcp", id: string): void {
+    this.postMessage({
+      type: "focusCapability",
+      payload: { kind, id },
+    });
+  }
+
   private postMessage(message: ExtensionToWebviewMessage): void {
     if (!this.panel) {
       return;

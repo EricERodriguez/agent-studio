@@ -59,4 +59,24 @@ export type ExtensionToWebviewMessage =
   | {
       type: "workflowRunUpdate";
       payload: WorkflowRunState;
+    }
+  | {
+      type: "focusAgentEditor";
+      payload: {
+        agentId: string;
+        tab?:
+          | "Identity"
+          | "Instructions"
+          | "Context"
+          | "Handoffs"
+          | "Capabilities"
+          | "Source Preview";
+      };
+    }
+  | {
+      type: "focusCapability";
+      payload: {
+        kind: "tool" | "skill" | "mcp";
+        id: string;
+      };
     };

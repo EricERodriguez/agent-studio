@@ -78,6 +78,14 @@
             {
                 "command": "agentStudio.startMcpServer",
                 "title": "Agent Studio: Start MCP Server"
+            },
+            {
+                "command": "agentStudio.focusCapability",
+                "title": "Agent Studio: Focus Capability In Dashboard"
+            },
+            {
+                "command": "agentStudio.showToolsGuide",
+                "title": "Agent Studio: Show Tools Guide"
             }
         ],
         "menus": {
@@ -96,6 +104,11 @@
                     "command": "agentStudio.openDashboard",
                     "when": "view == agentStudio.workflowsView",
                     "group": "navigation@2"
+                },
+                {
+                    "command": "agentStudio.showToolsGuide",
+                    "when": "view == agentStudio.capabilitiesView",
+                    "group": "navigation"
                 }
             ],
             "view/item/context": [

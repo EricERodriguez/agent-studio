@@ -37,7 +37,8 @@ export class AgentsTreeProvider implements vscode.TreeDataProvider<BaseItem> {
     return Promise.resolve(
       this.agents.map((agent) => {
         const item = new BaseItem(agent.name);
-        item.description = agent.role;
+        item.description = agent.role || "no role";
+        item.tooltip = `${agent.name}\nTools: ${agent.capabilities.tools.length} · Skills: ${agent.capabilities.skills.length} · MCP: ${agent.capabilities.mcpServers.length}`;
         item.contextValue = "agentStudio.agent";
         item.command = {
           command: "agentStudio.editAgent",
@@ -73,7 +74,8 @@ export class WorkflowsTreeProvider implements vscode.TreeDataProvider<BaseItem> 
     return Promise.resolve(
       this.workflows.map((workflow) => {
         const item = new BaseItem(workflow.name);
-        item.description = `${workflow.nodes.length} nodes`;
+        item.description = `${workflow.nodes.length} nodes · ${workflow.edges.length} edges`;
+        item.tooltip = `${workflow.name}\nNodes: ${workflow.nodes.length}\nEdges: ${workflow.edges.length}`;
         item.command = {
           command: "agentStudio.openDashboard",
           title: "Open Dashboard",
@@ -113,24 +115,62 @@ export class CapabilitiesTreeProvider implements vscode.TreeDataProvider<BaseIte
     }
 
     if (element.label === "Tools") {
-      return Promise.resolve(
-        this.capabilityGraph.tools.map((tool) => new BaseItem(tool.label)),
+      const helpItem = new BaseItem(
+        "How to add tools",
+        vscode.TreeItemCollapsibleState.None,
       );
+      helpItem.description = "Quick setup guide";
+      helpItem.contextValue = "agentStudio.toolsHelp";
+      helpItem.command = {
+        command: "agentStudio.showToolsGuide",
+        title: "Show Tools Guide",
+      };
+
+      return Promise.resolve([
+        helpItem,
+        ...this.capabilityGraph.tools.map((tool) => {
+          const item = new BaseItem(tool.label);
+          const usage = this.capabilityGraph?.usage.tools[tool.id]?.length || 0;
+          item.description = `${tool.kind} · ${usage} agents`;
+          item.contextValue = "agentStudio.tool";
+          item.command = {
+            command: "agentStudio.focusCapability",
+            title: "Focus Tool",
+            arguments: ["tool", tool.id],
+          };
+          return item;
+        }),
+      ]);
     }
     if (element.label === "Skills") {
       return Promise.resolve(
-        this.capabilityGraph.skills.map((skill) => new BaseItem(skill.label)),
+        this.capabilityGraph.skills.map((skill) => {
+          const item = new BaseItem(skill.label);
+          const usage =
+            this.capabilityGraph?.usage.skills[skill.id]?.length || 0;
+          item.description = `${usage} agents`;
+          item.contextValue = "agentStudio.skill";
+          item.command = {
+            command: "agentStudio.focusCapability",
+            title: "Focus Skill",
+            arguments: ["skill", skill.id],
+          };
+          return item;
+        }),
       );
     }
     if (element.label === "MCP Servers") {
       return Promise.resolve(
         this.capabilityGraph.mcpServers.map((mcp) => {
           const item = new BaseItem(mcp.label);
+          const usage =
+            this.capabilityGraph?.usage.mcpServers[mcp.id]?.length || 0;
+          item.description = `${usage} agents`;
           item.contextValue = "agentStudio.mcpServer";
           item.command = {
-            command: "agentStudio.startMcpServer",
-            title: "Start MCP Server",
-            arguments: [mcp.id],
+            command: "agentStudio.focusCapability",
+            title: "Focus MCP Server",
+            arguments: ["mcp", mcp.id],
           };
           return item;
         }),

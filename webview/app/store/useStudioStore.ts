@@ -59,6 +59,7 @@ interface StudioState {
   setFilter: (key: keyof Filters, value?: string) => void;
   setSelectedCapability: (capabilityId?: string) => void;
   toggleCapabilityGraph: () => void;
+  setCapabilityGraphVisible: (visible: boolean) => void;
   autoLayoutWorkflow: (workflowId: string) => void;
   setInfoMessage: (message?: string) => void;
   setErrorMessage: (message?: string) => void;
@@ -217,6 +218,8 @@ export const useStudioStore = create<StudioState>((set, get) => ({
     set({ selectedCapabilityId }),
   toggleCapabilityGraph: () =>
     set((state) => ({ showCapabilityGraph: !state.showCapabilityGraph })),
+  setCapabilityGraphVisible: (showCapabilityGraph) =>
+    set({ showCapabilityGraph }),
   autoLayoutWorkflow: (workflowId) =>
     set((state) => ({
       workflows: state.workflows.map((workflow) => {
