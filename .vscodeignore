@@ -1,0 +1,12 @@
+.github/**
+docs-site/**
+website/**
+src/**
+node_modules/**
+.vscode/**
+.gitignore
+tsconfig.json
+vite.config.*
+webview/**
+webview-dist/**
+media/**
