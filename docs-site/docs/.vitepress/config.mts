@@ -47,6 +47,7 @@ export default defineConfig({
           { text: "Visual Dashboard", link: "/visual-dashboard" },
           { text: "Tools, Skills & MCP", link: "/visibility" },
           { text: "FAQ", link: "/faq" },
+          { text: "Donate", link: "/donations" },
         ],
       },
       {
@@ -76,6 +77,7 @@ export default defineConfig({
           { text: "Agents, Tools & MCP Visibility", link: "/visibility" },
           { text: "Roadmap", link: "/roadmap" },
           { text: "FAQ", link: "/faq" },
+          { text: "Donate", link: "/donations" },
         ],
       },
       {
