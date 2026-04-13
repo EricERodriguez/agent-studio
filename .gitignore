@@ -9,3 +9,7 @@ docs-site/.vitepress/cache/
 docs-site/.vitepress/dist/
 .DS_Store
 Thumbs.db
+
+# Agent Studio generated files
+.vscode/agent-studio/
+.github/agents/

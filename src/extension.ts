@@ -121,13 +121,8 @@ export async function activate(
       }
     },
     onDeleteAgent: async (agentId) => {
-      const agent = agents.find((candidate) => candidate.id === agentId);
-      if (!agent) {
-        return;
-      }
-      await agentRegistryService.deleteAgent(agent);
-      await refreshState();
-      dashboard.postInfo(`Deleted ${agent.name}`);
+      // Delegate to the central deleteAgent handler to ensure user confirmation
+      await deleteAgent(agentId);
     },
     onOpenRawAgent: async (agentId) => {
       const agent = agents.find((candidate) => candidate.id === agentId);
@@ -712,8 +707,13 @@ export async function activate(
   });
 
   await refreshState();
-  await sampleDataService.seedIfNeeded(agents, workflows);
-  await refreshState();
+  const shouldSeed = vscode.workspace
+    .getConfiguration("agentStudio")
+    .get<boolean>("seedSampleData", true);
+  if (shouldSeed) {
+    await sampleDataService.seedIfNeeded(agents, workflows);
+    await refreshState();
+  }
 }
 
 export function deactivate(): void {

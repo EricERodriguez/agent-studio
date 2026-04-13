@@ -128,6 +128,16 @@ Default:
 }
 ```
 
+### Sample data seeding
+
+Agent Studio may create sample agents and a sample workflow in an empty workspace on first activation. This behavior is controlled by the `agentStudio.seedSampleData` setting. To prevent any files from being auto-created, add the following to your user or workspace settings:
+
+```json
+{
+  "agentStudio.seedSampleData": false
+}
+```
+
 ## Roadmap
 
 Planned improvements include:

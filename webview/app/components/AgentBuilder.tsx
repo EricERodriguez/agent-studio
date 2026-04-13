@@ -998,6 +998,16 @@ export function AgentBuilder(): React.JSX.Element {
         >
           {tx("Open raw file", "Abrir archivo raw")}
         </button>
+        <button
+          title="Delete this agent from the workspace."
+          className="danger"
+          onClick={() =>
+            // send delete request to extension; extension will confirm
+            vscode?.postMessage({ type: "deleteAgent", payload: { agentId: draft.id } })
+          }
+        >
+          {tx("Delete", "Borrar")}
+        </button>
       </div>
     </section>
   );
