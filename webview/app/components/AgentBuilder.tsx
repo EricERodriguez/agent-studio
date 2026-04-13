@@ -1003,7 +1003,10 @@ export function AgentBuilder(): React.JSX.Element {
           className="danger"
           onClick={() =>
             // send delete request to extension; extension will confirm
-            vscode?.postMessage({ type: "deleteAgent", payload: { agentId: draft.id } })
+            vscode?.postMessage({
+              type: "deleteAgent",
+              payload: { agentId: draft.id },
+            })
           }
         >
           {tx("Delete", "Borrar")}

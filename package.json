@@ -218,8 +218,7 @@
                         "type": "string"
                     },
                     "description": "Additional workspace-relative directories to discover .agent.md files."
-                }
-                ,
+                },
                 "agentStudio.seedSampleData": {
                     "type": "boolean",
                     "default": true,

@@ -78,4 +78,17 @@ export class WorkflowService {
       Buffer.from(JSON.stringify(workflow, null, 2), "utf8"),
     );
   }
+
+  async deleteWorkflow(workflowId: string): Promise<void> {
+    const root = getWorkspaceRoot();
+    if (!root) {
+      throw new Error("No workspace opened.");
+    }
+
+    const folder = this.getWorkflowFolder(root);
+    const target = path.join(folder, `${workflowId}.json`);
+    await vscode.workspace.fs.delete(vscode.Uri.file(target), {
+      useTrash: true,
+    });
+  }
 }

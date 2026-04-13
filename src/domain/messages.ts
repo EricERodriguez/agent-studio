@@ -12,6 +12,7 @@ export type WebviewToExtensionMessage =
   | { type: "openRawAgent"; payload: { agentId: string } }
   | { type: "openInChat"; payload: { agentId: string } }
   | { type: "saveWorkflow"; payload: WorkflowDefinition }
+  | { type: "deleteWorkflow"; payload: { workflowId: string } }
   | {
       type: "runWorkflow";
       payload: { workflowId: string; mode: "chat" | "plan" };

@@ -16,6 +16,7 @@ export interface DashboardPanelHandlers {
   onDeleteAgent: (agentId: string) => Promise<void>;
   onOpenRawAgent: (agentId: string) => Promise<void>;
   onOpenInChat: (agentId: string) => Promise<void>;
+  onDeleteWorkflow: (workflowId: string) => Promise<void>;
   onSaveWorkflow: (workflow: WorkflowDefinition) => Promise<void>;
   onRunWorkflow: (workflowId: string, mode: "chat" | "plan") => Promise<void>;
   onCreateAgent: () => Promise<void>;
@@ -87,6 +88,9 @@ export class DashboardPanel {
             break;
           case "saveWorkflow":
             await this.handlers.onSaveWorkflow(message.payload);
+            break;
+          case "deleteWorkflow":
+            await this.handlers.onDeleteWorkflow(message.payload.workflowId);
             break;
           case "runWorkflow":
             await this.handlers.onRunWorkflow(

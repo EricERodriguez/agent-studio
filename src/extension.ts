@@ -158,6 +158,9 @@ export async function activate(
     onRunWorkflow: async (workflowId, mode) => {
       await runWorkflow(workflowId, mode);
     },
+    onDeleteWorkflow: async (workflowId) => {
+      await deleteWorkflow(workflowId);
+    },
     onCreateAgent: async () => {
       await createAgent();
     },
@@ -588,6 +591,29 @@ export async function activate(
 
     await agentRegistryService.deleteAgent(target);
     await refreshState();
+  };
+
+  const deleteWorkflow = async (workflowId?: string): Promise<void> => {
+    const target = workflowId
+      ? workflows.find((w) => w.id === workflowId)
+      : undefined;
+
+    if (!target) {
+      return;
+    }
+
+    const confirmed = await vscode.window.showWarningMessage(
+      `Delete workflow ${target.name}?`,
+      { modal: true },
+      "Delete",
+    );
+    if (confirmed !== "Delete") {
+      return;
+    }
+
+    await workflowService.deleteWorkflow(target.id);
+    await refreshState();
+    dashboard.postInfo(`Deleted workflow ${target.name}`);
   };
 
   const duplicateAgent = async (agentId?: string): Promise<void> => {

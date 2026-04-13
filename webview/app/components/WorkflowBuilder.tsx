@@ -252,6 +252,18 @@ export function WorkflowBuilder(): React.JSX.Element {
       >
         {tx("Save Workflow", "Guardar Workflow")}
       </button>
+      <button
+        title="Delete this workflow from the workspace."
+        className="danger"
+        onClick={() =>
+          vscode?.postMessage({
+            type: "deleteWorkflow",
+            payload: { workflowId: selectedWorkflow.id },
+          })
+        }
+      >
+        {tx("Delete Workflow", "Borrar Workflow")}
+      </button>
     </section>
   );
 }
