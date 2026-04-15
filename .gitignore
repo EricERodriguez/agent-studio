@@ -13,3 +13,4 @@ Thumbs.db
 # Agent Studio generated files
 .vscode/agent-studio/
 .github/agents/
+.codex

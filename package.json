@@ -221,8 +221,8 @@
                 },
                 "agentStudio.seedSampleData": {
                     "type": "boolean",
-                    "default": true,
-                    "description": "When true, Agent Studio will create sample agents and a sample workflow in a new workspace. Set to false to prevent any files from being auto-created."
+                    "default": false,
+                    "description": "When true, Agent Studio will create sample agents and a sample workflow in a new workspace. Defaults to false so no files are auto-created unless explicitly enabled."
                 }
             }
         }

@@ -735,7 +735,7 @@ export async function activate(
   await refreshState();
   const shouldSeed = vscode.workspace
     .getConfiguration("agentStudio")
-    .get<boolean>("seedSampleData", true);
+    .get<boolean>("seedSampleData", false);
   if (shouldSeed) {
     await sampleDataService.seedIfNeeded(agents, workflows);
     await refreshState();
