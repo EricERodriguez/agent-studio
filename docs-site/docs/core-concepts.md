@@ -29,6 +29,13 @@ An **agent** is a specialized entity that performs tasks within constraints you 
 - Shareable with your team via git
 - Composable with other agents through handoffs
 
+**Agent scopes:**
+
+- **Repository agents** live in the current workspace, usually under `.github/agents`
+- **Global agents** live in `~/.agents/agents` and are available across repositories
+- Agent Studio loads both at the same time
+- If both define the same agent id, the repository agent wins
+
 **Examples:**
 
 - `DataAnalyst`: Specializes in SQL, statistics, and visualizations

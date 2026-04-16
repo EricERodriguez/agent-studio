@@ -83,7 +83,7 @@ If you are building with multiple AI agents, complexity grows fast. Agent Studio
 
 1. Open the **Agent Studio** icon in the Activity Bar.
 2. Run **Agent Studio: Open Dashboard**.
-3. Create your first agent with **Agent Studio: Create Agent**.
+3. Create your first agent with **Agent Studio: Create Agent** and choose whether it should be **Repository** or **Global**.
 4. Add or inspect capabilities (tools, skills, MCP servers).
 5. Create a workflow and connect agent steps visually.
 6. Open an agent in chat and execute your flow.
@@ -119,6 +119,25 @@ If you are building with multiple AI agents, complexity grows fast. Agent Studio
 Agent Studio supports workspace configuration for agent discovery paths.
 
 - `agentStudio.agentPaths`: Additional workspace-relative directories to discover `.agent.md` files.
+
+### Agent scopes
+
+Agent Studio now supports two storage scopes for agents:
+
+- `repository`: stored in the current repo, under `.github/agents`
+- `global`: stored in the current user's home directory, under `~/.agents/agents`
+
+When Agent Studio loads agents, it merges:
+
+- repository agents from the open workspace
+- global agents from `~/.agents/agents`
+
+If a repository agent and a global agent share the same agent id, the repository agent takes precedence.
+
+You can choose the scope:
+
+- when creating a new agent from the command palette
+- from the `Scope` field in the Agent Builder `Identity` tab
 
 Default:
 

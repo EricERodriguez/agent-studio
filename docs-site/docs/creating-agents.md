@@ -105,11 +105,25 @@ Before opening Agent Studio, ask:
 
 1. Open Agent Studio sidebar
 2. Click **"New Agent"**
-3. Fill in:
+3. Choose the agent scope:
+
+- **Repository**: save it in the current repo
+- **Global**: make it available in any repo on your machine
+
+4. Fill in:
    - **Name**: Clear, single-word or short phrase (e.g., `DataAnalyst`, `APIClient`, `ReportWriter`)
    - **Emoji**: Visual identifier (🔍, 📊, 📝)
    - **Role**: One-line description (e.g., "SQL specialist focused on analytics")
-4. Click **Create**
+5. Click **Create**
+
+You can later change the scope from the **Identity** tab using the **Scope** field.
+
+## Where agents are stored
+
+- **Repository agents** are stored in `.github/agents`
+- **Global agents** are stored in `~/.agents/agents`
+
+Agent Studio loads both repository and global agents together. If both have the same id, the repository version overrides the global one.
 
 ### 3. Write Instructions
 
