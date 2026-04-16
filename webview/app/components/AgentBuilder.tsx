@@ -405,6 +405,19 @@ export function AgentBuilder(): React.JSX.Element {
                 "Tip: usa Ctrl/Cmd + click para seleccionar varios agents.",
               )}
             </small>
+            <div className="tab-row" style={{ marginTop: 8 }}>
+              <button
+                type="button"
+                title={tx(
+                  "Remove all currently selected handoff agents.",
+                  "Quitar todos los agents de handoff seleccionados.",
+                )}
+                disabled={draft.handoffs.length === 0}
+                onClick={() => update({ handoffs: [] })}
+              >
+                {tx("Clear handoffs", "Limpiar handoffs")}
+              </button>
+            </div>
           </div>
         );
       case "Capabilities":

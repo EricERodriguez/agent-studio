@@ -113,10 +113,9 @@ export class AgentRegistryService {
     const fileName = `${toAgentId(agent.name)}.agent.md`;
     const agentPath = agent.sourcePath || path.join(folder, fileName);
 
-    // Attempt to preserve existing frontmatter arrays if the incoming agent
-    // is missing them (fallback merge). This helps avoid data loss when the
-    // webview fails to include arrays like `mcpServers`, `skills` or
-    // `handoffs` in the payload.
+    // Attempt to preserve existing frontmatter arrays only when fields are
+    // absent in the incoming payload. If a field is present but empty, treat
+    // it as an explicit user action (for example, clearing all handoffs).
     try {
       const existing = await vscode.workspace.fs
         .readFile(vscode.Uri.file(agentPath))
@@ -125,10 +124,31 @@ export class AgentRegistryService {
       if (existing) {
         try {
           const parsedExisting = this.markdownService.parse(existing);
-          // Merge capabilities.tools if incoming missing
+          const incoming = agent as unknown as Record<string, unknown>;
+          const incomingCapabilities =
+            (incoming.capabilities as Record<string, unknown> | undefined) ||
+            undefined;
+          const hasIncomingMcp = Boolean(
+            incomingCapabilities &&
+            Object.prototype.hasOwnProperty.call(
+              incomingCapabilities,
+              "mcpServers",
+            ),
+          );
+          const hasIncomingSkills = Boolean(
+            incomingCapabilities &&
+            Object.prototype.hasOwnProperty.call(
+              incomingCapabilities,
+              "skills",
+            ),
+          );
+          const hasIncomingHandoffs = Object.prototype.hasOwnProperty.call(
+            incoming,
+            "handoffs",
+          );
+
           if (
-            (!agent.capabilities?.mcpServers ||
-              agent.capabilities.mcpServers.length === 0) &&
+            !hasIncomingMcp &&
             parsedExisting.capabilities?.mcpServers &&
             parsedExisting.capabilities.mcpServers.length > 0
           ) {
@@ -138,8 +158,7 @@ export class AgentRegistryService {
             };
           }
           if (
-            (!agent.capabilities?.skills ||
-              agent.capabilities.skills.length === 0) &&
+            !hasIncomingSkills &&
             parsedExisting.capabilities?.skills &&
             parsedExisting.capabilities.skills.length > 0
           ) {
@@ -149,7 +168,7 @@ export class AgentRegistryService {
             };
           }
           if (
-            (!agent.handoffs || agent.handoffs.length === 0) &&
+            !hasIncomingHandoffs &&
             parsedExisting.handoffs &&
             parsedExisting.handoffs.length > 0
           ) {

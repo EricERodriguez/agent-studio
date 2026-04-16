@@ -113,7 +113,8 @@ export class AgentMarkdownService {
         (item as any).label || (item as any).name || agent || "",
       );
       const defaults = this.buildDefaultHandoff(agent, label);
-      const prompt = ((item as any).prompt as string | undefined) || defaults.prompt;
+      const prompt =
+        ((item as any).prompt as string | undefined) || defaults.prompt;
       const send =
         typeof (item as any).send === "boolean"
           ? ((item as any).send as boolean)
