@@ -619,6 +619,16 @@ textarea {
   padding: 4px 8px;
 }
 
+.quick-pick-row {
+  margin-top: 4px;
+}
+
+.quick-pick-active {
+  border-color: var(--studio-accent);
+  box-shadow: 0 0 0 2px
+    color-mix(in srgb, var(--studio-accent) 24%, transparent);
+}
+
 .skill-tag {
   background: var(--vscode-button-secondaryBackground);
   color: var(--vscode-button-secondaryForeground);

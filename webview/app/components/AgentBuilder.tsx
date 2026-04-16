@@ -19,6 +19,30 @@ const tabs: BuilderTab[] = [
   "Source Preview",
 ];
 
+const ROLE_SUGGESTIONS = [
+  "planning",
+  "implementation",
+  "review",
+  "developer",
+  "architect",
+  "qa",
+  "security",
+  "documentation",
+];
+
+const TAG_SUGGESTIONS = [
+  "planning",
+  "implementation",
+  "review",
+  "backend",
+  "frontend",
+  "testing",
+  "security",
+  "docs",
+  "automation",
+  "typescript",
+];
+
 function buildDefaultHandoff(agent: string, label?: string) {
   const resolvedLabel = label || agent;
   return {
@@ -133,6 +157,17 @@ export function AgentBuilder(): React.JSX.Element {
 
   const update = (patch: Partial<AgentDefinition>): void => {
     setDraft({ ...draft, ...patch });
+  };
+
+  const applyRoleSuggestion = (role: string): void => {
+    update({ role });
+  };
+
+  const toggleTagSuggestion = (tag: string): void => {
+    const hasTag = draft.tags.includes(tag);
+    update({
+      tags: hasTag ? draft.tags.filter((t) => t !== tag) : [...draft.tags, tag],
+    });
   };
 
   const toggleMcpServer = (server: MCPServerRef): void => {
@@ -302,6 +337,18 @@ export function AgentBuilder(): React.JSX.Element {
                 value={draft.role || ""}
                 onChange={(e) => update({ role: e.target.value })}
               />
+              <div className="chip-row quick-pick-row">
+                {ROLE_SUGGESTIONS.map((role) => (
+                  <button
+                    key={role}
+                    type="button"
+                    className={`secondary-button ${draft.role === role ? "quick-pick-active" : ""}`}
+                    onClick={() => applyRoleSuggestion(role)}
+                  >
+                    {role}
+                  </button>
+                ))}
+              </div>
             </label>
             <label>
               {tx("Tags (comma separated)", "Tags (separados por coma)")}
@@ -312,6 +359,18 @@ export function AgentBuilder(): React.JSX.Element {
                   update({ tags: parseCommaList(e.target.value) })
                 }
               />
+              <div className="chip-row quick-pick-row">
+                {TAG_SUGGESTIONS.map((tag) => (
+                  <button
+                    key={tag}
+                    type="button"
+                    className={`secondary-button ${draft.tags.includes(tag) ? "quick-pick-active" : ""}`}
+                    onClick={() => toggleTagSuggestion(tag)}
+                  >
+                    {tag}
+                  </button>
+                ))}
+              </div>
             </label>
           </div>
         );
