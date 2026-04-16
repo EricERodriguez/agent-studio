@@ -140,24 +140,6 @@ export class AgentMarkdownService {
   }
 
   generate(agent: AgentDefinition): string {
-    try {
-      // eslint-disable-next-line no-console
-      console.log(
-        "[AgentMarkdownService] generating for agent:",
-        agent.id,
-        JSON.stringify(
-          {
-            tools: agent.capabilities?.tools || [],
-            skills: agent.capabilities?.skills || [],
-            mcp: agent.capabilities?.mcpServers || [],
-            handoffs: agent.handoffs || [],
-          },
-          null,
-          2,
-        ),
-      );
-    } catch {}
-
     const data: Record<string, unknown> = {
       name: agent.name,
       description: agent.description,

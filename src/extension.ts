@@ -21,13 +21,10 @@ import {
 import { DashboardPanel } from "./views/dashboardPanel";
 import type { AgentDefinition, WorkflowDefinition } from "./domain/models";
 import type { WorkflowRunState } from "./domain/messages";
-import { getWorkspaceRoot } from "./infrastructure/fsUtils";
 
 export async function activate(
   context: vscode.ExtensionContext,
 ): Promise<void> {
-  console.log("[Agent Studio] workspace root:", getWorkspaceRoot());
-
   const quoteArg = (value: string): string =>
     /[\s"']/g.test(value) ? `"${value.replace(/(["\\$`])/g, "\\$1")}"` : value;
 
@@ -114,16 +111,9 @@ export async function activate(
       }
 
       try {
-        console.log(
-          "Saving agent payload:",
-          agent.id,
-          JSON.stringify(agent.capabilities?.mcpServers || []),
-        );
-        const savedAgent = await agentRegistryService.saveAgent(agent);
+        await agentRegistryService.saveAgent(agent);
         await refreshState();
-        dashboard.postInfo(
-          `Saved agent ${agent.name} to ${savedAgent.sourcePath || "<unknown path>"}`,
-        );
+        dashboard.postInfo(`Saved agent ${agent.name}`);
       } catch (error) {
         const message =
           error instanceof Error ? error.message : "Failed to save agent.";

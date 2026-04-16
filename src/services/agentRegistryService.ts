@@ -12,6 +12,21 @@ import {
 
 export class AgentRegistryService {
   private readonly markdownService = new AgentMarkdownService();
+  private readonly legacyWarningKeys = new Set<string>();
+
+  private warnLegacyOnce(key: string, message: string, level: "warn" | "info") {
+    if (this.legacyWarningKeys.has(key)) {
+      return;
+    }
+
+    this.legacyWarningKeys.add(key);
+    if (level === "warn") {
+      console.warn(message);
+      return;
+    }
+
+    console.info(message);
+  }
 
   private inferScopeFromPath(
     agentPath: string,
@@ -95,8 +110,10 @@ export class AgentRegistryService {
               (t) => typeof t !== "string",
             );
             if (nonStrings.length > 0) {
-              console.warn(
+              this.warnLegacyOnce(
+                `${uri.fsPath}:tools`,
                 `${uri.fsPath}: frontmatter 'tools' contains non-string entries; consider migrating to an array of tool ids.`,
+                "warn",
               );
             }
           }
@@ -105,9 +122,10 @@ export class AgentRegistryService {
               (h) => typeof h !== "object",
             );
             if (nonObjects.length > 0) {
-              // strings are accepted but we encourage object format; surface as info
-              console.info(
+              this.warnLegacyOnce(
+                `${uri.fsPath}:handoffs`,
                 `${uri.fsPath}: frontmatter 'handoffs' contains string entries; they will be migrated to explicit handoff objects.`,
+                "info",
               );
             }
           }
@@ -239,49 +257,15 @@ export class AgentRegistryService {
       // ignore filesystem read errors
     }
 
-    // Debug: log full incoming agent payload to help diagnose missing fields
-    try {
-      // eslint-disable-next-line no-console
-      console.log(
-        "[AgentRegistryService] saveAgent payload: ",
-        JSON.stringify(agent, null, 2),
-      );
-    } catch {}
-
     const serialized = this.markdownService.generate({
       ...agent,
       id: toAgentId(agent.name),
     });
 
-    try {
-      // eslint-disable-next-line no-console
-      console.log(
-        "[AgentRegistryService] serialized agent content:\n",
-        serialized,
-      );
-    } catch {}
     await vscode.workspace.fs.writeFile(
       vscode.Uri.file(agentPath),
       Buffer.from(serialized, "utf8"),
     );
-
-    try {
-      const written = await vscode.workspace.fs.readFile(
-        vscode.Uri.file(agentPath),
-      );
-      const writtenText = Buffer.from(written).toString("utf8");
-      // eslint-disable-next-line no-console
-      console.log(
-        "[AgentRegistryService] file written content:\n",
-        writtenText,
-      );
-    } catch (e) {
-      // eslint-disable-next-line no-console
-      console.error(
-        "[AgentRegistryService] failed to read back written file",
-        e,
-      );
-    }
 
     if (previousPath && previousPath !== agentPath) {
       try {
