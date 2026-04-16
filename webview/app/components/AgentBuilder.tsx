@@ -19,6 +19,16 @@ const tabs: BuilderTab[] = [
   "Source Preview",
 ];
 
+function buildDefaultHandoff(agent: string, label?: string) {
+  const resolvedLabel = label || agent;
+  return {
+    agent,
+    label: resolvedLabel,
+    prompt: `Delegate to ${resolvedLabel} when this task needs their expertise.`,
+    send: true,
+  };
+}
+
 function generateMarkdown(agent: AgentDefinition): string {
   const frontmatter = {
     name: agent.name,
@@ -36,9 +46,12 @@ function generateMarkdown(agent: AgentDefinition): string {
     })),
     handoffs: agent.handoffs.map((h) => ({
       agent: h.agent,
-      label: h.label,
-      prompt: h.prompt,
-      send: h.send,
+      label: h.label || buildDefaultHandoff(h.agent, h.label).label,
+      prompt: h.prompt || buildDefaultHandoff(h.agent, h.label).prompt,
+      send:
+        typeof h.send === "boolean"
+          ? h.send
+          : buildDefaultHandoff(h.agent, h.label).send,
     })),
     tags: agent.tags,
     context: agent.context,
@@ -363,8 +376,17 @@ export function AgentBuilder(): React.JSX.Element {
                     (opt) => opt.value,
                   );
                   const mapped = selected.map((id) => {
+                    const existing = draft.handoffs.find(
+                      (handoff) => handoff.agent === id,
+                    );
+                    if (existing) {
+                      return {
+                        ...buildDefaultHandoff(id, existing.label),
+                        ...existing,
+                      };
+                    }
                     const a = handoffCandidates.find((ag) => ag.id === id);
-                    return { agent: id, label: a?.name || id };
+                    return buildDefaultHandoff(id, a?.name || id);
                   });
                   update({ handoffs: mapped });
                 }}

@@ -20,6 +20,16 @@ interface AgentFrontmatter {
 }
 
 export class AgentMarkdownService {
+  private buildDefaultHandoff(agent: string, label?: string) {
+    const resolvedLabel = label || agent;
+    return {
+      agent,
+      label: resolvedLabel,
+      prompt: `Delegate to ${resolvedLabel} when this task needs their expertise.`,
+      send: true,
+    };
+  }
+
   private pruneUndefined<T>(value: T): T | undefined {
     if (value === undefined) {
       return undefined;
@@ -94,7 +104,7 @@ export class AgentMarkdownService {
 
     const handoffs = (fm.handoffs || []).map((item) => {
       if (typeof item === "string") {
-        return { agent: item, label: item };
+        return this.buildDefaultHandoff(item, item);
       }
       const agent = String(
         (item as any).agent || (item as any).id || (item as any).name || "",
@@ -102,8 +112,12 @@ export class AgentMarkdownService {
       const label = String(
         (item as any).label || (item as any).name || agent || "",
       );
-      const prompt = (item as any).prompt as string | undefined;
-      const send = (item as any).send as boolean | undefined;
+      const defaults = this.buildDefaultHandoff(agent, label);
+      const prompt = ((item as any).prompt as string | undefined) || defaults.prompt;
+      const send =
+        typeof (item as any).send === "boolean"
+          ? ((item as any).send as boolean)
+          : defaults.send;
       return { agent, label, prompt, send };
     });
 
@@ -158,10 +172,13 @@ export class AgentMarkdownService {
         autoRunMCP: m.autoRunMCP,
       })),
       handoffs: agent.handoffs.map((h) => {
-        const out: Record<string, unknown> = { agent: h.agent };
-        if (h.label) out.label = h.label;
-        if (h.prompt) out.prompt = h.prompt;
-        if (typeof h.send !== "undefined") out.send = h.send;
+        const defaults = this.buildDefaultHandoff(h.agent, h.label);
+        const out: Record<string, unknown> = {
+          agent: h.agent,
+          label: h.label || defaults.label,
+          prompt: h.prompt || defaults.prompt,
+          send: typeof h.send === "boolean" ? h.send : defaults.send,
+        };
         return out;
       }),
       tags: agent.tags,
