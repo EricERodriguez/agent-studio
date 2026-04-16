@@ -1,4 +1,5 @@
 export type ToolKind = "built-in" | "extension" | "mcp";
+export type AgentScope = "repository" | "global";
 
 export interface ToolRef {
   id: string;
@@ -44,6 +45,7 @@ export interface AgentDefinition {
   tags: string[];
   capabilities: AgentCapabilities;
   sourcePath?: string;
+  sourceScope?: AgentScope;
 }
 
 export interface WorkflowNode {

@@ -1,16 +1,54 @@
 import * as path from "path";
 import * as vscode from "vscode";
-import type { AgentDefinition } from "../domain/models";
+import type { AgentDefinition, AgentScope } from "../domain/models";
 import { AgentMarkdownService } from "./agentMarkdownService";
 import {
   ensureDirectory,
   fileNameWithoutExt,
+  getGlobalAgentsRoot,
   getWorkspaceRoot,
   toAgentId,
 } from "../infrastructure/fsUtils";
 
 export class AgentRegistryService {
   private readonly markdownService = new AgentMarkdownService();
+
+  private inferScopeFromPath(
+    agentPath: string,
+    workspaceRoot?: string,
+  ): AgentScope {
+    if (workspaceRoot && agentPath.startsWith(workspaceRoot)) {
+      return "repository";
+    }
+
+    return "global";
+  }
+
+  private async collectAgentFilesFromDirectory(
+    dirPath: string,
+  ): Promise<vscode.Uri[]> {
+    try {
+      const entries = await vscode.workspace.fs.readDirectory(
+        vscode.Uri.file(dirPath),
+      );
+      const files = await Promise.all(
+        entries.map(async ([name, fileType]) => {
+          const absolutePath = path.join(dirPath, name);
+          if (fileType === vscode.FileType.Directory) {
+            return this.collectAgentFilesFromDirectory(absolutePath);
+          }
+          if (fileType === vscode.FileType.File && /\.agent\.md$/i.test(name)) {
+            return [vscode.Uri.file(absolutePath)];
+          }
+          return [] as vscode.Uri[];
+        }),
+      );
+
+      return files.flat();
+    } catch {
+      return [];
+    }
+  }
 
   async discoverAgents(): Promise<AgentDefinition[]> {
     const root = getWorkspaceRoot();
@@ -30,14 +68,18 @@ export class AgentRegistryService {
       (base) => `${base.replace(/\\/g, "/")}/**/*.agent.md`,
     );
 
-    const uris = await Promise.all(
+    const workspaceUris = await Promise.all(
       [...new Set([...defaultGlobs, ...configuredGlobs])].map((glob) =>
         vscode.workspace.findFiles(glob),
       ),
     );
-    const files = uris.flat();
+    const globalRoot = getGlobalAgentsRoot();
+    const globalFiles = globalRoot
+      ? await this.collectAgentFilesFromDirectory(globalRoot)
+      : [];
+    const files = [...globalFiles, ...workspaceUris.flat()];
 
-    const agents: AgentDefinition[] = [];
+    const agentsById = new Map<string, AgentDefinition>();
     for (const uri of files) {
       try {
         const buffer = await vscode.workspace.fs.readFile(uri);
@@ -74,13 +116,16 @@ export class AgentRegistryService {
         }
         parsed.id = toAgentId(parsed.name || fileNameWithoutExt(uri.fsPath));
         parsed.sourcePath = uri.fsPath;
-        agents.push(parsed);
+        parsed.sourceScope = this.inferScopeFromPath(uri.fsPath, root);
+        agentsById.set(parsed.id, parsed);
       } catch (error) {
         console.warn(`Agent Studio failed to parse ${uri.fsPath}`, error);
       }
     }
 
-    return agents.sort((a, b) => a.name.localeCompare(b.name));
+    return [...agentsById.values()].sort((a, b) =>
+      a.name.localeCompare(b.name),
+    );
   }
 
   async loadAgent(agentPath: string): Promise<AgentDefinition> {
@@ -91,6 +136,7 @@ export class AgentRegistryService {
       Buffer.from(content).toString("utf8"),
     );
     parsed.sourcePath = agentPath;
+    parsed.sourceScope = this.inferScopeFromPath(agentPath, getWorkspaceRoot());
     return parsed;
   }
 
@@ -107,11 +153,22 @@ export class AgentRegistryService {
       throw new Error("Agent instructions are required.");
     }
 
-    const folder = path.join(root, ".github", "agents");
+    const targetScope = agent.sourceScope || "repository";
+    const globalRoot = getGlobalAgentsRoot();
+    const folder =
+      targetScope === "global"
+        ? globalRoot
+        : path.join(root, ".github", "agents");
+
+    if (!folder) {
+      throw new Error("Global agents folder is not available on this system.");
+    }
+
     await ensureDirectory(folder);
 
     const fileName = `${toAgentId(agent.name)}.agent.md`;
-    const agentPath = agent.sourcePath || path.join(folder, fileName);
+    const agentPath = path.join(folder, fileName);
+    const previousPath = agent.sourcePath;
 
     // Attempt to preserve existing frontmatter arrays only when fields are
     // absent in the incoming payload. If a field is present but empty, treat
@@ -226,10 +283,24 @@ export class AgentRegistryService {
       );
     }
 
+    if (previousPath && previousPath !== agentPath) {
+      try {
+        await vscode.workspace.fs.delete(vscode.Uri.file(previousPath), {
+          useTrash: true,
+        });
+      } catch (error) {
+        console.warn(
+          `Agent Studio could not remove old agent file ${previousPath}`,
+          error,
+        );
+      }
+    }
+
     return {
       ...agent,
       id: toAgentId(agent.name),
       sourcePath: agentPath,
+      sourceScope: targetScope,
     };
   }
 
@@ -248,6 +319,7 @@ export class AgentRegistryService {
       id: toAgentId(`${agent.name} copy`),
       name: `${agent.name} Copy`,
       sourcePath: undefined,
+      sourceScope: agent.sourceScope,
     };
     return this.saveAgent(clone);
   }

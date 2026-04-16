@@ -5,6 +5,15 @@ export function getWorkspaceRoot(): string | undefined {
   return vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
 }
 
+export function getGlobalAgentsRoot(): string | undefined {
+  const home = process.env.HOME || process.env.USERPROFILE;
+  if (!home) {
+    return undefined;
+  }
+
+  return path.join(home, ".agents", "agents");
+}
+
 export async function ensureDirectory(dirPath: string): Promise<void> {
   await vscode.workspace.fs.createDirectory(vscode.Uri.file(dirPath));
 }

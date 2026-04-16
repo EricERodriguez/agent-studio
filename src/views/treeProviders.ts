@@ -135,6 +135,7 @@ function summarizeAgentStatus(
       : "ready";
   const tooltip = [
     `${agent.name}`,
+    `Scope: ${agent.sourceScope || "repository"}`,
     `Role: ${agent.role || "n/a"}`,
     `Tools: ${agent.capabilities.tools.length}`,
     `Skills: ${agent.capabilities.skills.length}`,
@@ -182,9 +183,11 @@ export class AgentsTreeProvider implements vscode.TreeDataProvider<BaseItem> {
       this.agents.map((agent) => {
         const status = summarizeAgentStatus(agent, this.agents, this.workflows);
         const item = new BaseItem(agent.name);
-        item.description = [agent.role || "no role", status.statusText].join(
-          " · ",
-        );
+        item.description = [
+          agent.sourceScope === "global" ? "global" : "repo",
+          agent.role || "no role",
+          status.statusText,
+        ].join(" · ");
         item.tooltip = status.tooltip;
         item.iconPath = createStatusIcon(status.primaryIssue);
         item.contextValue = "agentStudio.agent";

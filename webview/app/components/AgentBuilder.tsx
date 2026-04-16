@@ -315,6 +315,29 @@ export function AgentBuilder(): React.JSX.Element {
               />
             </label>
             <label>
+              {tx("Scope", "Scope")}
+              <select
+                title="Choose whether this agent belongs to the current repository or is available globally."
+                value={draft.sourceScope || "repository"}
+                onChange={(e) =>
+                  update({
+                    sourceScope: e.target.value as "repository" | "global",
+                  })
+                }
+              >
+                <option value="repository">
+                  {tx("Repository", "Repositorio")}
+                </option>
+                <option value="global">{tx("Global", "Global")}</option>
+              </select>
+              <small className="field-hint">
+                {tx(
+                  "Repository agents are saved in the current repo. Global agents are available across repos.",
+                  "Los agents de repositorio se guardan en el repo actual. Los globales están disponibles en cualquier repo.",
+                )}
+              </small>
+            </label>
+            <label>
               {tx("Name", "Nombre")}
               <input
                 title="Human-friendly name shown in the sidebar and dashboard."

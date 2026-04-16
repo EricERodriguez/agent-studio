@@ -472,6 +472,29 @@ export async function activate(
       return;
     }
 
+    const scopePick = await vscode.window.showQuickPick(
+      [
+        {
+          label: "Repository",
+          description: "Save this agent inside the current repository",
+          value: "repository",
+        },
+        {
+          label: "Global",
+          description: "Make this agent available in any repository",
+          value: "global",
+        },
+      ],
+      {
+        placeHolder: "Where should this agent be stored?",
+        ignoreFocusOut: true,
+      },
+    );
+
+    if (!scopePick) {
+      return;
+    }
+
     const name =
       (await vscode.window.showInputBox({
         prompt: "Agent name",
@@ -495,6 +518,7 @@ export async function activate(
         skills: [],
         mcpServers: [],
       },
+      sourceScope: scopePick.value as "repository" | "global",
     });
 
     await refreshState();
