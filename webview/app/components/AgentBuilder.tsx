@@ -77,6 +77,7 @@ export function AgentBuilder(): React.JSX.Element {
   const [draft, setDraft] = useState<AgentDefinition | undefined>(
     selectedAgent,
   );
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [newToolId, setNewToolId] = useState("");
   const [newToolLabel, setNewToolLabel] = useState("");
   const [newToolKind, setNewToolKind] = useState<ToolRef["kind"]>("built-in");
@@ -350,6 +351,10 @@ export function AgentBuilder(): React.JSX.Element {
               {tx("Handoff Agents", "Agents de handoff")}
               <select
                 title="Choose which other agents this agent can delegate work to."
+                aria-label={tx(
+                  "Handoff agents selection",
+                  "Select handoff agents",
+                )}
                 multiple
                 value={draft.handoffs.map((h) => h.agent)}
                 onChange={(e) => {
@@ -907,17 +912,30 @@ export function AgentBuilder(): React.JSX.Element {
                           <span style={{ marginRight: 8 }}>
                             {server.label} ({server.id})
                           </span>
-                          <label style={{ marginRight: 8 }}>
+                          <label
+                            className="mcp-autorun-label"
+                            htmlFor={`mcp-autorun-${server.id}`}
+                            style={{ marginRight: 8 }}
+                          >
                             <input
+                              id={`mcp-autorun-${server.id}`}
+                              aria-label={`${tx("Auto-run", "Auto-run")} ${server.label}`}
                               type="checkbox"
                               checked={Boolean(server.autoRunMCP)}
                               onChange={() => toggleMcpAutoRun(server.id)}
                             />
-                            <span style={{ marginLeft: 6 }}>
+                            <span
+                              className="mcp-autorun-text"
+                              style={{ marginLeft: 6 }}
+                            >
                               {tx("Auto-run", "Auto-run")}
                             </span>
                           </label>
                           <button
+                            aria-label={
+                              tx("Remove MCP server", "Remove MCP server") +
+                              ` ${server.id}`
+                            }
                             title={`Remove MCP server ${server.label} from this agent.`}
                             onClick={() => removeMcpServer(server.id)}
                           >
@@ -1017,12 +1035,55 @@ export function AgentBuilder(): React.JSX.Element {
         <button
           title="Save all changes made to this agent definition."
           disabled={!hasValidContent || brokenHandoffs.length > 0}
-          onClick={() =>
-            vscode?.postMessage({ type: "saveAgent", payload: draft })
-          }
+          onClick={() => {
+            setSaveError(null);
+            if (!vscode) {
+              setSaveError(
+                tx(
+                  "Cannot save: VS Code API unavailable in this context.",
+                  "No se puede guardar: API de VS Code no disponible en este contexto.",
+                ),
+              );
+              try {
+                // eslint-disable-next-line no-console
+                console.error(
+                  "[AgentBuilder] VS Code API unavailable; cannot post message.",
+                );
+              } catch {}
+              return;
+            }
+
+            try {
+              // eslint-disable-next-line no-console
+              console.log("[AgentBuilder] saveAgent payload:", draft);
+            } catch (e) {
+              // ignore
+            }
+
+            try {
+              vscode.postMessage({ type: "saveAgent", payload: draft });
+            } catch (e) {
+              setSaveError(
+                tx(
+                  "Failed to send save message to extension.",
+                  "Fallo al enviar mensaje de guardado a la extensión.",
+                ),
+              );
+            }
+          }}
         >
           {tx("Save", "Guardar")}
         </button>
+        {saveError && (
+          <div
+            role="alert"
+            aria-live="assertive"
+            className="validation-error"
+            style={{ marginLeft: 12 }}
+          >
+            {saveError}
+          </div>
+        )}
         <button
           title="Discard local edits and restore the last loaded version of this agent."
           onClick={() => setDraft(selectedAgent)}

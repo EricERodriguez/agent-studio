@@ -113,14 +113,99 @@ export class AgentRegistryService {
     const fileName = `${toAgentId(agent.name)}.agent.md`;
     const agentPath = agent.sourcePath || path.join(folder, fileName);
 
+    // Attempt to preserve existing frontmatter arrays if the incoming agent
+    // is missing them (fallback merge). This helps avoid data loss when the
+    // webview fails to include arrays like `mcpServers`, `skills` or
+    // `handoffs` in the payload.
+    try {
+      const existing = await vscode.workspace.fs
+        .readFile(vscode.Uri.file(agentPath))
+        .then((b) => Buffer.from(b).toString("utf8"))
+        .catch(() => null);
+      if (existing) {
+        try {
+          const parsedExisting = this.markdownService.parse(existing);
+          // Merge capabilities.tools if incoming missing
+          if (
+            (!agent.capabilities?.mcpServers ||
+              agent.capabilities.mcpServers.length === 0) &&
+            parsedExisting.capabilities?.mcpServers &&
+            parsedExisting.capabilities.mcpServers.length > 0
+          ) {
+            agent.capabilities = {
+              ...agent.capabilities,
+              mcpServers: parsedExisting.capabilities.mcpServers,
+            };
+          }
+          if (
+            (!agent.capabilities?.skills ||
+              agent.capabilities.skills.length === 0) &&
+            parsedExisting.capabilities?.skills &&
+            parsedExisting.capabilities.skills.length > 0
+          ) {
+            agent.capabilities = {
+              ...agent.capabilities,
+              skills: parsedExisting.capabilities.skills,
+            };
+          }
+          if (
+            (!agent.handoffs || agent.handoffs.length === 0) &&
+            parsedExisting.handoffs &&
+            parsedExisting.handoffs.length > 0
+          ) {
+            agent.handoffs = parsedExisting.handoffs;
+          }
+        } catch (e) {
+          // ignore parse/merge errors
+        }
+      }
+    } catch (e) {
+      // ignore filesystem read errors
+    }
+
+    // Debug: log full incoming agent payload to help diagnose missing fields
+    try {
+      // eslint-disable-next-line no-console
+      console.log(
+        "[AgentRegistryService] saveAgent payload: ",
+        JSON.stringify(agent, null, 2),
+      );
+    } catch {}
+
     const serialized = this.markdownService.generate({
       ...agent,
       id: toAgentId(agent.name),
     });
+
+    try {
+      // eslint-disable-next-line no-console
+      console.log(
+        "[AgentRegistryService] serialized agent content:\n",
+        serialized,
+      );
+    } catch {}
     await vscode.workspace.fs.writeFile(
       vscode.Uri.file(agentPath),
       Buffer.from(serialized, "utf8"),
     );
+
+    try {
+      const written = await vscode.workspace.fs.readFile(
+        vscode.Uri.file(agentPath),
+      );
+      const writtenText = Buffer.from(written).toString("utf8");
+      // eslint-disable-next-line no-console
+      console.log(
+        "[AgentRegistryService] file written content:\n",
+        writtenText,
+      );
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error(
+        "[AgentRegistryService] failed to read back written file",
+        e,
+      );
+    }
 
     return {
       ...agent,

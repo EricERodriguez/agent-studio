@@ -353,6 +353,30 @@ h4 {
   background: var(--vscode-button-secondaryHoverBackground);
 }
 
+.selected-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+}
+
+.mcp-autorun-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.mcp-autorun-label input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+}
+
+.mcp-autorun-label .mcp-autorun-text {
+  font-size: 12px;
+  color: var(--vscode-descriptionForeground);
+}
+
 .filter-chip {
   border-radius: 999px;
   padding: 5px 10px;

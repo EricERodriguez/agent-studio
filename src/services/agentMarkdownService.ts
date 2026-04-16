@@ -20,6 +20,31 @@ interface AgentFrontmatter {
 }
 
 export class AgentMarkdownService {
+  private pruneUndefined<T>(value: T): T | undefined {
+    if (value === undefined) {
+      return undefined;
+    }
+
+    if (Array.isArray(value)) {
+      const cleaned = value
+        .map((item) => this.pruneUndefined(item))
+        .filter((item) => item !== undefined);
+      return cleaned as T;
+    }
+
+    if (value && typeof value === "object") {
+      const cleanedEntries = Object.entries(value)
+        .map(
+          ([key, nestedValue]) =>
+            [key, this.pruneUndefined(nestedValue)] as const,
+        )
+        .filter(([, nestedValue]) => nestedValue !== undefined);
+      return Object.fromEntries(cleanedEntries) as T;
+    }
+
+    return value;
+  }
+
   parse(content: string): AgentDefinition {
     const parsed = matter(content);
     const fm = (parsed.data || {}) as AgentFrontmatter;
@@ -100,6 +125,24 @@ export class AgentMarkdownService {
   }
 
   generate(agent: AgentDefinition): string {
+    try {
+      // eslint-disable-next-line no-console
+      console.log(
+        "[AgentMarkdownService] generating for agent:",
+        agent.id,
+        JSON.stringify(
+          {
+            tools: agent.capabilities?.tools || [],
+            skills: agent.capabilities?.skills || [],
+            mcp: agent.capabilities?.mcpServers || [],
+            handoffs: agent.handoffs || [],
+          },
+          null,
+          2,
+        ),
+      );
+    } catch {}
+
     const data: Record<string, unknown> = {
       name: agent.name,
       description: agent.description,
@@ -134,6 +177,9 @@ export class AgentMarkdownService {
       }),
     );
 
-    return matter.stringify(agent.instructions.trim() + "\n", sanitized);
+    return matter.stringify(
+      agent.instructions.trim() + "\n",
+      this.pruneUndefined(sanitized) as Record<string, unknown>,
+    );
   }
 }
