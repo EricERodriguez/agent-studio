@@ -83,6 +83,7 @@ export function GraphCanvas({ mode }: GraphCanvasProps): React.JSX.Element {
 
     const edges: Edge[] = agents.flatMap((agent) =>
       agent.handoffs
+        .map((h) => h.agent)
         .filter((target) => agents.some((candidate) => candidate.id === target))
         .map((target) => ({
           id: `${agent.id}->${target}`,

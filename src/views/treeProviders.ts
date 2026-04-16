@@ -74,7 +74,7 @@ function summarizeAgentStatus(
     workflow.nodes.some((node) => node.agentId === agent.id),
   ).length;
   const inboundHandoffs = allAgents.filter((candidate) =>
-    candidate.handoffs.includes(agent.id),
+    candidate.handoffs.map((h) => h.agent).includes(agent.id),
   ).length;
 
   if (agent.capabilities.tools.length === 0) {
@@ -90,9 +90,10 @@ function summarizeAgentStatus(
     issues.push({ kind: "missing-mcp", label: "missing mcp" });
   }
   const brokenHandoffs = agent.handoffs.filter(
-    (handoffId) =>
+    (handoff) =>
       !allAgents.some(
-        (candidate) => candidate.id === handoffId && candidate.id !== agent.id,
+        (candidate) =>
+          candidate.id === handoff.agent && candidate.id !== agent.id,
       ),
   );
   if (brokenHandoffs.length > 0) {
@@ -248,7 +249,7 @@ export class WorkspaceHealthTreeProvider implements vscode.TreeDataProvider<Base
 
     const orphanAgents = this.agents.filter((agent) => {
       const inboundHandoffs = this.agents.filter((candidate) =>
-        candidate.handoffs.includes(agent.id),
+        candidate.handoffs.map((h) => h.agent).includes(agent.id),
       ).length;
       const coverage = workflowCoverageByAgent.get(agent.id) || 0;
       return (

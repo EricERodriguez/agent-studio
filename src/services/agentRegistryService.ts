@@ -43,6 +43,35 @@ export class AgentRegistryService {
         const buffer = await vscode.workspace.fs.readFile(uri);
         const text = Buffer.from(buffer).toString("utf8");
         const parsed = this.markdownService.parse(text);
+        // Basic validation: surface common frontmatter shapes that should be migrated
+        try {
+          const matter = await import("gray-matter");
+          const raw = matter.default(text);
+          const fm = raw.data as Record<string, unknown>;
+          if (fm.tools && Array.isArray(fm.tools)) {
+            const nonStrings = (fm.tools as any[]).filter(
+              (t) => typeof t !== "string",
+            );
+            if (nonStrings.length > 0) {
+              console.warn(
+                `${uri.fsPath}: frontmatter 'tools' contains non-string entries; consider migrating to an array of tool ids.`,
+              );
+            }
+          }
+          if (fm.handoffs && Array.isArray(fm.handoffs)) {
+            const nonObjects = (fm.handoffs as any[]).filter(
+              (h) => typeof h !== "object",
+            );
+            if (nonObjects.length > 0) {
+              // strings are accepted but we encourage object format; surface as info
+              console.info(
+                `${uri.fsPath}: frontmatter 'handoffs' contains string entries; they will be migrated to explicit handoff objects.`,
+              );
+            }
+          }
+        } catch (e) {
+          // ignore validation failures
+        }
         parsed.id = toAgentId(parsed.name || fileNameWithoutExt(uri.fsPath));
         parsed.sourcePath = uri.fsPath;
         agents.push(parsed);

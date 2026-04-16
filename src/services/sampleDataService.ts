@@ -55,7 +55,9 @@ export class SampleDataService {
       role: "planning",
       instructions:
         "Break requirements into actionable tasks, identify risks, and define acceptance criteria.",
-      handoffs: ["backend-implementer"],
+      handoffs: [
+        { agent: "backend-implementer", label: "Backend Implementer" },
+      ],
       tags: ["planning", "delivery"],
       capabilities: {
         tools: [
@@ -76,7 +78,7 @@ export class SampleDataService {
       role: "implementation",
       instructions:
         "Implement changes incrementally, run validations, and keep edits focused.",
-      handoffs: ["reviewer"],
+      handoffs: [{ agent: "reviewer", label: "Reviewer" }],
       tags: ["implementation", "typescript"],
       capabilities: {
         tools: [

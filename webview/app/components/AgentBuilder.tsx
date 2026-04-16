@@ -24,10 +24,22 @@ function generateMarkdown(agent: AgentDefinition): string {
     name: agent.name,
     description: agent.description,
     role: agent.role,
-    tools: agent.capabilities.tools,
+    tools: agent.capabilities.tools.map((t) => t.id),
     skills: agent.capabilities.skills,
-    mcp: agent.capabilities.mcpServers,
-    handoffs: agent.handoffs,
+    mcp: agent.capabilities.mcpServers.map((m) => ({
+      id: m.id,
+      label: m.label,
+      command: m.command,
+      args: m.args,
+      env: m.env,
+      autoRunMCP: m.autoRunMCP,
+    })),
+    handoffs: agent.handoffs.map((h) => ({
+      agent: h.agent,
+      label: h.label,
+      prompt: h.prompt,
+      send: h.send,
+    })),
     tags: agent.tags,
     context: agent.context,
   };
@@ -121,7 +133,10 @@ export function AgentBuilder(): React.JSX.Element {
           ? draft.capabilities.mcpServers.filter(
               (current) => current.id !== server.id,
             )
-          : [...draft.capabilities.mcpServers, server],
+          : [
+              ...draft.capabilities.mcpServers,
+              { ...server, autoRunMCP: server.autoRunMCP ?? true },
+            ],
       },
     });
   };
@@ -132,6 +147,17 @@ export function AgentBuilder(): React.JSX.Element {
         ...draft.capabilities,
         mcpServers: draft.capabilities.mcpServers.filter(
           (current) => current.id !== serverId,
+        ),
+      },
+    });
+  };
+
+  const toggleMcpAutoRun = (serverId: string): void => {
+    update({
+      capabilities: {
+        ...draft.capabilities,
+        mcpServers: draft.capabilities.mcpServers.map((m) =>
+          m.id === serverId ? { ...m, autoRunMCP: !m.autoRunMCP } : m,
         ),
       },
     });
@@ -325,13 +351,17 @@ export function AgentBuilder(): React.JSX.Element {
               <select
                 title="Choose which other agents this agent can delegate work to."
                 multiple
-                value={draft.handoffs}
+                value={draft.handoffs.map((h) => h.agent)}
                 onChange={(e) => {
                   const selected = Array.from(
                     e.target.selectedOptions,
                     (opt) => opt.value,
                   );
-                  update({ handoffs: selected });
+                  const mapped = selected.map((id) => {
+                    const a = handoffCandidates.find((ag) => ag.id === id);
+                    return { agent: id, label: a?.name || id };
+                  });
+                  update({ handoffs: mapped });
                 }}
                 size={Math.min(Math.max(handoffCandidates.length, 3), 8)}
               >
@@ -874,7 +904,19 @@ export function AgentBuilder(): React.JSX.Element {
                     <div className="chip-row removable-chip-row">
                       {draft.capabilities.mcpServers.map((server) => (
                         <span key={server.id} className="selected-chip">
-                          {server.label} ({server.id})
+                          <span style={{ marginRight: 8 }}>
+                            {server.label} ({server.id})
+                          </span>
+                          <label style={{ marginRight: 8 }}>
+                            <input
+                              type="checkbox"
+                              checked={Boolean(server.autoRunMCP)}
+                              onChange={() => toggleMcpAutoRun(server.id)}
+                            />
+                            <span style={{ marginLeft: 6 }}>
+                              {tx("Auto-run", "Auto-run")}
+                            </span>
+                          </label>
                           <button
                             title={`Remove MCP server ${server.label} from this agent.`}
                             onClick={() => removeMcpServer(server.id)}
@@ -920,9 +962,9 @@ export function AgentBuilder(): React.JSX.Element {
       draft.capabilities.mcpServers.length >
     0;
   const brokenHandoffs = draft.handoffs.filter(
-    (handoffId) =>
+    (handoff) =>
       !allAgents.some(
-        (agent) => agent.id === handoffId && agent.id !== draft.id,
+        (agent) => agent.id === handoff.agent && agent.id !== draft.id,
       ),
   );
 

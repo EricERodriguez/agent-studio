@@ -166,3 +166,38 @@ Contributions are welcome. For contribution guidelines, issue reporting, and col
 ## License
 
 MIT License. See [LICENSE](LICENSE) for details.
+
+## Frontmatter & Agent File Format (developer notes)
+
+Agent Studio uses a structured frontmatter in `.agent.md` files to declare capabilities and handoffs. Recent updates changed a few rules — update your `.agent.md` files accordingly.
+
+- `tools`: now serialized as an array of tool IDs (strings). Example:
+
+```yaml
+tools:
+  - run_in_terminal
+  - apply_patch
+```
+
+- `mcp`: an array of MCP server objects or ids. MCP objects may include an optional `autoRunMCP` boolean. Example:
+
+```yaml
+mcp:
+  - id: chrome-devtools-mcp
+    command: npx
+    args:
+      ["chrome-devtools-mcp@0.21.0", "--browserUrl", "http://127.0.0.1:9222"]
+    autoRunMCP: true
+```
+
+- `handoffs`: migrated from an array of agent-id strings to objects with `agent`, optional `label`, optional `prompt`, and optional `send` boolean. Strings are still accepted and will be migrated on save. Example:
+
+```yaml
+handoffs:
+  - agent: reviewer
+    label: Reviewer
+    prompt: "Please review the changes and focus on tests"
+    send: true
+```
+
+Validation: Agent Studio will log/notify when it discovers older formats and offer migration guidance.

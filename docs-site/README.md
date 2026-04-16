@@ -295,6 +295,28 @@ Docs improvements are especially welcome:
 
 ---
 
+## Frontmatter changes (developer notes)
+
+Recent updates to Agent Studio introduced stricter frontmatter rules for `.agent.md` files. If you author agent files, please note the following:
+
+- `tools` should be an array of tool IDs (strings). Previously tools could be declared as objects; the UI now emits IDs for portability and clarity.
+
+- `mcp` entries can be either string ids or objects. MCP objects may include an optional `autoRunMCP: true|false` flag indicating whether Agent Studio should attempt to start that MCP automatically when requested by the user or UI flows.
+
+- `handoffs` moved from simple string lists to structured objects with the following shape:
+
+```yaml
+handoffs:
+  - agent: reviewer
+    label: Reviewer
+    prompt: "Please review the changes and focus on tests"
+    send: true
+```
+
+Strings are still accepted for backwards compatibility and will be migrated to objects when editing/saving from the Agent Builder.
+
+Agent Studio will emit console/info logs when it detects legacy frontmatter and suggest migration steps; consult the extension output panel for details when editing agent files.
+
 **Built with VitePress. Deployed to GitHub Pages. Loved by developers.**
 
 ## Preview the production build

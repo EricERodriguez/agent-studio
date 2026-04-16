@@ -19,6 +19,7 @@ export interface MCPServerRef {
   command?: string;
   args?: string[];
   env?: Record<string, string>;
+  autoRunMCP?: boolean;
 }
 
 export interface AgentCapabilities {
@@ -34,7 +35,12 @@ export interface AgentDefinition {
   role?: string;
   instructions: string;
   context?: string;
-  handoffs: string[];
+  handoffs: Array<{
+    agent: string;
+    label?: string;
+    prompt?: string;
+    send?: boolean;
+  }>;
   tags: string[];
   capabilities: AgentCapabilities;
   sourcePath?: string;
