@@ -304,7 +304,7 @@ By contributing, you agree that your code will be licensed under the same licens
 
 - [GitHub Discussions](https://github.com/EricERodriguez/agent-studio/discussions): Ask questions, share ideas
 - [GitHub Issues](https://github.com/EricERodriguez/agent-studio/issues): Report bugs
-<!-- - [Email](mailto:eric92rodriguez@gmail.com): For security issues or urgent matters -->
+<!-- - [Email](mailto:): For security issues or urgent matters -->
 
 ---
 
