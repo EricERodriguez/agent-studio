@@ -41,6 +41,12 @@ Agent Studio gives you a visual dashboard to design agents, inspect relationship
 - Open agents in chat and move from design to execution quickly.
 - No context switching to external dashboards.
 
+### 🤖 Multi-AI Agent Generation
+
+- Generate the same agent for **Claude Code**, **OpenAI Codex** (via `AGENTS.md`), or **Google Antigravity** from a single definition.
+- Pick **✨ All AIs** to produce every provider's file in one step.
+- Export (or re-export) any existing agent later from its context menu — see [Creating Agents](docs-site/docs/creating-agents.md#generating-agents-for-claude-codex-or-antigravity).
+
 ## Screenshots
 
 > Replace these placeholders with real captures before Marketplace publication.
@@ -106,6 +112,7 @@ If you are building with multiple AI agents, complexity grows fast. Agent Studio
 - **Agent Studio: Edit Agent**
 - **Agent Studio: Delete Agent**
 - **Agent Studio: Duplicate Agent**
+- **Agent Studio: Export Agent for Claude, Codex or Antigravity**
 - **Agent Studio: Open Agent In Chat**
 - **Agent Studio: Create Workflow**
 - **Agent Studio: Start MCP Server**
@@ -119,31 +126,38 @@ If you are building with multiple AI agents, complexity grows fast. Agent Studio
 Agent Studio supports workspace configuration for agent discovery paths.
 
 - `agentStudio.agentPaths`: Additional workspace-relative directories to discover `.agent.md` files.
+- `agentStudio.includeClaudeAgents`: When `true` (default), also discovers globally installed Claude Code subagents from `~/.claude/agents/*.md` and lists them as global agents.
 
 ### Agent scopes
 
-Agent Studio now supports two storage scopes for agents:
+Agent Studio supports two storage scopes for agents:
 
 - `repository`: stored in the current repo, under `.github/agents`
-- `global`: stored in the current user's home directory, under `~/.agents/agents`
+- `global`: stored in the current user's home directory, either under `~/.agents/agents` (Agent Studio's own format) or `~/.claude/agents` (Claude Code subagents, read-only frontmatter shape — `tools` may be a comma-separated string instead of an array)
 
 When Agent Studio loads agents, it merges:
 
 - repository agents from the open workspace
 - global agents from `~/.agents/agents`
+- global Claude Code subagents from `~/.claude/agents` (unless `agentStudio.includeClaudeAgents` is set to `false`)
 
-If a repository agent and a global agent share the same agent id, the repository agent takes precedence.
+The dashboard's agent picker and search results show a `Repo`/`Global` badge next to each agent so you can tell scopes apart at a glance, and you can filter the agent list by scope from the Capability Filters panel.
+
+If two agent files resolve to the same agent id, the later one in the merge order above wins (repository beats global, and `~/.claude/agents` beats `~/.agents/agents`). The shadowed agent is dropped from the list, and Agent Studio surfaces a warning in the Inspector panel, the sidebar tree tooltip, and the developer console so the conflict isn't silent.
 
 You can choose the scope:
 
 - when creating a new agent from the command palette
 - from the `Scope` field in the Agent Builder `Identity` tab
 
+Editing and saving works the same way for both scopes — saving writes back to the folder matching the agent's `Scope` field (and migrates the file there if it was loaded from elsewhere, e.g. from `~/.claude/agents`).
+
 Default:
 
 ```json
 {
-  "agentStudio.agentPaths": [".github/agents"]
+  "agentStudio.agentPaths": [".github/agents"],
+  "agentStudio.includeClaudeAgents": true
 }
 ```
 

@@ -12,6 +12,7 @@ interface Filters {
   toolId?: string;
   skillId?: string;
   mcpId?: string;
+  scope?: "repository" | "global";
 }
 
 interface UiPanels {
@@ -64,7 +65,11 @@ interface StudioState {
   setWorkflowEntryStep: (workflowId: string, nodeId: string) => void;
   updateWorkflowMeta: (
     workflowId: string,
-    meta: { name?: string; description?: string },
+    meta: {
+      name?: string;
+      description?: string;
+      sourceScope?: "repository" | "global";
+    },
   ) => void;
   setFilter: (key: keyof Filters, value?: string) => void;
   setSelectedCapability: (capabilityId?: string) => void;

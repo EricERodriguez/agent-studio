@@ -1,5 +1,6 @@
 export type ToolKind = "built-in" | "extension" | "mcp";
 export type AgentScope = "repository" | "global";
+export type AgentProvider = "claude" | "codex" | "antigravity";
 
 export interface ToolRef {
   id: string;
@@ -44,6 +45,11 @@ export interface AgentDefinition {
   };
   sourcePath?: string;
   sourceScope?: AgentScope;
+  providers?: AgentProvider[];
+  shadowedAgent?: {
+    sourcePath: string;
+    sourceScope: AgentScope;
+  };
 }
 
 export interface WorkflowDefinition {
@@ -57,6 +63,12 @@ export interface WorkflowDefinition {
     isEntry?: boolean;
   }>;
   edges: Array<{ id: string; source: string; target: string; label?: string }>;
+  sourcePath?: string;
+  sourceScope?: AgentScope;
+  shadowedWorkflow?: {
+    sourcePath: string;
+    sourceScope: AgentScope;
+  };
 }
 
 export interface CapabilityGraph {

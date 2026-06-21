@@ -1,5 +1,6 @@
 import type {
   AgentDefinition,
+  AgentProvider,
   CapabilityGraph,
   WorkflowDefinition,
 } from "./models";
@@ -18,7 +19,11 @@ export type WebviewToExtensionMessage =
       payload: { workflowId: string; mode: "chat" | "plan" };
     }
   | { type: "createAgent" }
-  | { type: "editAgent"; payload: { agentId: string } };
+  | { type: "editAgent"; payload: { agentId: string } }
+  | {
+      type: "exportAgent";
+      payload: { agentId: string; providers: AgentProvider[] };
+    };
 
 export interface WorkflowRunStep {
   nodeId: string;

@@ -5,6 +5,10 @@ import {
   createWorkflowSkeleton,
 } from "./commands/registerCommands";
 import { AgentRegistryService } from "./services/agentRegistryService";
+import {
+  AGENT_PROVIDER_LABELS,
+  AgentExportService,
+} from "./services/agentExportService";
 import { CapabilityService } from "./services/capabilityService";
 import { ChatBridgeService } from "./services/chatBridgeService";
 import { SampleDataService } from "./services/sampleDataService";
@@ -19,7 +23,11 @@ import {
   WorkflowsTreeProvider,
 } from "./views/treeProviders";
 import { DashboardPanel } from "./views/dashboardPanel";
-import type { AgentDefinition, WorkflowDefinition } from "./domain/models";
+import type {
+  AgentDefinition,
+  AgentProvider,
+  WorkflowDefinition,
+} from "./domain/models";
 import type { WorkflowRunState } from "./domain/messages";
 
 export async function activate(
@@ -50,6 +58,7 @@ export async function activate(
   };
 
   const agentRegistryService = new AgentRegistryService();
+  const agentExportService = new AgentExportService();
   const workflowService = new WorkflowService();
   const capabilityService = new CapabilityService();
   const chatBridgeService = new ChatBridgeService();
@@ -105,7 +114,10 @@ export async function activate(
       await refreshState();
     },
     onSaveAgent: async (agent) => {
-      if (!(await ensureWorkspaceOpen())) {
+      if (
+        (agent.sourceScope || "repository") === "repository" &&
+        !(await ensureWorkspaceOpen())
+      ) {
         dashboard.postError("Open a folder/workspace first to save agents.");
         return;
       }
@@ -140,7 +152,10 @@ export async function activate(
       await chatBridgeService.openAgentInChat(agent);
     },
     onSaveWorkflow: async (workflow) => {
-      if (!(await ensureWorkspaceOpen())) {
+      if (
+        (workflow.sourceScope || "repository") === "repository" &&
+        !(await ensureWorkspaceOpen())
+      ) {
         dashboard.postError("Open a folder/workspace first to save workflows.");
         return;
       }
@@ -166,6 +181,27 @@ export async function activate(
     },
     onEditAgent: async (agentId) => {
       await editAgent(agentId);
+    },
+    onExportAgent: async (agentId, providers) => {
+      if (!(await ensureWorkspaceOpen())) {
+        dashboard.postError("Open a folder/workspace first to export agents.");
+        return;
+      }
+
+      const target = agents.find((candidate) => candidate.id === agentId);
+      if (!target) {
+        dashboard.postError("Agent not found.");
+        return;
+      }
+
+      try {
+        await exportAgentToProviders(target, providers);
+        await refreshState();
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Failed to export agent.";
+        dashboard.postError(message);
+      }
     },
   });
 
@@ -457,6 +493,101 @@ export async function activate(
     dashboard.postInfo(`Workflow executed: ${workflow.name}`);
   };
 
+  const pickProviders = async (
+    preselected: AgentProvider[] = [],
+  ): Promise<AgentProvider[] | undefined> => {
+    const ALL_PROVIDERS: AgentProvider[] = ["claude", "codex", "antigravity"];
+    const allLabel = "✨ All AIs (Claude, Codex & Antigravity)";
+
+    const items = [
+      ...ALL_PROVIDERS.map((value) => ({
+        label: AGENT_PROVIDER_LABELS[value],
+        value,
+        picked: preselected.includes(value),
+      })),
+      {
+        label: allLabel,
+        value: "all" as const,
+        picked: false,
+      },
+    ];
+
+    const picks = await vscode.window.showQuickPick(items, {
+      canPickMany: true,
+      ignoreFocusOut: true,
+      placeHolder:
+        "Generate this agent for which AI tool(s)? (Esc to skip — you can export later)",
+    });
+
+    if (!picks) {
+      return undefined;
+    }
+
+    if (picks.some((pick) => pick.value === "all")) {
+      return ALL_PROVIDERS;
+    }
+
+    return picks.map((pick) => pick.value as AgentProvider);
+  };
+
+  const exportAgentToProviders = async (
+    agent: AgentDefinition,
+    providers: AgentProvider[],
+  ): Promise<void> => {
+    const root = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    if (!root || providers.length === 0) {
+      return;
+    }
+
+    const { written, skipped } = await agentExportService.exportAgent(
+      agent,
+      providers,
+      root,
+    );
+
+    await agentRegistryService.saveAgent({
+      ...agent,
+      providers: [...new Set([...(agent.providers || []), ...providers])],
+    });
+
+    const fileList = written
+      .map((w) => `${AGENT_PROVIDER_LABELS[w.provider]} → ${w.path}`)
+      .join("\n");
+    if (written.length > 0) {
+      dashboard.postInfo(
+        `Exported "${agent.name}" for ${written.map((w) => AGENT_PROVIDER_LABELS[w.provider]).join(", ")}.`,
+      );
+    }
+    for (const skip of skipped) {
+      dashboard.postInfo(
+        `Skipped ${AGENT_PROVIDER_LABELS[skip.provider]} export for "${agent.name}": ${skip.reason}`,
+      );
+    }
+    console.info(`Agent Studio export:\n${fileList}`);
+  };
+
+  const exportAgent = async (agentId?: string): Promise<void> => {
+    if (!(await ensureWorkspaceOpen())) {
+      return;
+    }
+
+    const target = agentId
+      ? agents.find((agent) => agent.id === agentId)
+      : await pickAgent(agents, "Select an agent to export");
+
+    if (!target) {
+      return;
+    }
+
+    const providers = await pickProviders(target.providers || []);
+    if (!providers || providers.length === 0) {
+      return;
+    }
+
+    await exportAgentToProviders(target, providers);
+    await refreshState();
+  };
+
   const createAgent = async (templateName?: string): Promise<void> => {
     if (!(await ensureWorkspaceOpen())) {
       return;
@@ -496,7 +627,9 @@ export async function activate(
       return;
     }
 
-    await agentRegistryService.saveAgent({
+    const providers = await pickProviders();
+
+    const saved = await agentRegistryService.saveAgent({
       id: name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
       name,
       description: "",
@@ -510,6 +643,10 @@ export async function activate(
       },
       sourceScope: scopePick.value as "repository" | "global",
     });
+
+    if (providers && providers.length > 0) {
+      await exportAgentToProviders(saved, providers);
+    }
 
     await refreshState();
     dashboard.show();
@@ -635,7 +772,7 @@ export async function activate(
       return;
     }
 
-    await workflowService.deleteWorkflow(target.id);
+    await workflowService.deleteWorkflow(target);
     await refreshState();
     dashboard.postInfo(`Deleted workflow ${target.name}`);
   };
@@ -666,7 +803,30 @@ export async function activate(
   };
 
   const createWorkflow = async (): Promise<void> => {
-    if (!(await ensureWorkspaceOpen())) {
+    const scopePick = await vscode.window.showQuickPick(
+      [
+        {
+          label: "Repository",
+          description: "Save this workflow inside the current repository",
+          value: "repository" as const,
+        },
+        {
+          label: "Global",
+          description: "Make this workflow available in any repository",
+          value: "global" as const,
+        },
+      ],
+      {
+        placeHolder: "Where should this workflow be stored?",
+        ignoreFocusOut: true,
+      },
+    );
+
+    if (!scopePick) {
+      return;
+    }
+
+    if (scopePick.value === "repository" && !(await ensureWorkspaceOpen())) {
       return;
     }
 
@@ -674,6 +834,7 @@ export async function activate(
     if (!skeleton) {
       return;
     }
+    skeleton.sourceScope = scopePick.value;
     await workflowService.saveWorkflow(skeleton);
     await refreshState();
     dashboard.show();
@@ -748,6 +909,7 @@ export async function activate(
     editAgent,
     deleteAgent,
     duplicateAgent,
+    exportAgent,
     openInChat,
     createWorkflow,
     startMcpServer,

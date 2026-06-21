@@ -88,11 +88,17 @@ export function DashboardPage(): React.JSX.Element {
     ) {
       return false;
     }
+    if (
+      filters.scope &&
+      (agent.sourceScope || "repository") !== filters.scope
+    ) {
+      return false;
+    }
     return true;
   });
 
   const activeFilters: Array<{
-    key: "toolId" | "skillId" | "mcpId";
+    key: "toolId" | "skillId" | "mcpId" | "scope";
     label: string;
     value: string;
   }> = [];
@@ -124,6 +130,17 @@ export function DashboardPage(): React.JSX.Element {
       value:
         graph.mcpServers.find((server) => server.id === filters.mcpId)?.label ||
         filters.mcpId,
+    });
+  }
+
+  if (filters.scope) {
+    activeFilters.push({
+      key: "scope",
+      label: tx("Scope", "Scope"),
+      value:
+        filters.scope === "global"
+          ? tx("Global", "Global")
+          : tx("Repository", "Repositorio"),
     });
   }
 
@@ -209,6 +226,7 @@ export function DashboardPage(): React.JSX.Element {
     setFilter("toolId", undefined);
     setFilter("skillId", undefined);
     setFilter("mcpId", undefined);
+    setFilter("scope", undefined);
   };
 
   const focusCapabilityResult = (
@@ -434,7 +452,12 @@ export function DashboardPage(): React.JSX.Element {
                             )}
                             onClick={() => selectAgent(agent.id)}
                           >
-                            {agent.name}
+                            {agent.name}{" "}
+                            <span className="scope-badge">
+                              {agent.sourceScope === "global"
+                                ? tx("Global", "Global")
+                                : tx("Repo", "Repo")}
+                            </span>
                           </button>
                         ))}
                       </div>
@@ -563,11 +586,24 @@ export function DashboardPage(): React.JSX.Element {
                     <option value="">
                       {tx("No agent selected", "Ningún agent seleccionado")}
                     </option>
-                    {agents.map((agent) => (
-                      <option key={agent.id} value={agent.id}>
-                        {agent.name}
-                      </option>
-                    ))}
+                    <optgroup label={tx("Repository", "Repositorio")}>
+                      {agents
+                        .filter((agent) => agent.sourceScope !== "global")
+                        .map((agent) => (
+                          <option key={agent.id} value={agent.id}>
+                            {agent.name}
+                          </option>
+                        ))}
+                    </optgroup>
+                    <optgroup label={tx("Global", "Global")}>
+                      {agents
+                        .filter((agent) => agent.sourceScope === "global")
+                        .map((agent) => (
+                          <option key={agent.id} value={agent.id}>
+                            {agent.name}
+                          </option>
+                        ))}
+                    </optgroup>
                   </select>
                 </label>
                 <label>
@@ -670,6 +706,27 @@ export function DashboardPage(): React.JSX.Element {
                         {server.label}
                       </option>
                     ))}
+                  </select>
+                </label>
+                <label>
+                  {tx("Scope filter", "Filtro de Scope")}
+                  <select
+                    title={tx(
+                      "Show only repository agents, only global agents, or both.",
+                      "Muestra solo agents de repositorio, solo globales, o ambos.",
+                    )}
+                    value={filters.scope || ""}
+                    onChange={(e) =>
+                      setFilter("scope", e.target.value || undefined)
+                    }
+                  >
+                    <option value="">{tx("All scopes", "Todos los scopes")}</option>
+                    <option value="repository">
+                      {tx("Repository only", "Solo repositorio")}
+                    </option>
+                    <option value="global">
+                      {tx("Global only", "Solo global")}
+                    </option>
                   </select>
                 </label>
               </div>

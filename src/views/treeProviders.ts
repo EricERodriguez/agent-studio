@@ -183,13 +183,22 @@ export class AgentsTreeProvider implements vscode.TreeDataProvider<BaseItem> {
       this.agents.map((agent) => {
         const status = summarizeAgentStatus(agent, this.agents, this.workflows);
         const item = new BaseItem(agent.name);
+        const scopeBadge =
+          agent.sourceScope === "global" ? "$(globe) global" : "$(repo) repo";
         item.description = [
-          agent.sourceScope === "global" ? "global" : "repo",
+          scopeBadge,
           agent.role || "no role",
           status.statusText,
         ].join(" · ");
-        item.tooltip = status.tooltip;
-        item.iconPath = createStatusIcon(status.primaryIssue);
+        item.tooltip = agent.shadowedAgent
+          ? `${status.tooltip}\n\nWarning: this agent id also exists as a ${agent.shadowedAgent.sourceScope} agent at ${agent.shadowedAgent.sourcePath}, which is shadowed and ignored.`
+          : status.tooltip;
+        item.iconPath = agent.shadowedAgent
+          ? new vscode.ThemeIcon(
+              "warning",
+              new vscode.ThemeColor("problemsWarningIcon.foreground"),
+            )
+          : createStatusIcon(status.primaryIssue);
         item.contextValue = "agentStudio.agent";
         item.command = {
           command: "agentStudio.editAgent",
@@ -471,9 +480,19 @@ export class WorkflowsTreeProvider implements vscode.TreeDataProvider<BaseItem> 
 
     return Promise.resolve(
       this.workflows.map((workflow) => {
+        const scopeBadge =
+          workflow.sourceScope === "global" ? "$(globe) global" : "$(repo) repo";
         const item = new BaseItem(workflow.name);
-        item.description = `${workflow.nodes.length} nodes · ${workflow.edges.length} edges`;
-        item.tooltip = `${workflow.name}\nNodes: ${workflow.nodes.length}\nEdges: ${workflow.edges.length}\nClick to open this workflow in the dashboard editor.`;
+        item.description = `${scopeBadge} · ${workflow.nodes.length} nodes · ${workflow.edges.length} edges`;
+        item.tooltip = workflow.shadowedWorkflow
+          ? `${workflow.name}\nScope: ${workflow.sourceScope || "repository"}\nNodes: ${workflow.nodes.length}\nEdges: ${workflow.edges.length}\nClick to open this workflow in the dashboard editor.\n\nWarning: this workflow id also exists as a ${workflow.shadowedWorkflow.sourceScope} workflow at ${workflow.shadowedWorkflow.sourcePath}, which is shadowed and ignored.`
+          : `${workflow.name}\nScope: ${workflow.sourceScope || "repository"}\nNodes: ${workflow.nodes.length}\nEdges: ${workflow.edges.length}\nClick to open this workflow in the dashboard editor.`;
+        item.iconPath = workflow.shadowedWorkflow
+          ? new vscode.ThemeIcon(
+              "warning",
+              new vscode.ThemeColor("problemsWarningIcon.foreground"),
+            )
+          : undefined;
         item.contextValue = "agentStudio.workflow";
         item.command = {
           command: "agentStudio.focusWorkflow",

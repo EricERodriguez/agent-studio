@@ -123,7 +123,42 @@ You can later change the scope from the **Identity** tab using the **Scope** fie
 - **Repository agents** are stored in `.github/agents`
 - **Global agents** are stored in `~/.agents/agents`
 
-Agent Studio loads both repository and global agents together. If both have the same id, the repository version overrides the global one.
+Agent Studio loads repository agents, global Agent Studio agents (`~/.agents/agents`), and global Claude Code subagents (`~/.claude/agents`, unless `agentStudio.includeClaudeAgents` is set to `false`) together in a single list. If more than one file resolves to the same agent id, only one wins (repository beats global, and `~/.claude/agents` beats `~/.agents/agents`) — the others are shadowed and a warning is shown in the Inspector panel and the Agents tree tooltip so the conflict is visible instead of silent.
+
+## Generating Agents for Claude, Codex or Antigravity
+
+Every agent starts as one canonical `.agent.md` file. From that single source of truth, Agent Studio can generate the file layout each AI tool expects, so you don't have to hand-write the same agent three times.
+
+When you click **Create**, after naming the agent you'll see a picker:
+
+- **Claude Code** — writes a subagent file to `.claude/agents/<id>.md` with `name`, `description` and `tools` frontmatter, ready to be picked up by Claude Code's subagents.
+- **OpenAI Codex (AGENTS.md)** — inserts a marked, idempotent section for the agent into the repository's root `AGENTS.md`, the convention Codex CLI (and other agentic CLIs) read for repo-level instructions.
+- **Google Antigravity** — writes `.antigravity/agents/<id>.md` using the same subagent-style format as Claude.
+- **✨ All AIs** — selects all three providers at once, so one click produces every file.
+
+Press <kbd>Esc</kbd> on the picker to skip this step — your canonical `.agent.md` is always saved regardless, and you can export it later.
+
+### Exporting an existing agent later
+
+If you skipped the picker, changed an agent's instructions, or want to add another provider, you have two options:
+
+**From the Agent Builder:**
+
+1. Open the agent and go to the **Identity** tab
+2. Under **Generate agent for AI providers**, toggle Claude Code / Codex / Antigravity, or click **✨ All AIs**
+3. Click **Export now** to write the provider files immediately — this does not require clicking **Save** first, though Save will persist your provider selection into the agent's frontmatter
+
+**From the Agents view or Command Palette:**
+
+1. Right-click the agent in the **Agents** view (or run **Agent Studio: Export Agent for Claude, Codex or Antigravity** from the Command Palette)
+2. Select one, several, or **✨ All AIs**
+3. Agent Studio regenerates the provider files and remembers your selection in the agent's `providers` frontmatter field
+
+Re-running the export is safe: Claude/Antigravity files are overwritten in place, and the `AGENTS.md` section for that agent is replaced between its `<!-- agent-studio:start:... -->` / `<!-- agent-studio:end:... -->` markers without touching the rest of the file.
+
+> **Note on Codex and Antigravity:** Codex CLI's only standardized convention today is `AGENTS.md`; it doesn't have a per-agent subagent spec like Claude Code. Antigravity's agent file format isn't fully standardized either, so Agent Studio uses the same well-documented subagent shape as Claude Code as a sensible, portable default. Adjust the generated files if your version of either tool expects something different.
+
+> **Note on global-scoped agents:** when exporting an agent whose `Scope` is `global`, Claude Code and Antigravity files are written to `~/.claude/agents` / `~/.antigravity/agents` instead of the workspace, since both are global locations. Codex has no equivalent global file, so exporting a global agent for Codex is skipped with an explanation message — export it as a repository-scoped agent instead if you need an `AGENTS.md` entry.
 
 ### 3. Write Instructions
 

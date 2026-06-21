@@ -5,6 +5,11 @@
   --studio-radius-sm: 8px;
   --studio-radius-md: 12px;
   --studio-radius-lg: 18px;
+  --studio-space-1: 4px;
+  --studio-space-2: 8px;
+  --studio-space-3: 12px;
+  --studio-space-4: 16px;
+  --studio-space-5: 24px;
   --studio-border: color-mix(
     in srgb,
     var(--vscode-panel-border) 76%,
@@ -115,9 +120,37 @@ button:hover {
 }
 
 button:disabled {
-  opacity: 0.6;
+  opacity: 0.5;
   cursor: not-allowed;
   transform: none;
+  filter: grayscale(35%);
+  box-shadow: none;
+}
+
+button:disabled:hover {
+  background: linear-gradient(
+    165deg,
+    var(--vscode-button-background),
+    color-mix(in srgb, var(--vscode-button-background) 82%, #000 18%)
+  );
+}
+
+.danger {
+  border-color: color-mix(in srgb, var(--vscode-errorForeground) 60%, #fff 40%);
+  background: linear-gradient(
+    165deg,
+    var(--vscode-errorForeground),
+    color-mix(in srgb, var(--vscode-errorForeground) 78%, #000 22%)
+  );
+  color: var(--vscode-button-foreground);
+}
+
+.danger:hover {
+  background: linear-gradient(
+    165deg,
+    color-mix(in srgb, var(--vscode-errorForeground) 88%, #fff 12%),
+    color-mix(in srgb, var(--vscode-errorForeground) 70%, #000 30%)
+  );
 }
 
 h1,
@@ -133,8 +166,8 @@ h4 {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  gap: 12px;
-  padding: 14px;
+  gap: var(--studio-space-3);
+  padding: var(--studio-space-4);
   animation: page-enter 300ms ease-out;
 }
 
@@ -167,8 +200,8 @@ h4 {
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
-  gap: 12px;
-  padding: 14px;
+  gap: var(--studio-space-3);
+  padding: var(--studio-space-4);
 }
 
 .header-copy {
@@ -180,7 +213,7 @@ h4 {
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.14em;
-  color: var(--vscode-descriptionForeground);
+  color: color-mix(in srgb, var(--vscode-descriptionForeground) 80%, var(--vscode-foreground) 20%);
 }
 
 .header h1 {
@@ -189,7 +222,7 @@ h4 {
 
 .header-subtitle {
   margin: 0;
-  color: var(--vscode-descriptionForeground);
+  color: color-mix(in srgb, var(--vscode-descriptionForeground) 80%, var(--vscode-foreground) 20%);
 }
 
 .header-metrics {
@@ -204,6 +237,19 @@ h4 {
   padding: 5px 10px;
   font-size: 12px;
   background: color-mix(in srgb, var(--studio-accent) 18%, transparent);
+}
+
+.scope-badge {
+  display: inline-block;
+  border-radius: 999px;
+  padding: 1px 7px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border: 1px solid var(--studio-border);
+  background: color-mix(in srgb, var(--vscode-charts-green) 18%, transparent);
+  vertical-align: middle;
 }
 
 .header-actions {
@@ -225,7 +271,7 @@ h4 {
 
 .language-switcher span {
   font-size: 12px;
-  color: var(--vscode-descriptionForeground);
+  color: color-mix(in srgb, var(--vscode-descriptionForeground) 80%, var(--vscode-foreground) 20%);
 }
 
 .language-switcher select {
@@ -234,14 +280,14 @@ h4 {
 
 .toolbar {
   display: grid;
-  gap: 12px;
-  padding: 12px;
+  gap: var(--studio-space-3);
+  padding: var(--studio-space-3);
 }
 
 .toolbar-section {
   border: 1px solid var(--studio-border);
   border-radius: var(--studio-radius-md);
-  padding: 10px;
+  padding: var(--studio-space-3);
   background: color-mix(in srgb, var(--studio-surface-1) 90%, transparent);
 }
 
@@ -287,7 +333,7 @@ h4 {
 
 .filter-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 8px;
 }
 
@@ -309,7 +355,7 @@ h4 {
 .search-result-card {
   border: 1px solid var(--studio-border);
   border-radius: var(--studio-radius-md);
-  padding: 10px;
+  padding: var(--studio-space-3);
   background: color-mix(in srgb, var(--studio-surface-2) 84%, transparent);
 }
 
@@ -320,6 +366,12 @@ h4 {
 
 .search-result-chip {
   background: color-mix(in srgb, var(--studio-accent) 16%, transparent);
+  color: var(--vscode-foreground);
+  font-weight: 500;
+}
+
+.search-result-chip:hover {
+  background: color-mix(in srgb, var(--studio-accent) 28%, transparent);
 }
 
 .filter-actions,
@@ -374,7 +426,7 @@ h4 {
 
 .mcp-autorun-label .mcp-autorun-text {
   font-size: 12px;
-  color: var(--vscode-descriptionForeground);
+  color: color-mix(in srgb, var(--vscode-descriptionForeground) 80%, var(--vscode-foreground) 20%);
 }
 
 .filter-chip {
@@ -382,7 +434,13 @@ h4 {
   padding: 5px 10px;
   background: color-mix(in srgb, var(--studio-accent) 14%, transparent);
   border: 1px solid var(--studio-border);
+  color: var(--vscode-foreground);
   font-size: 12px;
+  font-weight: 500;
+}
+
+.filter-chip:hover {
+  background: color-mix(in srgb, var(--studio-accent) 26%, transparent);
 }
 
 .main-grid {
@@ -402,7 +460,7 @@ h4 {
 .panel,
 .builder,
 .inspector {
-  padding: 12px;
+  padding: var(--studio-space-3);
 }
 
 .collapsible-shell {
@@ -470,12 +528,36 @@ h4 {
 
 .tab-row button {
   padding: 5px 10px;
+  background: transparent;
+  color: var(--vscode-foreground);
+  border-color: var(--studio-border);
+  font-weight: 500;
+}
+
+.tab-row button:hover {
+  background: color-mix(in srgb, var(--studio-surface-2) 70%, transparent);
+  transform: none;
 }
 
 .tab-row .active {
+  background: linear-gradient(
+    165deg,
+    var(--vscode-button-background),
+    color-mix(in srgb, var(--vscode-button-background) 82%, #000 18%)
+  );
+  color: var(--vscode-button-foreground);
   border-color: var(--studio-accent);
+  font-weight: 600;
   box-shadow: 0 0 0 2px
     color-mix(in srgb, var(--studio-accent) 24%, transparent);
+}
+
+.tab-row .active:hover {
+  background: linear-gradient(
+    165deg,
+    var(--vscode-button-hoverBackground),
+    color-mix(in srgb, var(--vscode-button-hoverBackground) 82%, #000 18%)
+  );
 }
 
 .builder-form {
@@ -494,7 +576,7 @@ h4 {
 .helper-card {
   border: 1px solid var(--studio-border);
   border-radius: var(--studio-radius-md);
-  padding: 10px;
+  padding: var(--studio-space-3);
   background: color-mix(in srgb, var(--studio-accent) 9%, transparent);
 }
 
@@ -508,7 +590,7 @@ h4 {
 }
 
 .field-hint {
-  color: var(--vscode-descriptionForeground);
+  color: color-mix(in srgb, var(--vscode-descriptionForeground) 80%, var(--vscode-foreground) 20%);
   line-height: 1.4;
 }
 
@@ -582,7 +664,7 @@ textarea {
 .source-preview {
   border: 1px solid var(--studio-border);
   border-radius: var(--studio-radius-sm);
-  padding: 10px;
+  padding: var(--studio-space-3);
   overflow: auto;
   max-height: 320px;
 }
@@ -672,7 +754,7 @@ textarea {
 }
 
 .message {
-  padding: 10px 12px;
+  padding: var(--studio-space-3) var(--studio-space-3);
 }
 
 .message.info {
@@ -691,10 +773,18 @@ textarea {
   );
 }
 
+.message.warning {
+  background-color: color-mix(
+    in srgb,
+    var(--vscode-editorWarning-foreground) 24%,
+    transparent
+  );
+}
+
 .run-status {
   border: 1px solid var(--studio-border);
   border-radius: var(--studio-radius-md);
-  padding: 10px;
+  padding: var(--studio-space-3);
   background: color-mix(in srgb, var(--studio-accent-soft) 64%, transparent);
 }
 

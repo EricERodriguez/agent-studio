@@ -61,10 +61,25 @@ export function InspectorPanel(): React.JSX.Element {
 
   return (
     <aside className="inspector">
-      <h3>{selectedAgent.name}</h3>
+      <h3>
+        {selectedAgent.name}{" "}
+        <span className="scope-badge">
+          {selectedAgent.sourceScope === "global"
+            ? tx("Global", "Global")
+            : tx("Repo", "Repo")}
+        </span>
+      </h3>
       <p>
         {selectedAgent.description || tx("No description", "Sin descripción")}
       </p>
+      {selectedAgent.shadowedAgent && (
+        <p className="message warning" title={selectedAgent.shadowedAgent.sourcePath}>
+          {tx(
+            `This agent id also exists as a ${selectedAgent.shadowedAgent.sourceScope} agent, which is shadowed and ignored.`,
+            `Este id de agent también existe como agent ${selectedAgent.shadowedAgent.sourceScope === "global" ? "global" : "de repositorio"}, que queda oculto e ignorado.`,
+          )}
+        </p>
+      )}
       <p>
         <strong>{tx("Role", "Role")}:</strong> {selectedAgent.role || "n/a"}
       </p>

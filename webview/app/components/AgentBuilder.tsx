@@ -2,6 +2,7 @@ import React, { useMemo, useState } from "react";
 import { useStudioStore, selectors } from "../store/useStudioStore";
 import type {
   AgentDefinition,
+  AgentProvider,
   BuilderTab,
   ToolRef,
   SkillRef,
@@ -18,6 +19,14 @@ const tabs: BuilderTab[] = [
   "Capabilities",
   "Source Preview",
 ];
+
+const ALL_PROVIDERS: AgentProvider[] = ["claude", "codex", "antigravity"];
+
+const PROVIDER_LABELS: Record<AgentProvider, string> = {
+  claude: "Claude Code",
+  codex: "OpenAI Codex (AGENTS.md)",
+  antigravity: "Google Antigravity",
+};
 
 const ROLE_SUGGESTIONS = [
   "planning",
@@ -79,6 +88,7 @@ function generateMarkdown(agent: AgentDefinition): string {
     })),
     tags: agent.tags,
     context: agent.context,
+    providers: agent.providers,
   };
 
   const sanitized = Object.fromEntries(
@@ -130,7 +140,10 @@ export function AgentBuilder(): React.JSX.Element {
     setNewToolId("");
     setNewToolLabel("");
     setNewToolKind("built-in");
-  }, [selectedAgent]);
+    // Depend on the id only: `selectedAgent` gets a new object reference on
+    // every background state refresh (e.g. refreshState()), which would
+    // otherwise wipe out unsaved edits in the textarea/fields below.
+  }, [selectedAgent?.id]);
 
   const markdownPreview = useMemo(
     () => (draft ? generateMarkdown(draft) : ""),
@@ -161,6 +174,31 @@ export function AgentBuilder(): React.JSX.Element {
 
   const applyRoleSuggestion = (role: string): void => {
     update({ role });
+  };
+
+  const toggleProvider = (provider: AgentProvider): void => {
+    const current = draft.providers || [];
+    const has = current.includes(provider);
+    update({
+      providers: has
+        ? current.filter((p) => p !== provider)
+        : [...current, provider],
+    });
+  };
+
+  const selectAllProviders = (): void => {
+    update({ providers: ALL_PROVIDERS });
+  };
+
+  const exportProvidersNow = (): void => {
+    const providers = draft.providers || [];
+    if (providers.length === 0 || !vscode) {
+      return;
+    }
+    vscode.postMessage({
+      type: "exportAgent",
+      payload: { agentId: draft.id, providers },
+    });
   };
 
   const toggleTagSuggestion = (tag: string): void => {
@@ -393,6 +431,58 @@ export function AgentBuilder(): React.JSX.Element {
                     {tag}
                   </button>
                 ))}
+              </div>
+            </label>
+            <label className="block-label">
+              {tx(
+                "Generate agent for AI providers",
+                "Generar agent para proveedores de IA",
+              )}
+              <div className="chip-row quick-pick-row">
+                {ALL_PROVIDERS.map((provider) => (
+                  <button
+                    key={provider}
+                    type="button"
+                    title={tx(
+                      `Include ${PROVIDER_LABELS[provider]} when exporting this agent.`,
+                      `Incluir ${PROVIDER_LABELS[provider]} al exportar este agent.`,
+                    )}
+                    className={`secondary-button ${(draft.providers || []).includes(provider) ? "quick-pick-active" : ""}`}
+                    onClick={() => toggleProvider(provider)}
+                  >
+                    {PROVIDER_LABELS[provider]}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  title={tx(
+                    "Select Claude Code, Codex and Antigravity at once.",
+                    "Selecciona Claude Code, Codex y Antigravity a la vez.",
+                  )}
+                  className="secondary-button"
+                  onClick={selectAllProviders}
+                >
+                  {tx("✨ All AIs", "✨ Todas las IA")}
+                </button>
+              </div>
+              <small className="field-hint">
+                {tx(
+                  "Choose which AI tools this agent should be generated for. Saving writes the canonical .agent.md; use Export now to (re)write the provider-specific files.",
+                  "Elige para qué herramientas de IA se debe generar este agent. Guardar escribe el .agent.md canónico; usa Exportar ahora para (re)escribir los archivos específicos de cada proveedor.",
+                )}
+              </small>
+              <div className="tab-row" style={{ marginTop: 8 }}>
+                <button
+                  type="button"
+                  title={tx(
+                    "Write the provider-specific agent files now for the selected AI providers.",
+                    "Escribe ahora los archivos de agent específicos para los proveedores de IA seleccionados.",
+                  )}
+                  disabled={(draft.providers || []).length === 0}
+                  onClick={exportProvidersNow}
+                >
+                  {tx("Export now", "Exportar ahora")}
+                </button>
               </div>
             </label>
           </div>

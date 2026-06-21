@@ -11,6 +11,7 @@ export interface CommandHandlers {
   editAgent: (agentId?: string) => Promise<void>;
   deleteAgent: (agentId?: string) => Promise<void>;
   duplicateAgent: (agentId?: string) => Promise<void>;
+  exportAgent: (agentId?: string) => Promise<void>;
   openInChat: (agentId?: string) => Promise<void>;
   createWorkflow: () => Promise<void>;
   startMcpServer: (mcpId?: string) => Promise<void>;
@@ -51,6 +52,10 @@ export function registerCommands(
     [
       "agentStudio.duplicateAgent",
       (agentId) => handlers.duplicateAgent(agentId as string | undefined),
+    ],
+    [
+      "agentStudio.exportAgent",
+      (agentId) => handlers.exportAgent(agentId as string | undefined),
     ],
     [
       "agentStudio.openInChat",

@@ -5,13 +5,35 @@ export function getWorkspaceRoot(): string | undefined {
   return vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
 }
 
+export function getHomeDir(): string | undefined {
+  return process.env.HOME || process.env.USERPROFILE;
+}
+
 export function getGlobalAgentsRoot(): string | undefined {
-  const home = process.env.HOME || process.env.USERPROFILE;
+  const home = getHomeDir();
   if (!home) {
     return undefined;
   }
 
   return path.join(home, ".agents", "agents");
+}
+
+export function getClaudeGlobalAgentsRoot(): string | undefined {
+  const home = getHomeDir();
+  if (!home) {
+    return undefined;
+  }
+
+  return path.join(home, ".claude", "agents");
+}
+
+export function getGlobalWorkflowsRoot(): string | undefined {
+  const home = getHomeDir();
+  if (!home) {
+    return undefined;
+  }
+
+  return path.join(home, ".agents", "workflows");
 }
 
 export async function ensureDirectory(dirPath: string): Promise<void> {

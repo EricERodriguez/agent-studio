@@ -1,22 +1,27 @@
 import matter from "gray-matter";
 import type {
   AgentDefinition,
+  AgentProvider,
   MCPServerRef,
   SkillRef,
   ToolRef,
 } from "../domain/models";
 import { toAgentId } from "../infrastructure/fsUtils";
 
+const KNOWN_PROVIDERS: AgentProvider[] = ["claude", "codex", "antigravity"];
+
 interface AgentFrontmatter {
   name?: string;
   description?: string;
   role?: string;
-  tools?: Array<string | Record<string, unknown>>;
+  tools?: string | Array<string | Record<string, unknown>>;
   skills?: Array<string | Record<string, unknown>>;
   mcp?: Array<string | Record<string, unknown>>;
   handoffs?: Array<string | Record<string, unknown>>;
   tags?: string[];
   context?: string;
+  providers?: string[];
+  model?: string;
 }
 
 export class AgentMarkdownService {
@@ -28,6 +33,33 @@ export class AgentMarkdownService {
       prompt: `Delegate to ${resolvedLabel} when this task needs their expertise.`,
       send: true,
     };
+  }
+
+  // Falls back to a flat key: value frontmatter reader when the YAML engine
+  // rejects the block. Real-world Claude Code subagent files often contain an
+  // unquoted description with ": " in it (e.g. "Read-only: never modifies..."),
+  // which is invalid strict YAML but otherwise a simple, single-level frontmatter.
+  private parseLenientFrontmatter(content: string): {
+    data: Record<string, unknown>;
+    content: string;
+  } {
+    const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/);
+    if (!match) {
+      return { data: {}, content };
+    }
+
+    const [, frontmatterBlock, body] = match;
+    const data: Record<string, unknown> = {};
+    for (const line of frontmatterBlock.split(/\r?\n/)) {
+      const lineMatch = line.match(/^([A-Za-z0-9_-]+):\s?(.*)$/);
+      if (!lineMatch) {
+        continue;
+      }
+      const [, key, rawValue] = lineMatch;
+      data[key] = rawValue.trim();
+    }
+
+    return { data, content: body };
   }
 
   private pruneUndefined<T>(value: T): T | undefined {
@@ -56,13 +88,28 @@ export class AgentMarkdownService {
   }
 
   parse(content: string): AgentDefinition {
-    const parsed = matter(content);
+    let parsed: { data: Record<string, unknown>; content: string };
+    try {
+      const result = matter(content);
+      parsed = { data: result.data || {}, content: result.content };
+    } catch {
+      parsed = this.parseLenientFrontmatter(content);
+    }
     const fm = (parsed.data || {}) as AgentFrontmatter;
 
     const name = fm.name?.trim() || "Untitled Agent";
     const instructions = parsed.content.trim();
 
-    const tools: ToolRef[] = (fm.tools || []).map((item) => {
+    const toolsList = Array.isArray(fm.tools)
+      ? fm.tools
+      : typeof fm.tools === "string"
+        ? fm.tools
+            .split(",")
+            .map((item) => item.trim())
+            .filter(Boolean)
+        : [];
+
+    const tools: ToolRef[] = toolsList.map((item) => {
       if (typeof item === "string") {
         return { id: item, label: item, kind: "built-in" };
       }
@@ -122,6 +169,10 @@ export class AgentMarkdownService {
       return { agent, label, prompt, send };
     });
 
+    const providers = (fm.providers || []).filter((p): p is AgentProvider =>
+      KNOWN_PROVIDERS.includes(p as AgentProvider),
+    );
+
     return {
       id: toAgentId(name),
       name,
@@ -136,6 +187,7 @@ export class AgentMarkdownService {
         skills,
         mcpServers,
       },
+      providers: providers.length > 0 ? providers : undefined,
     };
   }
 
@@ -166,6 +218,7 @@ export class AgentMarkdownService {
       }),
       tags: agent.tags,
       context: agent.context,
+      providers: agent.providers,
     };
 
     const sanitized = Object.fromEntries(

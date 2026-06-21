@@ -5,6 +5,7 @@ import { AgentMarkdownService } from "./agentMarkdownService";
 import {
   ensureDirectory,
   fileNameWithoutExt,
+  getClaudeGlobalAgentsRoot,
   getGlobalAgentsRoot,
   getWorkspaceRoot,
   toAgentId,
@@ -41,6 +42,7 @@ export class AgentRegistryService {
 
   private async collectAgentFilesFromDirectory(
     dirPath: string,
+    pattern: RegExp = /\.agent\.md$/i,
   ): Promise<vscode.Uri[]> {
     try {
       const entries = await vscode.workspace.fs.readDirectory(
@@ -50,9 +52,9 @@ export class AgentRegistryService {
         entries.map(async ([name, fileType]) => {
           const absolutePath = path.join(dirPath, name);
           if (fileType === vscode.FileType.Directory) {
-            return this.collectAgentFilesFromDirectory(absolutePath);
+            return this.collectAgentFilesFromDirectory(absolutePath, pattern);
           }
-          if (fileType === vscode.FileType.File && /\.agent\.md$/i.test(name)) {
+          if (fileType === vscode.FileType.File && pattern.test(name)) {
             return [vscode.Uri.file(absolutePath)];
           }
           return [] as vscode.Uri[];
@@ -88,11 +90,33 @@ export class AgentRegistryService {
         vscode.workspace.findFiles(glob),
       ),
     );
+    const includeClaudeAgents = vscode.workspace
+      .getConfiguration("agentStudio")
+      .get<boolean>("includeClaudeAgents", true);
+
     const globalRoot = getGlobalAgentsRoot();
     const globalFiles = globalRoot
       ? await this.collectAgentFilesFromDirectory(globalRoot)
       : [];
-    const files = [...globalFiles, ...workspaceUris.flat()];
+
+    const claudeGlobalRoot = includeClaudeAgents
+      ? getClaudeGlobalAgentsRoot()
+      : undefined;
+    const claudeGlobalFiles = claudeGlobalRoot
+      ? await this.collectAgentFilesFromDirectory(claudeGlobalRoot, /\.md$/i)
+      : [];
+
+    // Agent Studio's own global format is the richer one (handoffs, skills,
+    // tags, context, providers), so it should win display-wise over a
+    // same-id Claude Code subagent file when both exist for the same agent
+    // (e.g. after exporting an Agent Studio agent for Claude Code). Claude
+    // Code itself reads ~/.claude/agents independently of this list, so the
+    // exported copy stays usable there either way.
+    const files = [
+      ...claudeGlobalFiles,
+      ...globalFiles,
+      ...workspaceUris.flat(),
+    ];
 
     const agentsById = new Map<string, AgentDefinition>();
     for (const uri of files) {
@@ -135,6 +159,20 @@ export class AgentRegistryService {
         parsed.id = toAgentId(parsed.name || fileNameWithoutExt(uri.fsPath));
         parsed.sourcePath = uri.fsPath;
         parsed.sourceScope = this.inferScopeFromPath(uri.fsPath, root);
+
+        const shadowed = agentsById.get(parsed.id);
+        if (shadowed && shadowed.sourcePath && shadowed.sourcePath !== parsed.sourcePath) {
+          parsed.shadowedAgent = {
+            sourcePath: shadowed.sourcePath,
+            sourceScope: shadowed.sourceScope || "global",
+          };
+          this.warnLegacyOnce(
+            `conflict:${parsed.id}`,
+            `Agent Studio: agent id "${parsed.id}" exists in multiple files; ${uri.fsPath} takes precedence over ${shadowed.sourcePath}.`,
+            "warn",
+          );
+        }
+
         agentsById.set(parsed.id, parsed);
       } catch (error) {
         console.warn(`Agent Studio failed to parse ${uri.fsPath}`, error);
@@ -159,8 +197,9 @@ export class AgentRegistryService {
   }
 
   async saveAgent(agent: AgentDefinition): Promise<AgentDefinition> {
+    const targetScope = agent.sourceScope || "repository";
     const root = getWorkspaceRoot();
-    if (!root) {
+    if (targetScope === "repository" && !root) {
       throw new Error("No workspace opened.");
     }
 
@@ -171,12 +210,27 @@ export class AgentRegistryService {
       throw new Error("Agent instructions are required.");
     }
 
-    const targetScope = agent.sourceScope || "repository";
     const globalRoot = getGlobalAgentsRoot();
+    const claudeGlobalRoot = getClaudeGlobalAgentsRoot();
+
+    // A global agent that was loaded from the Claude Code subagents folder
+    // stays there on save, instead of being relocated to Agent Studio's own
+    // global folder — otherwise editing it would silently remove it from
+    // Claude Code's `/agents` list.
+    const previousFolder = agent.sourcePath
+      ? path.dirname(agent.sourcePath)
+      : undefined;
+    const isClaudeNative =
+      targetScope === "global" &&
+      claudeGlobalRoot !== undefined &&
+      previousFolder === claudeGlobalRoot;
+
     const folder =
       targetScope === "global"
-        ? globalRoot
-        : path.join(root, ".github", "agents");
+        ? isClaudeNative
+          ? claudeGlobalRoot
+          : globalRoot
+        : path.join(root as string, ".github", "agents");
 
     if (!folder) {
       throw new Error("Global agents folder is not available on this system.");
@@ -184,7 +238,9 @@ export class AgentRegistryService {
 
     await ensureDirectory(folder);
 
-    const fileName = `${toAgentId(agent.name)}.agent.md`;
+    const fileName = isClaudeNative
+      ? `${toAgentId(agent.name)}.md`
+      : `${toAgentId(agent.name)}.agent.md`;
     const agentPath = path.join(folder, fileName);
     const previousPath = agent.sourcePath;
 

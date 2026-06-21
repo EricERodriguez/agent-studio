@@ -83,6 +83,30 @@ export function WorkflowBuilder(): React.JSX.Element {
         />
       </label>
 
+      <label>
+        {tx("Scope", "Scope")}
+        <select
+          title="Choose whether this workflow belongs to the current repository or is available globally."
+          value={selectedWorkflow.sourceScope || "repository"}
+          onChange={(e) =>
+            updateWorkflowMeta(selectedWorkflow.id, {
+              sourceScope: e.target.value as "repository" | "global",
+            })
+          }
+        >
+          <option value="repository">
+            {tx("Repository", "Repositorio")}
+          </option>
+          <option value="global">{tx("Global", "Global")}</option>
+        </select>
+        <small className="field-hint">
+          {tx(
+            "Repository workflows are saved in the current repo. Global workflows are available across repos.",
+            "Los workflows de repositorio se guardan en el repo actual. Los globales están disponibles en cualquier repo.",
+          )}
+        </small>
+      </label>
+
       <div className="helper-card">
         <strong>{tx("Steps", "Steps")}</strong>{" "}
         {tx(

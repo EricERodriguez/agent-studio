@@ -1,5 +1,6 @@
 export type ToolKind = "built-in" | "extension" | "mcp";
 export type AgentScope = "repository" | "global";
+export type AgentProvider = "claude" | "codex" | "antigravity";
 
 export interface ToolRef {
   id: string;
@@ -46,6 +47,16 @@ export interface AgentDefinition {
   capabilities: AgentCapabilities;
   sourcePath?: string;
   sourceScope?: AgentScope;
+  /** AI providers this agent has been exported for (e.g. Claude, Codex, Antigravity). */
+  providers?: AgentProvider[];
+  /**
+   * Set when another agent file with the same id was discovered and shadowed
+   * by this one (e.g. a repository agent overriding a global agent).
+   */
+  shadowedAgent?: {
+    sourcePath: string;
+    sourceScope: AgentScope;
+  };
 }
 
 export interface WorkflowNode {
@@ -71,6 +82,12 @@ export interface WorkflowDefinition {
   description?: string;
   nodes: WorkflowNode[];
   edges: WorkflowEdge[];
+  sourcePath?: string;
+  sourceScope?: AgentScope;
+  shadowedWorkflow?: {
+    sourcePath: string;
+    sourceScope: AgentScope;
+  };
 }
 
 export interface CapabilityGraph {

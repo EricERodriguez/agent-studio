@@ -2,7 +2,7 @@
     "name": "agent-studio-ia",
     "displayName": "Agent Studio IA",
     "description": "Visual control plane for designing and orchestrating AI agents in VS Code.",
-    "version": "0.1.4",
+    "version": "0.1.8",
     "publisher": "AgentstudioIA",
     "engines": {
         "vscode": "^1.110.0"
@@ -102,6 +102,10 @@
                 "title": "Agent Studio: Duplicate Agent"
             },
             {
+                "command": "agentStudio.exportAgent",
+                "title": "Agent Studio: Export Agent for Claude, Codex or Antigravity"
+            },
+            {
                 "command": "agentStudio.openInChat",
                 "title": "Agent Studio: Open Agent In Chat"
             },
@@ -195,9 +199,14 @@
                     "group": "navigation@2"
                 },
                 {
-                    "command": "agentStudio.deleteAgent",
+                    "command": "agentStudio.exportAgent",
                     "when": "view == agentStudio.agentsView && viewItem == agentStudio.agent",
                     "group": "navigation@3"
+                },
+                {
+                    "command": "agentStudio.deleteAgent",
+                    "when": "view == agentStudio.agentsView && viewItem == agentStudio.agent",
+                    "group": "navigation@4"
                 },
                 {
                     "command": "agentStudio.startMcpServer",
@@ -223,6 +232,11 @@
                     "type": "boolean",
                     "default": false,
                     "description": "When true, Agent Studio will create sample agents and a sample workflow in a new workspace. Defaults to false so no files are auto-created unless explicitly enabled."
+                },
+                "agentStudio.includeClaudeAgents": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "When true, Agent Studio also discovers globally installed Claude Code subagents from ~/.claude/agents/*.md and lists them as global agents."
                 }
             }
         }

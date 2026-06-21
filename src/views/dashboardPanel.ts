@@ -6,6 +6,7 @@ import type {
 } from "../domain/messages";
 import type {
   AgentDefinition,
+  AgentProvider,
   CapabilityGraph,
   WorkflowDefinition,
 } from "../domain/models";
@@ -21,6 +22,7 @@ export interface DashboardPanelHandlers {
   onRunWorkflow: (workflowId: string, mode: "chat" | "plan") => Promise<void>;
   onCreateAgent: () => Promise<void>;
   onEditAgent: (agentId: string) => Promise<void>;
+  onExportAgent: (agentId: string, providers: AgentProvider[]) => Promise<void>;
 }
 
 export class DashboardPanel {
@@ -103,6 +105,12 @@ export class DashboardPanel {
             break;
           case "editAgent":
             await this.handlers.onEditAgent(message.payload.agentId);
+            break;
+          case "exportAgent":
+            await this.handlers.onExportAgent(
+              message.payload.agentId,
+              message.payload.providers,
+            );
             break;
         }
       },
