@@ -201,42 +201,50 @@ h4 {
   align-items: center;
   flex-wrap: wrap;
   gap: var(--studio-space-3);
-  padding: var(--studio-space-4);
+  padding: 10px var(--studio-space-4);
 }
 
-.header-copy {
-  display: grid;
-  gap: 6px;
+.header-brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
 }
 
-.header-kicker {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.14em;
-  color: color-mix(in srgb, var(--vscode-descriptionForeground) 80%, var(--vscode-foreground) 20%);
+.header-logo {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  background: var(--studio-accent);
+  color: var(--vscode-editor-background);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 14px;
 }
 
-.header h1 {
-  font-size: clamp(1.12rem, 1.7vw, 1.5rem);
-}
-
-.header-subtitle {
-  margin: 0;
-  color: color-mix(in srgb, var(--vscode-descriptionForeground) 80%, var(--vscode-foreground) 20%);
+.header-title {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
 .header-metrics {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
 }
 
 .metric-chip {
-  border-radius: 999px;
+  border-radius: 6px;
   border: 1px solid var(--studio-border);
-  padding: 5px 10px;
-  font-size: 12px;
-  background: color-mix(in srgb, var(--studio-accent) 18%, transparent);
+  padding: 3px 9px;
+  font-size: 11.5px;
+  white-space: nowrap;
+  color: var(--vscode-descriptionForeground);
+  background: color-mix(in srgb, var(--studio-surface-2) 88%, transparent);
 }
 
 .scope-badge {
@@ -254,28 +262,51 @@ h4 {
 
 .header-actions {
   display: flex;
+  align-items: center;
   gap: 8px;
   flex-wrap: wrap;
 }
 
-.language-switcher {
+.lang-toggle {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 10px;
+  padding: 3px;
   border: 1px solid var(--studio-border);
-  border-radius: var(--studio-radius-md);
-  background: color-mix(in srgb, var(--studio-surface-2) 88%, transparent);
-  min-width: fit-content;
+  border-radius: var(--studio-radius-sm);
+  background: var(--studio-surface-1);
+  font-size: 11.5px;
 }
 
-.language-switcher span {
-  font-size: 12px;
-  color: color-mix(in srgb, var(--vscode-descriptionForeground) 80%, var(--vscode-foreground) 20%);
+.lang-toggle button {
+  padding: 4px 10px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--vscode-descriptionForeground);
+  font-weight: 500;
 }
 
-.language-switcher select {
-  min-width: 112px;
+.lang-toggle button:hover {
+  transform: none;
+  background: color-mix(in srgb, var(--vscode-editor-foreground) 6%, transparent);
+}
+
+.lang-toggle button.active {
+  background: var(--vscode-button-secondaryBackground);
+  color: var(--vscode-button-secondaryForeground);
+}
+
+.header-btn-icon {
+  font-size: 14px;
+  margin-right: 2px;
+}
+
+.header-icon-button {
+  width: 30px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
 }
 
 .toolbar {
@@ -443,11 +474,11 @@ h4 {
   background: color-mix(in srgb, var(--studio-accent) 26%, transparent);
 }
 
-.main-grid {
+.workflow-grid {
   display: grid;
-  grid-template-columns: 1.1fr 1.55fr 0.95fr;
+  grid-template-columns: 1fr 1fr;
   gap: 12px;
-  min-height: calc(100vh - 180px);
+  margin-top: 12px;
 }
 
 .column {
@@ -455,6 +486,287 @@ h4 {
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+.agent-zone-grid {
+  display: grid;
+  grid-template-columns: 256px 1fr 300px;
+  gap: 12px;
+  align-items: start;
+}
+
+.agent-zone-grid.inspector-collapsed {
+  grid-template-columns: 256px 1fr 46px;
+}
+
+.agent-zone-grid.no-inspector {
+  grid-template-columns: 256px 1fr;
+}
+
+.agent-rail {
+  border: 1px solid var(--studio-border);
+  border-radius: var(--studio-radius-lg);
+  background: var(--studio-surface-1);
+  display: flex;
+  flex-direction: column;
+  gap: var(--studio-space-2);
+  padding: var(--studio-space-3);
+  min-width: 0;
+}
+
+.agent-rail-search input {
+  width: 100%;
+}
+
+.agent-rail-tabs {
+  display: flex;
+  padding: 3px;
+  margin-top: 8px;
+  background: var(--studio-surface-2);
+  border: 1px solid var(--studio-border);
+  border-radius: var(--studio-radius-sm);
+}
+
+.agent-rail-tab {
+  flex: 1;
+  text-align: center;
+  padding: 4px;
+  border-radius: 6px;
+  background: transparent;
+  font-size: 11.5px;
+  color: var(--vscode-descriptionForeground);
+}
+
+.agent-rail-tab.active {
+  background: var(--vscode-button-secondaryBackground);
+  color: var(--vscode-button-secondaryForeground);
+}
+
+.agent-rail-heading {
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--vscode-descriptionForeground);
+  font-weight: 600;
+}
+
+.agent-rail-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 120px;
+}
+
+.agent-rail-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 8px;
+  border-radius: var(--studio-radius-sm);
+  background: transparent;
+  text-align: left;
+  width: 100%;
+}
+
+.agent-rail-row.selected {
+  background: color-mix(in srgb, var(--studio-accent) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--studio-accent) 32%, transparent);
+}
+
+.agent-rail-dot {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+
+.agent-rail-row-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.agent-rail-row-name {
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.agent-rail-row-role {
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+}
+
+.agent-rail-row-counts {
+  font-family: var(--vscode-editor-font-family);
+  font-size: 9.5px;
+  color: var(--vscode-descriptionForeground);
+  flex: none;
+}
+
+.agent-rail-footer {
+  border-top: 1px solid var(--studio-border);
+  padding-top: var(--studio-space-2);
+}
+
+.agent-rail-footer-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: transparent;
+  font-size: 12px;
+  color: var(--vscode-descriptionForeground);
+}
+
+.center-stage {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.guided-steps-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: var(--studio-space-2) var(--studio-space-3);
+  border: 1px solid var(--studio-border);
+  border-radius: var(--studio-radius-md);
+  background: var(--studio-surface-2);
+}
+
+.guided-steps {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12.5px;
+}
+
+.guided-step {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 10px;
+  border-radius: 7px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--vscode-descriptionForeground);
+  font-family: inherit;
+  font-size: inherit;
+  cursor: pointer;
+}
+
+.guided-step:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.guided-step.active {
+  color: var(--vscode-editor-foreground);
+  background: color-mix(in srgb, var(--studio-accent) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--studio-accent) 32%, transparent);
+  font-weight: 500;
+}
+
+.guided-step-index {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--vscode-editor-foreground) 8%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-family: var(--vscode-editor-font-family);
+}
+
+.guided-step.active .guided-step-index {
+  background: var(--studio-accent);
+  color: var(--vscode-editor-background);
+  font-weight: 700;
+}
+
+.guided-step-sep {
+  color: var(--vscode-descriptionForeground);
+  opacity: 0.5;
+}
+
+.center-toggle {
+  display: flex;
+  padding: 3px;
+  background: var(--studio-surface-1);
+  border: 1px solid var(--studio-border);
+  border-radius: var(--studio-radius-sm);
+  font-size: 12px;
+}
+
+.center-toggle button {
+  padding: 4px 12px;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--vscode-descriptionForeground);
+}
+
+.center-toggle button.active {
+  background: var(--vscode-button-secondaryBackground);
+  color: var(--vscode-button-secondaryForeground);
+}
+
+.inspector-column {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.inspector-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.inspector-collapsed-handle {
+  width: 46px;
+  height: 100%;
+  min-height: 320px;
+  border: 1px solid var(--studio-border);
+  border-radius: var(--studio-radius-lg);
+  background: var(--studio-surface-1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 16px;
+  gap: 12px;
+}
+
+.inspector-collapsed-arrow {
+  color: var(--studio-accent);
+}
+
+.inspector-collapsed-label {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--vscode-descriptionForeground);
+  font-weight: 600;
+}
+
+.inspector-collapsed-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--vscode-charts-green);
 }
 
 .panel,
@@ -482,17 +794,708 @@ h4 {
   font-size: 13px;
 }
 
-.graph-stack .panel {
-  flex: 1;
-}
-
 .graph-canvas {
   width: 100%;
-  height: 300px;
-  margin-top: 10px;
+  height: 560px;
+  margin-top: 0;
   border: 1px solid var(--studio-border);
   border-radius: var(--studio-radius-md);
   overflow: hidden;
+  position: relative;
+  background: var(--studio-surface-1);
+  background-image: radial-gradient(
+    color-mix(in srgb, var(--vscode-editor-foreground) 8%, transparent) 1px,
+    transparent 1px
+  );
+  background-size: 22px 22px;
+}
+
+.graph-view {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.graph-toolbar-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.graph-mode-toggle {
+  display: flex;
+  padding: 3px;
+  background: var(--studio-surface-2);
+  border: 1px solid var(--studio-border);
+  border-radius: var(--studio-radius-sm);
+  font-size: 12px;
+}
+
+.graph-mode-toggle button {
+  padding: 5px 12px;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--vscode-descriptionForeground);
+}
+
+.graph-mode-toggle button.active {
+  background: var(--vscode-button-secondaryBackground);
+  color: var(--vscode-button-secondaryForeground);
+}
+
+.graph-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.graph-canvas-world {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+  cursor: grab;
+}
+
+.graph-canvas-world.panning {
+  cursor: grabbing;
+}
+
+.graph-svg {
+  position: absolute;
+  left: 0;
+  top: 0;
+  overflow: visible;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.graph-svg path {
+  pointer-events: stroke;
+}
+
+.graph-node {
+  position: absolute;
+  width: 158px;
+  transform: translate(-50%, -50%);
+  background: var(--studio-surface-2);
+  border: 1px solid var(--studio-border);
+  border-radius: 13px;
+  padding: 10px 13px;
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+}
+
+.graph-node.selected {
+  border: 2px solid var(--studio-accent);
+  box-shadow:
+    0 0 0 4px var(--studio-accent-soft),
+    0 6px 20px rgba(0, 0, 0, 0.3);
+}
+
+.graph-node.entry {
+  border: 2px solid var(--vscode-charts-green);
+}
+
+.graph-node-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.graph-node-dot {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+
+.graph-node-name {
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.graph-node-entry-badge {
+  margin-left: auto;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--vscode-charts-green);
+}
+
+.graph-node-counts {
+  font-family: var(--vscode-editor-font-family);
+  font-size: 10px;
+  color: var(--vscode-descriptionForeground);
+}
+
+.graph-node-handle-in {
+  position: absolute;
+  left: -5px;
+  top: 50%;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: color-mix(
+    in srgb,
+    var(--vscode-editor-foreground) 30%,
+    transparent
+  );
+  border: 2px solid var(--studio-surface-1);
+  transform: translateY(-50%);
+}
+
+.graph-node-handle-out {
+  position: absolute;
+  right: -6px;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--studio-accent);
+  border: 2px solid var(--studio-surface-1);
+  transform: translateY(-50%);
+  cursor: crosshair;
+}
+
+.graph-node-actions {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -36px;
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+}
+
+.graph-node-action {
+  font-size: 10.5px;
+  color: var(--vscode-descriptionForeground);
+  background: color-mix(in srgb, var(--studio-surface-1) 95%, transparent);
+  border: 1px solid var(--studio-border);
+  border-radius: 6px;
+  padding: 4px 9px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.graph-node-action.danger {
+  color: var(--vscode-charts-red, #f85149);
+  border-color: color-mix(
+    in srgb,
+    var(--vscode-charts-red, #f85149) 30%,
+    transparent
+  );
+}
+
+.graph-edge-label {
+  position: absolute;
+  z-index: 2;
+  font-size: 10.5px;
+  color: var(--vscode-descriptionForeground);
+  background: var(--studio-surface-1);
+  border: 1px solid var(--studio-border);
+  border-radius: 5px;
+  padding: 2px 7px;
+}
+
+.graph-edge-delete {
+  position: absolute;
+  z-index: 6;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--vscode-charts-red, #f85149);
+  color: #1a0c0b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+.graph-run-panel {
+  position: absolute;
+  left: 14px;
+  top: 14px;
+  z-index: 6;
+  width: 230px;
+  background: color-mix(in srgb, var(--studio-surface-2) 92%, transparent);
+  border: 1px solid var(--studio-border);
+  border-radius: 10px;
+  padding: 12px 13px;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+}
+
+.graph-run-panel-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--vscode-descriptionForeground);
+  font-weight: 600;
+}
+
+.graph-run-state {
+  margin-left: auto;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--studio-accent);
+  background: var(--studio-accent-soft);
+  border-radius: 5px;
+  padding: 2px 7px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.graph-run-step {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 5px 0;
+}
+
+.graph-run-step-mark {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1.5px solid
+    color-mix(in srgb, var(--vscode-editor-foreground) 20%, transparent);
+}
+
+.graph-run-step-mark.ready {
+  background: var(--vscode-charts-green);
+  border-color: var(--vscode-charts-green);
+}
+
+.graph-run-step-mark.running {
+  background: var(--studio-accent);
+  border-color: var(--studio-accent);
+}
+
+.graph-run-step-mark.failed {
+  background: var(--vscode-charts-red, #f85149);
+  border-color: var(--vscode-charts-red, #f85149);
+}
+
+.graph-run-step-name {
+  flex: 1;
+  font-size: 12px;
+}
+
+.graph-run-step-state {
+  font-size: 10px;
+  color: var(--vscode-descriptionForeground);
+}
+
+.graph-run-panel-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--studio-border);
+}
+
+.graph-zoom-controls {
+  position: absolute;
+  left: 14px;
+  bottom: 14px;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  background: color-mix(in srgb, var(--studio-surface-2) 92%, transparent);
+  border: 1px solid var(--studio-border);
+  border-radius: 9px;
+  overflow: hidden;
+}
+
+.graph-zoom-controls button {
+  width: 30px;
+  height: 30px;
+  background: transparent;
+  border-radius: 0;
+  border: none;
+  border-bottom: 1px solid var(--studio-border);
+}
+
+.graph-zoom-controls button:last-child {
+  border-bottom: none;
+}
+
+.graph-zoom-pct {
+  position: absolute;
+  left: 54px;
+  bottom: 14px;
+  z-index: 5;
+  height: 30px;
+  padding: 0 11px;
+  display: flex;
+  align-items: center;
+  background: color-mix(in srgb, var(--studio-surface-2) 92%, transparent);
+  border: 1px solid var(--studio-border);
+  border-radius: 9px;
+  font-family: var(--vscode-editor-font-family);
+  font-size: 11.5px;
+  color: var(--vscode-descriptionForeground);
+}
+
+.graph-minimap {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  z-index: 5;
+  width: 168px;
+  height: 104px;
+  background: color-mix(in srgb, var(--studio-surface-1) 92%, transparent);
+  border: 1px solid var(--studio-border);
+  border-radius: 9px;
+  overflow: hidden;
+}
+
+.graph-minimap-node {
+  position: absolute;
+  width: 18px;
+  height: 9px;
+  border-radius: 3px;
+}
+
+/* Choose view */
+
+.choose-view {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.choose-title {
+  margin: 0;
+}
+
+.choose-section-heading {
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--vscode-descriptionForeground);
+  font-weight: 600;
+  margin: 18px 0 4px;
+}
+
+.choose-agent-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.choose-card {
+  text-align: left;
+  background: var(--studio-surface-1);
+  border: 1px solid var(--studio-border);
+  border-radius: 11px;
+  padding: 14px 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.choose-card.selected {
+  border-color: color-mix(in srgb, var(--studio-accent) 40%, transparent);
+}
+
+.choose-card-head {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+
+.choose-card-avatar,
+.inspect-avatar {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  background: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--studio-surface-2) 90%, transparent),
+    color-mix(in srgb, var(--studio-surface-1) 90%, transparent)
+  );
+  border: 1px solid;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.choose-card-title {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.choose-card-name {
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.choose-card-role {
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+}
+
+.choose-card-scope {
+  flex: none;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--vscode-descriptionForeground);
+  background: color-mix(in srgb, var(--studio-surface-2) 90%, transparent);
+  border: 1px solid var(--studio-border);
+  border-radius: 5px;
+  padding: 2px 7px;
+}
+
+.choose-card-description {
+  margin: 0;
+  font-size: 12px;
+  color: var(--vscode-descriptionForeground);
+  line-height: 1.5;
+  min-height: 36px;
+}
+
+.choose-card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.choose-card-counts {
+  font-family: var(--vscode-editor-font-family);
+  font-size: 10.5px;
+  color: var(--vscode-descriptionForeground);
+}
+
+.choose-card-open {
+  font-size: 11.5px;
+  color: var(--studio-accent);
+  font-weight: 500;
+}
+
+.choose-workflow-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.choose-workflow-chip {
+  width: 320px;
+  background: var(--studio-surface-1);
+  border: 1px solid var(--studio-border);
+  border-radius: 11px;
+  padding: 14px 15px;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  text-align: left;
+}
+
+.choose-workflow-icon {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--studio-surface-2) 90%, transparent);
+  border: 1px solid var(--studio-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--vscode-descriptionForeground);
+}
+
+.choose-workflow-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.choose-workflow-name {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.choose-workflow-meta {
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+}
+
+/* Inspect view */
+
+.inspect-view {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.inspect-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.inspect-avatar {
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  font-size: 16px;
+}
+
+.inspect-header-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.inspect-header-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.inspect-name {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.inspect-file {
+  font-family: var(--vscode-editor-font-family);
+  font-size: 11.5px;
+  color: var(--vscode-descriptionForeground);
+  margin-top: 3px;
+}
+
+.inspect-description {
+  font-size: 13.5px;
+  color: var(--vscode-descriptionForeground);
+  line-height: 1.6;
+  max-width: 680px;
+  margin: 8px 0 18px;
+}
+
+.inspect-grid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+.inspect-section-heading {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--vscode-descriptionForeground);
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.inspect-cap-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.inspect-cap-label {
+  font-size: 10.5px;
+  color: var(--vscode-descriptionForeground);
+  margin-bottom: 8px;
+}
+
+.inspect-cap-chip {
+  font-family: var(--vscode-editor-font-family);
+  font-size: 11.5px;
+  padding: 5px 10px;
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--studio-surface-2) 90%, transparent);
+  border: 1px solid var(--studio-border);
+  color: var(--vscode-foreground);
+}
+
+.inspect-cap-chip.active {
+  background: var(--studio-accent);
+  border-color: var(--studio-accent);
+  color: var(--vscode-editor-background);
+}
+
+.inspect-side-panel {
+  background: var(--studio-surface-1);
+  border: 1px solid var(--studio-border);
+  border-radius: 11px;
+  padding: 18px;
+}
+
+.inspect-cap-detail-label {
+  font-family: var(--vscode-editor-font-family);
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+
+.inspect-cap-detail-count {
+  font-size: 12px;
+  color: var(--studio-accent);
+  margin-bottom: 14px;
+}
+
+.inspect-row-list {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-bottom: 18px;
+}
+
+.inspect-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 6px 8px;
+  border-radius: 7px;
+  background: transparent;
+  text-align: left;
+  font-size: 12.5px;
+}
+
+.inspect-row:hover {
+  background: color-mix(in srgb, var(--vscode-editor-foreground) 4.5%, transparent);
+}
+
+.inspect-row-arrow {
+  color: var(--studio-accent);
+}
+
+.inspect-row-arrow.dim {
+  color: var(--vscode-descriptionForeground);
+}
+
+.inspect-row-role {
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
 }
 
 .graph-canvas.empty-state {
@@ -806,9 +1809,29 @@ ul {
 }
 
 @media (max-width: 1300px) {
-  .main-grid {
+  .workflow-grid {
     grid-template-columns: 1fr;
-    min-height: auto;
+  }
+
+  .agent-zone-grid,
+  .agent-zone-grid.inspector-collapsed {
+    grid-template-columns: 1fr;
+  }
+
+  .agent-rail {
+    max-height: 320px;
+  }
+
+  .inspector-collapsed-handle {
+    width: 100%;
+    min-height: 0;
+    flex-direction: row;
+    padding: 8px 12px;
+  }
+
+  .inspector-collapsed-label {
+    writing-mode: horizontal-tb;
+    transform: none;
   }
 
   .filter-grid {

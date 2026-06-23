@@ -1,5 +1,4 @@
 import { create } from "zustand";
-import { applyEdgeChanges, applyNodeChanges, addEdge } from "reactflow";
 import type {
   AgentDefinition,
   BuilderTab,
@@ -16,12 +15,11 @@ interface Filters {
 }
 
 interface UiPanels {
-  agentBuilder: boolean;
-  workflowBuilder: boolean;
-  agentGraph: boolean;
-  workflowGraph: boolean;
   inspector: boolean;
 }
+
+type CenterView = "choose" | "editor" | "graph" | "inspect";
+type GraphMode = "agent" | "workflow";
 
 interface StudioState {
   agents: AgentDefinition[];
@@ -33,8 +31,9 @@ interface StudioState {
   selectedCapabilityId?: string;
   activeCapabilityPane: "tool" | "skill" | "mcp";
   selectedTab: BuilderTab;
-  showCapabilityGraph: boolean;
   uiPanels: UiPanels;
+  centerView: CenterView;
+  graphMode: GraphMode;
   filters: Filters;
   infoMessage?: string;
   errorMessage?: string;
@@ -48,18 +47,18 @@ interface StudioState {
   selectWorkflow: (workflowId?: string) => void;
   setTab: (tab: BuilderTab) => void;
   upsertAgent: (agent: AgentDefinition) => void;
-  setWorkflowNodes: (
+  moveWorkflowNode: (
     workflowId: string,
-    changes: Parameters<typeof applyNodeChanges>[0],
+    nodeId: string,
+    position: { x: number; y: number },
   ) => void;
-  setWorkflowEdges: (
+  addWorkflowEdge: (
     workflowId: string,
-    changes: Parameters<typeof applyEdgeChanges>[0],
+    source: string,
+    target: string,
+    label?: string,
   ) => void;
-  connectWorkflowEdge: (
-    workflowId: string,
-    connection: { source?: string | null; target?: string | null },
-  ) => void;
+  removeWorkflowEdge: (workflowId: string, edgeId: string) => void;
   addWorkflowStep: (workflowId: string, agentId: string) => void;
   removeWorkflowStep: (workflowId: string, nodeId: string) => void;
   setWorkflowEntryStep: (workflowId: string, nodeId: string) => void;
@@ -74,10 +73,9 @@ interface StudioState {
   setFilter: (key: keyof Filters, value?: string) => void;
   setSelectedCapability: (capabilityId?: string) => void;
   setActiveCapabilityPane: (pane: "tool" | "skill" | "mcp") => void;
-  toggleCapabilityGraph: () => void;
-  setCapabilityGraphVisible: (visible: boolean) => void;
-  toggleUiPanel: (panel: keyof UiPanels) => void;
   setUiPanelOpen: (panel: keyof UiPanels, open: boolean) => void;
+  setCenterView: (view: CenterView) => void;
+  setGraphMode: (mode: GraphMode) => void;
   autoLayoutWorkflow: (workflowId: string) => void;
   setInfoMessage: (message?: string) => void;
   setErrorMessage: (message?: string) => void;
@@ -97,12 +95,9 @@ export const useStudioStore = create<StudioState>((set, get) => ({
   capabilityGraph: emptyGraph,
   selectedTab: "Identity",
   activeCapabilityPane: "tool",
-  showCapabilityGraph: false,
+  centerView: "editor",
+  graphMode: "agent",
   uiPanels: {
-    agentBuilder: true,
-    workflowBuilder: true,
-    agentGraph: true,
-    workflowGraph: true,
     inspector: true,
   },
   filters: {},
@@ -126,32 +121,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
         : [...state.agents, agent],
       selectedAgentId: agent.id,
     })),
-  setWorkflowNodes: (workflowId, changes) =>
-    set((state) => ({
-      workflows: state.workflows.map((workflow) => {
-        if (workflow.id !== workflowId) {
-          return workflow;
-        }
-        const nodes = applyNodeChanges(
-          changes,
-          workflow.nodes.map((node) => ({
-            ...node,
-            data: { label: node.agentId },
-          })) as any,
-        ).map((node: any) => ({
-          id: node.id,
-          agentId:
-            node.data?.agentId ||
-            node.data?.label ||
-            workflow.nodes.find((n) => n.id === node.id)?.agentId ||
-            "",
-          position: node.position,
-          isEntry: workflow.nodes.find((n) => n.id === node.id)?.isEntry,
-        }));
-        return { ...workflow, nodes };
-      }),
-    })),
-  setWorkflowEdges: (workflowId, changes) =>
+  moveWorkflowNode: (workflowId, nodeId, position) =>
     set((state) => ({
       workflows: state.workflows.map((workflow) => {
         if (workflow.id !== workflowId) {
@@ -159,27 +129,43 @@ export const useStudioStore = create<StudioState>((set, get) => ({
         }
         return {
           ...workflow,
-          edges: applyEdgeChanges(changes, workflow.edges as any) as any,
+          nodes: workflow.nodes.map((node) =>
+            node.id === nodeId ? { ...node, position } : node,
+          ),
         };
       }),
     })),
-  connectWorkflowEdge: (workflowId, connection) =>
+  addWorkflowEdge: (workflowId, source, target, label = "handoff") =>
     set((state) => ({
       workflows: state.workflows.map((workflow) => {
-        if (workflow.id !== workflowId) {
+        if (workflow.id !== workflowId || source === target) {
           return workflow;
         }
-        const edges = addEdge(
-          {
-            id: `e-${Date.now()}`,
-            source: connection.source || "",
-            target: connection.target || "",
-            label: "handoff",
-          },
-          workflow.edges as any,
-        ) as any;
-        return { ...workflow, edges };
+        const exists = workflow.edges.some(
+          (edge) => edge.source === source && edge.target === target,
+        );
+        if (exists) {
+          return workflow;
+        }
+        return {
+          ...workflow,
+          edges: [
+            ...workflow.edges,
+            { id: `e-${Date.now()}`, source, target, label },
+          ],
+        };
       }),
+    })),
+  removeWorkflowEdge: (workflowId, edgeId) =>
+    set((state) => ({
+      workflows: state.workflows.map((workflow) =>
+        workflow.id !== workflowId
+          ? workflow
+          : {
+              ...workflow,
+              edges: workflow.edges.filter((edge) => edge.id !== edgeId),
+            },
+      ),
     })),
   addWorkflowStep: (workflowId, agentId) =>
     set((state) => ({
@@ -189,7 +175,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
         const newNode = {
           id: `step-${Date.now()}`,
           agentId,
-          position: { x: 140 + workflow.nodes.length * 230, y: 150 },
+          position: { x: 300 + workflow.nodes.length * 230, y: 150 },
           isEntry: isFirst,
         };
         return { ...workflow, nodes: [...workflow.nodes, newNode] };
@@ -244,17 +230,6 @@ export const useStudioStore = create<StudioState>((set, get) => ({
     set({ selectedCapabilityId }),
   setActiveCapabilityPane: (activeCapabilityPane) =>
     set({ activeCapabilityPane }),
-  toggleCapabilityGraph: () =>
-    set((state) => ({ showCapabilityGraph: !state.showCapabilityGraph })),
-  setCapabilityGraphVisible: (showCapabilityGraph) =>
-    set({ showCapabilityGraph }),
-  toggleUiPanel: (panel) =>
-    set((state) => ({
-      uiPanels: {
-        ...state.uiPanels,
-        [panel]: !state.uiPanels[panel],
-      },
-    })),
   setUiPanelOpen: (panel, open) =>
     set((state) => ({
       uiPanels: {
@@ -262,6 +237,8 @@ export const useStudioStore = create<StudioState>((set, get) => ({
         [panel]: open,
       },
     })),
+  setCenterView: (centerView) => set({ centerView }),
+  setGraphMode: (graphMode) => set({ graphMode }),
   autoLayoutWorkflow: (workflowId) =>
     set((state) => ({
       workflows: state.workflows.map((workflow) => {
@@ -273,7 +250,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
           ...workflow,
           nodes: workflow.nodes.map((node, index) => ({
             ...node,
-            position: { x: 140 + index * 230, y: 150 },
+            position: { x: 300 + index * 230, y: 150 },
           })),
         };
       }),

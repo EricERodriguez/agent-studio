@@ -35,7 +35,7 @@ window.addEventListener(
       const language = getStoredLanguage();
       useStudioStore.getState().selectAgent(message.payload.agentId);
       useStudioStore.getState().setTab(message.payload.tab || "Identity");
-      useStudioStore.getState().setUiPanelOpen("agentBuilder", true);
+      useStudioStore.getState().setCenterView("editor");
       useStudioStore.getState().setUiPanelOpen("inspector", true);
       useStudioStore
         .getState()
@@ -53,9 +53,8 @@ window.addEventListener(
     }
     if (message.type === "focusCapability") {
       const language = getStoredLanguage();
-      useStudioStore.getState().setCapabilityGraphVisible(true);
       useStudioStore.getState().setSelectedCapability(message.payload.id);
-      useStudioStore.getState().setUiPanelOpen("agentBuilder", true);
+      useStudioStore.getState().setCenterView("editor");
       useStudioStore.getState().setUiPanelOpen("inspector", true);
 
       if (message.payload.kind === "tool") {
@@ -95,8 +94,8 @@ window.addEventListener(
     if (message.type === "focusWorkflow") {
       const language = getStoredLanguage();
       useStudioStore.getState().selectWorkflow(message.payload.workflowId);
-      useStudioStore.getState().setUiPanelOpen("workflowBuilder", true);
-      useStudioStore.getState().setUiPanelOpen("workflowGraph", true);
+      useStudioStore.getState().setGraphMode("workflow");
+      useStudioStore.getState().setCenterView("graph");
       useStudioStore
         .getState()
         .setInfoMessage(

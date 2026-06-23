@@ -257,7 +257,6 @@
         "gray-matter": "^4.0.3",
         "react": "^18.3.1",
         "react-dom": "^18.3.1",
-        "reactflow": "^11.11.4",
         "yaml": "^2.6.1",
         "zustand": "^4.5.5"
     },
