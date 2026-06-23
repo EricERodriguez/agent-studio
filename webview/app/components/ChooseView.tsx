@@ -112,6 +112,7 @@ export function ChooseView(): React.JSX.Element {
                 <span className="choose-workflow-name">{workflow.name}</span>
                 <span className="choose-workflow-meta">
                   {workflow.nodes.length} {tx("steps", "pasos")} ·{" "}
+                  {workflow.nodes.filter((node) => node.isEntry).length} {tx("entry", "entrada")} ·{" "}
                   {workflow.sourceScope === "global" ? tx("Global", "Global") : tx("Repo", "Repo")}
                 </span>
               </span>

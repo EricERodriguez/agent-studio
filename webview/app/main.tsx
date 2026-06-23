@@ -7,6 +7,14 @@ import type { ExtensionToWebviewMessage } from "./types";
 import { vscode } from "./hooks/useVsCodeApi";
 import { getStoredLanguage, translateForLanguage } from "./i18n";
 
+if (!window.acquireVsCodeApi) {
+  // Dev-only escape hatch so visual QA can inject mock state in a plain
+  // browser (no VS Code host posting real `state` messages). Never reached
+  // inside the actual extension webview.
+  (window as unknown as { __studioStore: typeof useStudioStore }).__studioStore =
+    useStudioStore;
+}
+
 window.addEventListener(
   "message",
   (event: MessageEvent<ExtensionToWebviewMessage>) => {

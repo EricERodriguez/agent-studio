@@ -10,6 +10,14 @@ import type {
 } from "../types";
 import { vscode } from "../hooks/useVsCodeApi";
 import { useI18n } from "../i18n";
+import { roleColor } from "../utils/roleColor";
+
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "—";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[1][0]).toUpperCase();
+}
 
 const tabs: BuilderTab[] = [
   "Identity",
@@ -121,25 +129,27 @@ export function AgentBuilder(): React.JSX.Element {
   );
   const allAgents = useStudioStore((s) => s.agents);
   const graph = useStudioStore((s) => s.capabilityGraph);
+  const setAgentDraftStatus = useStudioStore((s) => s.setAgentDraftStatus);
+  const saveRequestId = useStudioStore((s) => s.saveRequestId);
   const [draft, setDraft] = useState<AgentDefinition | undefined>(
     selectedAgent,
   );
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [newToolId, setNewToolId] = useState("");
-  const [newToolLabel, setNewToolLabel] = useState("");
-  const [newToolKind, setNewToolKind] = useState<ToolRef["kind"]>("built-in");
+  const [capAddOpen, setCapAddOpen] = useState(false);
+  const [capDraftId, setCapDraftId] = useState("");
+  const [capDraftLabel, setCapDraftLabel] = useState("");
+  const [capDraftKind, setCapDraftKind] = useState<ToolRef["kind"]>("built-in");
 
-  const applyToolTemplate = (tool: ToolRef): void => {
-    setNewToolId(tool.id);
-    setNewToolLabel(tool.label);
-    setNewToolKind(tool.kind);
+  const resetCapDraft = (): void => {
+    setCapAddOpen(false);
+    setCapDraftId("");
+    setCapDraftLabel("");
+    setCapDraftKind("built-in");
   };
 
   React.useEffect(() => {
     setDraft(selectedAgent);
-    setNewToolId("");
-    setNewToolLabel("");
-    setNewToolKind("built-in");
+    resetCapDraft();
     // Depend on the id only: `selectedAgent` gets a new object reference on
     // every background state refresh (e.g. refreshState()), which would
     // otherwise wipe out unsaved edits in the textarea/fields below.
@@ -156,8 +166,49 @@ export function AgentBuilder(): React.JSX.Element {
     Context: tx("Context", "Contexto"),
     Handoffs: tx("Handoffs", "Handoffs"),
     Capabilities: tx("Capabilities", "Capabilities"),
-    "Source Preview": tx("Source Preview", "Vista previa del source"),
+    "Source Preview": tx("Preview", "Preview"),
   };
+
+  // These two hooks must run unconditionally on every render (Rules of
+  // Hooks), so they live above the `!draft` early return below and re-derive
+  // validity/dirty state themselves instead of reusing the later consts.
+  const draftValid = Boolean(
+    draft &&
+      draft.name.trim() &&
+      draft.instructions.trim() &&
+      draft.handoffs.every((h) =>
+        allAgents.some((a) => a.id === h.agent && a.id !== draft.id),
+      ),
+  );
+  const draftDirty = JSON.stringify(draft) !== JSON.stringify(selectedAgent);
+
+  React.useEffect(() => {
+    setAgentDraftStatus({ valid: draftValid, dirty: draftDirty });
+  }, [draftValid, draftDirty, setAgentDraftStatus]);
+
+  const lastHandledSaveRequestId = React.useRef(saveRequestId);
+  React.useEffect(() => {
+    if (saveRequestId === lastHandledSaveRequestId.current) {
+      return;
+    }
+    lastHandledSaveRequestId.current = saveRequestId;
+    if (!draft || !draftValid || !vscode) {
+      return;
+    }
+    try {
+      vscode.postMessage({ type: "saveAgent", payload: draft });
+    } catch {
+      setSaveError(
+        tx(
+          "Failed to send save message to extension.",
+          "Fallo al enviar mensaje de guardado a la extensión.",
+        ),
+      );
+    }
+    // `draft`/`draftValid` intentionally omitted: we want the value at
+    // request-time, not to re-fire this effect on every keystroke.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [saveRequestId]);
 
   if (!draft) {
     return (
@@ -248,41 +299,6 @@ export function AgentBuilder(): React.JSX.Element {
         ),
       },
     });
-  };
-
-  const addToolFromForm = (): void => {
-    const id = newToolId.trim();
-    if (!id) {
-      return;
-    }
-
-    const tool: ToolRef = {
-      id,
-      label: newToolLabel.trim() || id,
-      kind: newToolKind,
-    };
-
-    const existingIndex = draft.capabilities.tools.findIndex(
-      (current) => current.id === id,
-    );
-
-    const tools =
-      existingIndex >= 0
-        ? draft.capabilities.tools.map((current, index) =>
-            index === existingIndex ? tool : current,
-          )
-        : [...draft.capabilities.tools, tool];
-
-    update({
-      capabilities: {
-        ...draft.capabilities,
-        tools,
-      },
-    });
-
-    setNewToolId("");
-    setNewToolLabel("");
-    setNewToolKind("built-in");
   };
 
   const toggleSkill = (skill: SkillRef): void => {
@@ -381,6 +397,7 @@ export function AgentBuilder(): React.JSX.Element {
                 title="Human-friendly name shown in the sidebar and dashboard."
                 value={draft.name}
                 onChange={(e) => update({ name: e.target.value })}
+                className={draft.name.trim() ? "" : "field-invalid"}
               />
             </label>
             <label>
@@ -487,693 +504,336 @@ export function AgentBuilder(): React.JSX.Element {
             </label>
           </div>
         );
-      case "Instructions":
+      case "Instructions": {
+        const tokenCount = Math.max(1, Math.round(draft.instructions.length / 4));
         return (
-          <label className="block-label">
-            {tx("Instructions", "Instrucciones")}
+          <div className="instructions-tab">
+            <div className="instructions-tab-head">
+              <span className="field-hint">
+                {tx(
+                  "The system prompt that defines how this agent behaves.",
+                  "El prompt de sistema que define cómo se comporta el agent.",
+                )}{" "}
+                <span className="validation-error">{tx("Required.", "Requerido.")}</span>
+              </span>
+              <span className="instructions-token-count">{tokenCount} tokens</span>
+            </div>
             <textarea
               title="Core behavior instructions for the agent. This is the main prompt content."
               value={draft.instructions}
               onChange={(e) => update({ instructions: e.target.value })}
-              rows={14}
+              className={
+                "instructions-textarea" +
+                (draft.instructions.trim() ? "" : " field-invalid")
+              }
             />
-          </label>
+          </div>
         );
+      }
       case "Context":
         return (
-          <label className="block-label">
-            {tx("Context", "Contexto")}
+          <div className="instructions-tab">
+            <span className="field-hint">
+              {tx(
+                "Extra context and constraints. Optional.",
+                "Contexto y restricciones adicionales. Opcional.",
+              )}
+            </span>
             <textarea
               title="Extra context, constraints, or project-specific notes for this agent."
               value={draft.context || ""}
               onChange={(e) => update({ context: e.target.value })}
-              rows={10}
+              placeholder={tx(
+                "Additional context, constraints, conventions…",
+                "Contexto adicional, restricciones, convenciones…",
+              )}
+              className="instructions-textarea instructions-textarea-context"
             />
-          </label>
+          </div>
         );
-      case "Handoffs":
+      case "Handoffs": {
         const handoffCandidates = allAgents.filter(
           (agent) => agent.id !== draft.id,
         );
+        const toggleHandoff = (agentId: string, agentName: string): void => {
+          const exists = draft.handoffs.some((h) => h.agent === agentId);
+          update({
+            handoffs: exists
+              ? draft.handoffs.filter((h) => h.agent !== agentId)
+              : [...draft.handoffs, buildDefaultHandoff(agentId, agentName)],
+          });
+        };
 
         return (
           <div className="builder-form">
             <div className="helper-card">
-              <p>
-                {tx(
-                  "Define which agents this agent can delegate a task to.",
-                  "Define a qué agents puede delegar una tarea este agent.",
-                )}
-              </p>
-              <p>
-                {tx(
-                  "When a handoff is configured, the current agent can transfer control to the next agent to continue the flow.",
-                  "Cuando un handoff está configurado, el agent actual puede transferir el control al siguiente agent para continuar el flujo.",
-                )}
-              </p>
-            </div>
-            <label className="block-label">
-              {tx("Handoff Agents", "Agents de handoff")}
-              <select
-                title="Choose which other agents this agent can delegate work to."
-                aria-label={tx(
-                  "Handoff agents selection",
-                  "Select handoff agents",
-                )}
-                multiple
-                value={draft.handoffs.map((h) => h.agent)}
-                onChange={(e) => {
-                  const selected = Array.from(
-                    e.target.selectedOptions,
-                    (opt) => opt.value,
-                  );
-                  const mapped = selected.map((id) => {
-                    const existing = draft.handoffs.find(
-                      (handoff) => handoff.agent === id,
-                    );
-                    if (existing) {
-                      return {
-                        ...buildDefaultHandoff(id, existing.label),
-                        ...existing,
-                      };
-                    }
-                    const a = handoffCandidates.find((ag) => ag.id === id);
-                    return buildDefaultHandoff(id, a?.name || id);
-                  });
-                  update({ handoffs: mapped });
-                }}
-                size={Math.min(Math.max(handoffCandidates.length, 3), 8)}
-              >
-                {handoffCandidates.map((agent) => (
-                  <option key={agent.id} value={agent.id}>
-                    {agent.name} ({agent.id})
-                  </option>
-                ))}
-              </select>
-            </label>
-            <small className="field-hint">
               {tx(
-                "Tip: use Ctrl/Cmd + click to select multiple agents.",
-                "Tip: usa Ctrl/Cmd + click para seleccionar varios agents.",
+                "Pick the agents this one can delegate to. A handoff lets it transfer control mid-task to a specialist.",
+                "Elegí a qué agents puede delegar éste. Un handoff transfiere el control a un especialista a mitad de tarea.",
               )}
-            </small>
-            <div className="tab-row" style={{ marginTop: 8 }}>
-              <button
-                type="button"
-                title={tx(
-                  "Remove all currently selected handoff agents.",
-                  "Quitar todos los agents de handoff seleccionados.",
-                )}
-                disabled={draft.handoffs.length === 0}
-                onClick={() => update({ handoffs: [] })}
-              >
-                {tx("Clear handoffs", "Limpiar handoffs")}
-              </button>
+            </div>
+            <div className="handoff-section-heading">
+              {tx("Can delegate to", "Puede delegar a")}
+            </div>
+            <div className="handoff-pick-list">
+              {handoffCandidates.map((agent) => {
+                const on = draft.handoffs.some((h) => h.agent === agent.id);
+                return (
+                  <button
+                    key={agent.id}
+                    type="button"
+                    className={on ? "handoff-pick-row on" : "handoff-pick-row"}
+                    onClick={() => toggleHandoff(agent.id, agent.name)}
+                  >
+                    <span
+                      className="agent-rail-dot"
+                      style={{ background: roleColor(agent.role) }}
+                    />
+                    <span className="handoff-pick-name">
+                      {agent.name}
+                      <span className="handoff-pick-role"> · {agent.role}</span>
+                    </span>
+                    <span className="handoff-pick-check">{on ? "✓" : ""}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
         );
-      case "Capabilities":
+      }
+      case "Capabilities": {
+        const kind = activeCapabilityPane;
+        const pool: Array<ToolRef | SkillRef | MCPServerRef> =
+          kind === "tool"
+            ? graph.tools
+            : kind === "skill"
+              ? graph.skills
+              : graph.mcpServers;
+        const selected: Array<ToolRef | SkillRef | MCPServerRef> =
+          kind === "tool"
+            ? draft.capabilities.tools
+            : kind === "skill"
+              ? draft.capabilities.skills
+              : draft.capabilities.mcpServers;
+        const capabilityCounts = {
+          tool: draft.capabilities.tools.length,
+          skill: draft.capabilities.skills.length,
+          mcp: draft.capabilities.mcpServers.length,
+        };
+        const availLabel =
+          kind === "tool"
+            ? tx("Available tools", "Tools disponibles")
+            : kind === "skill"
+              ? tx("Available skills", "Skills disponibles")
+              : tx("Discovered MCP servers", "Servidores MCP descubiertos");
+        const selLabel =
+          kind === "tool"
+            ? tx("Selected tools", "Tools seleccionadas")
+            : kind === "skill"
+              ? tx("Selected skills", "Skills seleccionadas")
+              : tx("Selected MCP servers", "Servidores MCP seleccionados");
+        const kindNoun =
+          kind === "tool"
+            ? tx("tool", "tool")
+            : kind === "skill"
+              ? tx("skill", "skill")
+              : tx("MCP server", "servidor MCP");
+
+        const togglePoolItem = (item: ToolRef | SkillRef | MCPServerRef): void => {
+          if (kind === "tool") toggleTool(item as ToolRef);
+          else if (kind === "skill") toggleSkill(item as SkillRef);
+          else toggleMcpServer(item as MCPServerRef);
+        };
+        const removeSelectedItem = (id: string): void => {
+          if (kind === "tool") removeTool(id);
+          else if (kind === "skill") removeSkill(id);
+          else removeMcpServer(id);
+        };
+
+        const canAdd = capDraftId.trim().length > 0;
+        const addCapability = (): void => {
+          const id = capDraftId.trim();
+          if (!id) return;
+          const label = capDraftLabel.trim() || id;
+          if (kind === "tool") {
+            toggleTool({ id, label, kind: capDraftKind });
+          } else if (kind === "skill") {
+            toggleSkill({ id, label });
+          } else {
+            toggleMcpServer({ id, label });
+          }
+          resetCapDraft();
+        };
+
         return (
           <div className="builder-form">
-            <div className="helper-card">
-              <p>
-                {tx(
-                  "Tools are the actions an agent can execute (for example, searching code, editing files, or running commands).",
-                  "Los Tools son acciones que un agent puede ejecutar (por ejemplo, buscar código, editar archivos o correr comandos).",
-                )}
-              </p>
-              <p>
-                {tx(
-                  "Available tools are loaded from the capabilities declared in all currently loaded agents and merged into a shared catalog.",
-                  "Los Tools disponibles se cargan desde las capabilities declaradas en todos los agents cargados actualmente y se unifican en un catálogo compartido.",
-                )}
-              </p>
-              <p>
-                {tx(
-                  "Use tool IDs in this field. If you add or edit agent files, refresh the dashboard to rebuild the catalog.",
-                  "Usa IDs de Tool en este campo. Si agregas o editas archivos de agent, recarga el dashboard para reconstruir el catálogo.",
-                )}
-              </p>
-              <p>
-                {tx(
-                  "Skills are discovered from agent capabilities and installed skill folders",
-                  "Los Skills se descubren desde las capabilities del agent y las carpetas de skills instaladas",
-                )}{" "}
-                ({tx("for example", "por ejemplo")} <code>.agents/skills</code>{" "}
-                {tx(
-                  "in the current workspace and common global VS Code skills paths).",
-                  "en el workspace actual y rutas globales comunes de skills de VS Code).",
-                )}
-              </p>
-              <p>
-                {tx(
-                  "Skills are reusable guidance packs that help an agent perform specialized tasks with better quality and consistency.",
-                  "Los Skills son paquetes reutilizables de guía que ayudan a un agent a realizar tareas especializadas con mejor calidad y consistencia.",
-                )}
-              </p>
-            </div>
-            <div className="tab-row">
-              <button
-                className={activeCapabilityPane === "tool" ? "active" : ""}
-                title="Expand tools editing section."
-                onClick={() => setActiveCapabilityPane("tool")}
-              >
-                Tools
-              </button>
-              <button
-                className={activeCapabilityPane === "skill" ? "active" : ""}
-                title="Expand skills editing section."
-                onClick={() => setActiveCapabilityPane("skill")}
-              >
-                Skills
-              </button>
-              <button
-                className={activeCapabilityPane === "mcp" ? "active" : ""}
-                title="Expand MCP editing section."
-                onClick={() => setActiveCapabilityPane("mcp")}
-              >
-                MCP Servers
-              </button>
+            <div className="cap-subtabs">
+              {(["tool", "skill", "mcp"] as const).map((k) => (
+                <button
+                  key={k}
+                  type="button"
+                  className={kind === k ? "cap-subtab active" : "cap-subtab"}
+                  onClick={() => {
+                    setActiveCapabilityPane(k);
+                    setCapAddOpen(false);
+                  }}
+                >
+                  {k === "tool" ? "Tools" : k === "skill" ? "Skills" : "MCP"}{" "}
+                  <span className="cap-subtab-count">{capabilityCounts[k]}</span>
+                </button>
+              ))}
             </div>
 
-            {activeCapabilityPane === "tool" && (
-              <>
-                <div className="helper-card">
-                  <p>{tx("How tools work", "Cómo funcionan los Tools")}</p>
-                  <p>
-                    {tx(
-                      "A Tool is a concrete action the agent can call while running.",
-                      "Un Tool es una acción concreta que el agent puede invocar mientras corre.",
-                    )}
-                  </p>
-                  <p>
-                    {tx(
-                      "Use this form when you want to allow a new action. Then assign that tool to this agent.",
-                      "Usa este formulario cuando quieras permitir una acción nueva. Luego asigna ese Tool a este agent.",
-                    )}
-                  </p>
-                  <p>
-                    {tx(
-                      "Fill fields in this order:",
-                      "Completa los campos en este orden:",
-                    )}{" "}
-                    <strong>Tool ID</strong>, <strong>Tool label</strong>,{" "}
-                    <strong>Tool kind</strong>.
-                  </p>
-                  <p>
-                    {tx(
-                      "If you are unsure, start with built-in and a known ID like run_in_terminal.",
-                      "Si no estás seguro, empieza con built-in y un ID conocido como run_in_terminal.",
-                    )}
-                  </p>
-                </div>
-                <div className="capability-form-grid">
-                  <div className="helper-card">
-                    <p>
-                      {tx(
-                        "Add or update a Tool",
-                        "Agregar o actualizar un Tool",
-                      )}
-                    </p>
-                    <p className="field-hint">
-                      {tx(
-                        "Create or update one callable action. If the same Tool ID already exists, this will update its label/kind.",
-                        "Crea o actualiza una acción invocable. Si el mismo Tool ID ya existe, esto actualizará su label/kind.",
-                      )}
-                    </p>
-                    <label>
-                      Tool ID
-                      <input
-                        title="Exact tool identifier, for example run_in_terminal or a custom MCP tool id."
-                        value={newToolId}
-                        onChange={(e) => setNewToolId(e.target.value)}
-                        placeholder="ex: run_in_terminal"
-                      />
-                      <small className="field-hint">
-                        {tx(
-                          "Machine id used by the runtime. Use snake_case.",
-                          "ID técnico usado por el runtime. Usa snake_case.",
-                        )}
-                      </small>
-                    </label>
-                    <label>
-                      Tool label
-                      <input
-                        title="Readable name shown to users in Agent Studio."
-                        value={newToolLabel}
-                        onChange={(e) => setNewToolLabel(e.target.value)}
-                        placeholder="ex: Run in Terminal"
-                      />
-                      <small className="field-hint">
-                        {tx(
-                          "Human-readable name shown in UI.",
-                          "Nombre legible para personas que se muestra en la UI.",
-                        )}
-                      </small>
-                    </label>
-                    <label>
-                      Tool kind
-                      <select
-                        title="Classify the tool as built-in, extension-provided, or MCP-based."
-                        value={newToolKind}
-                        onChange={(e) =>
-                          setNewToolKind(e.target.value as ToolRef["kind"])
-                        }
-                      >
-                        <option value="built-in">built-in</option>
-                        <option value="extension">extension</option>
-                        <option value="mcp">mcp</option>
-                      </select>
-                      <small className="field-hint">
-                        {tx(
-                          "built-in: native tool, extension: VS Code command, mcp: tool from MCP server.",
-                          "built-in: Tool nativo, extension: comando de VS Code, mcp: Tool de un MCP server.",
-                        )}
-                      </small>
-                    </label>
-                    <div className="tool-template-row">
-                      <span className="field-hint">
-                        {tx("Quick examples:", "Ejemplos rápidos:")}
-                      </span>
-                      <button
-                        className="secondary-button"
-                        title="Prefill with a common built-in tool example."
-                        onClick={() =>
-                          applyToolTemplate({
-                            id: "run_in_terminal",
-                            label: "Run in Terminal",
-                            kind: "built-in",
-                          })
-                        }
-                      >
-                        {tx("Built-in Example", "Ejemplo built-in")}
-                      </button>
-                      <button
-                        className="secondary-button"
-                        title="Prefill with a common extension command example."
-                        onClick={() =>
-                          applyToolTemplate({
-                            id: "vscode.executeCommand",
-                            label: "Execute VS Code Command",
-                            kind: "extension",
-                          })
-                        }
-                      >
-                        {tx("Extension Example", "Ejemplo extension")}
-                      </button>
-                      <button
-                        className="secondary-button"
-                        title="Prefill with a common MCP tool example."
-                        onClick={() =>
-                          applyToolTemplate({
-                            id: "mcp.fetch_webpage",
-                            label: "Fetch Webpage",
-                            kind: "mcp",
-                          })
-                        }
-                      >
-                        {tx("MCP Example", "Ejemplo MCP")}
-                      </button>
-                    </div>
-                    <button
-                      title="Create or update this tool definition in the current agent draft."
-                      onClick={addToolFromForm}
-                      disabled={!newToolId.trim()}
+            {kind === "skill" && (
+              <div className="cap-skill-help">
+                <span>ⓘ</span>
+                <span>
+                  {tx(
+                    "Install skills with npx skills add … into .agents/skills, then add the id here.",
+                    "Instalá skills con npx skills add … en .agents/skills, luego agregá el id acá.",
+                  )}
+                </span>
+              </div>
+            )}
+
+            <div className="cap-available-row">
+              <span className="cap-available-label">
+                {availLabel}{" "}
+                <span className="cap-available-hint">
+                  — {tx("click to toggle", "click para alternar")}
+                </span>
+              </span>
+              {!capAddOpen && (
+                <button
+                  type="button"
+                  className="cap-add-new-chip"
+                  onClick={() => setCapAddOpen(true)}
+                >
+                  <span className="cap-add-new-icon">+</span>
+                  {tx("Add new", "Agregar")}
+                </button>
+              )}
+            </div>
+
+            {capAddOpen && (
+              <div className="cap-composer">
+                <label className="cap-composer-field">
+                  <span>{tx("ID", "ID")}</span>
+                  <input
+                    value={capDraftId}
+                    onChange={(e) => setCapDraftId(e.target.value)}
+                    placeholder={`${kindNoun}_id`}
+                  />
+                </label>
+                <label className="cap-composer-field">
+                  <span>{tx("Label", "Etiqueta")}</span>
+                  <input
+                    value={capDraftLabel}
+                    onChange={(e) => setCapDraftLabel(e.target.value)}
+                    placeholder={kindNoun}
+                  />
+                </label>
+                {kind === "tool" && (
+                  <label className="cap-composer-field cap-composer-kind">
+                    <span>{tx("Kind", "Tipo")}</span>
+                    <select
+                      value={capDraftKind}
+                      onChange={(e) =>
+                        setCapDraftKind(e.target.value as ToolRef["kind"])
+                      }
                     >
-                      {tx("Add Tool", "Agregar Tool")}
+                      <option value="built-in">built-in</option>
+                      <option value="extension">extension</option>
+                      <option value="mcp">mcp</option>
+                    </select>
+                  </label>
+                )}
+                <div className="cap-composer-actions">
+                  <button type="button" disabled={!canAdd} onClick={addCapability}>
+                    {tx("Add", "Agregar")}
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    onClick={resetCapDraft}
+                  >
+                    {tx("Cancel", "Cancelar")}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <div className="chip-row cap-pool-chips">
+              {pool.map((item) => {
+                const on = selected.some((s) => s.id === item.id);
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className={on ? "cap-pool-chip on" : "cap-pool-chip"}
+                    onClick={() => togglePoolItem(item)}
+                  >
+                    <span className="cap-pool-chip-mark">{on ? "✓" : "+"}</span>
+                    {item.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="cap-selected-heading">{selLabel}</div>
+            <div className="cap-selected-list">
+              {selected.length === 0 ? (
+                <span className="field-hint">
+                  {tx(
+                    "Nothing selected yet — pick from above or add a new one.",
+                    "Nada seleccionado — elegí de arriba o agregá uno nuevo.",
+                  )}
+                </span>
+              ) : (
+                selected.map((item) => (
+                  <div key={item.id} className="cap-selected-row">
+                    <span className="cap-selected-label">{item.label}</span>
+                    {kind === "mcp" && (
+                      <button
+                        type="button"
+                        className={
+                          (item as MCPServerRef).autoRunMCP
+                            ? "cap-autorun-toggle on"
+                            : "cap-autorun-toggle"
+                        }
+                        onClick={() => toggleMcpAutoRun(item.id)}
+                      >
+                        <span className="cap-autorun-mark">
+                          {(item as MCPServerRef).autoRunMCP ? "✓" : ""}
+                        </span>
+                        {tx("Auto-run", "Auto-run")}
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className="cap-selected-remove"
+                      onClick={() => removeSelectedItem(item.id)}
+                    >
+                      ✕
                     </button>
                   </div>
-                  <div className="helper-card">
-                    <p>
-                      {tx("Tool kinds explained", "Tipos de Tool explicados")}
-                    </p>
-                    <p>
-                      <strong>built-in</strong>: native actions like reading
-                      files, editing code, or running commands.
-                    </p>
-                    <p>
-                      <strong>extension</strong>: commands provided by a VS Code
-                      extension.
-                    </p>
-                    <p>
-                      <strong>mcp</strong>: tools exposed by an MCP server
-                      configured for the workspace.
-                    </p>
-                  </div>
-                </div>
-                <label>
-                  {tx(
-                    "Tools (ids, comma separated)",
-                    "Tools (ids separados por coma)",
-                  )}
-                  <input
-                    title="Advanced input for pasting several tool ids at once."
-                    value={draft.capabilities.tools
-                      .map((tool) => tool.id)
-                      .join(", ")}
-                    onChange={(e) =>
-                      update({
-                        capabilities: {
-                          ...draft.capabilities,
-                          tools: parseCommaList(e.target.value).map(
-                            (id) =>
-                              graph.tools.find((tool) => tool.id === id) ||
-                              ({ id, label: id, kind: "built-in" } as ToolRef),
-                          ),
-                        },
-                      })
-                    }
-                  />
-                  <small className="field-hint">
-                    {tx(
-                      "Advanced mode: paste ids only. Labels and kinds will be inferred from discovered catalog when possible.",
-                      "Modo avanzado: pega solo ids. Los labels y kinds se inferirán del catálogo descubierto cuando sea posible.",
-                    )}
-                  </small>
-                </label>
-                <div className="capability-preview">
-                  <p>
-                    {tx(
-                      "Select tools (tag multi-select)",
-                      "Selecciona Tools (multi-select por tags)",
-                    )}
-                  </p>
-                  {graph.tools.length === 0 ? (
-                    <p>
-                      {tx(
-                        "No discovered tools yet. Refresh after adding tools to agents.",
-                        "Todavía no hay Tools descubiertos. Recarga después de agregar Tools a los agents.",
-                      )}
-                    </p>
-                  ) : (
-                    <div className="chip-row">
-                      {graph.tools.map((tool) => {
-                        const selected = draft.capabilities.tools.some(
-                          (current) => current.id === tool.id,
-                        );
-                        return (
-                          <button
-                            key={tool.id}
-                            className={
-                              selected ? "skill-tag selected" : "skill-tag"
-                            }
-                            title={`Add or remove tool ${tool.label} (${tool.kind}).`}
-                            onClick={() => toggleTool(tool)}
-                          >
-                            {tool.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-                <div className="capability-preview">
-                  <p>
-                    {tx(
-                      "Selected tools for this agent",
-                      "Tools seleccionados para este agent",
-                    )}
-                  </p>
-                  {draft.capabilities.tools.length === 0 ? (
-                    <p>
-                      {tx("No tools selected.", "No hay Tools seleccionados.")}
-                    </p>
-                  ) : (
-                    <div className="chip-row removable-chip-row">
-                      {draft.capabilities.tools.map((tool) => (
-                        <span key={tool.id} className="selected-chip">
-                          {tool.label} ({tool.id})
-                          <button
-                            title={`Remove tool ${tool.label} from this agent.`}
-                            onClick={() => removeTool(tool.id)}
-                          >
-                            {tx("Remove", "Quitar")}
-                          </button>
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </>
-            )}
-
-            {activeCapabilityPane === "skill" && (
-              <>
-                <div className="helper-card">
-                  <p>{tx("Install Skills", "Instalar Skills")}</p>
-                  <p>
-                    Install skills in the current repo under
-                    <code> .agents/skills </code>
-                    or globally in your user skills folders.
-                  </p>
-                  <p>
-                    {tx("Example command:", "Comando de ejemplo:")}
-                    <code> npx skills add softaworks/agent-toolkit </code>
-                  </p>
-                  <p>
-                    {tx(
-                      "After installation, click Refresh and Agent Studio will detect them automatically.",
-                      "Después de la instalación, haz click en Refresh y Agent Studio los detectará automáticamente.",
-                    )}
-                  </p>
-                </div>
-                <label>
-                  {tx(
-                    "Skills (ids, comma separated)",
-                    "Skills (ids separados por coma)",
-                  )}
-                  <input
-                    title="Advanced input for pasting several skill ids at once."
-                    value={draft.capabilities.skills
-                      .map((skill) => skill.id)
-                      .join(", ")}
-                    onChange={(e) =>
-                      update({
-                        capabilities: {
-                          ...draft.capabilities,
-                          skills: parseCommaList(e.target.value).map(
-                            (id) =>
-                              graph.skills.find((skill) => skill.id === id) ||
-                              ({ id, label: id } as SkillRef),
-                          ),
-                        },
-                      })
-                    }
-                  />
-                </label>
-                <div className="capability-preview">
-                  <p>
-                    {tx(
-                      "Select skills (tag multi-select)",
-                      "Selecciona Skills (multi-select por tags)",
-                    )}
-                  </p>
-                  {graph.skills.length === 0 ? (
-                    <p>
-                      {tx(
-                        "No discovered skills yet. Install a skill in",
-                        "Todavía no hay Skills descubiertos. Instala un Skill en",
-                      )}
-                      <code> .agents/skills </code>
-                      {tx(
-                        "or in a global skills path, then refresh.",
-                        "o en una ruta global de skills y luego recarga.",
-                      )}
-                    </p>
-                  ) : (
-                    <div className="chip-row">
-                      {graph.skills.map((skill) => {
-                        const selected = draft.capabilities.skills.some(
-                          (current) => current.id === skill.id,
-                        );
-                        return (
-                          <button
-                            key={skill.id}
-                            className={
-                              selected ? "skill-tag selected" : "skill-tag"
-                            }
-                            title={`Add or remove skill ${skill.label}.`}
-                            onClick={() => toggleSkill(skill)}
-                          >
-                            {skill.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-                <div className="capability-preview">
-                  <p>
-                    {tx(
-                      "Selected skills for this agent",
-                      "Skills seleccionados para este agent",
-                    )}
-                  </p>
-                  {draft.capabilities.skills.length === 0 ? (
-                    <p>
-                      {tx(
-                        "No skills selected.",
-                        "No hay Skills seleccionados.",
-                      )}
-                    </p>
-                  ) : (
-                    <div className="chip-row removable-chip-row">
-                      {draft.capabilities.skills.map((skill) => (
-                        <span key={skill.id} className="selected-chip">
-                          {skill.label} ({skill.id})
-                          <button
-                            title={`Remove skill ${skill.label} from this agent.`}
-                            onClick={() => removeSkill(skill.id)}
-                          >
-                            {tx("Remove", "Quitar")}
-                          </button>
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </>
-            )}
-
-            {activeCapabilityPane === "mcp" && (
-              <>
-                <label>
-                  {tx(
-                    "MCP Servers (ids, comma separated)",
-                    "MCP Servers (ids separados por coma)",
-                  )}
-                  <input
-                    title="Advanced input for pasting several MCP server ids at once."
-                    value={draft.capabilities.mcpServers
-                      .map((server) => server.id)
-                      .join(", ")}
-                    onChange={(e) =>
-                      update({
-                        capabilities: {
-                          ...draft.capabilities,
-                          mcpServers: parseCommaList(e.target.value).map(
-                            (id) =>
-                              graph.mcpServers.find(
-                                (server) => server.id === id,
-                              ) || ({ id, label: id } as MCPServerRef),
-                          ),
-                        },
-                      })
-                    }
-                  />
-                </label>
-                <div className="capability-preview">
-                  <p>
-                    {tx(
-                      "Select MCP servers (tag multi-select)",
-                      "Selecciona MCP servers (multi-select por tags)",
-                    )}
-                  </p>
-                  {graph.mcpServers.length === 0 ? (
-                    <p>
-                      {tx(
-                        "No MCP servers discovered. Add them to mcp.json.",
-                        "No se descubrieron MCP servers. Agrégalos a mcp.json.",
-                      )}
-                    </p>
-                  ) : (
-                    <div className="chip-row">
-                      {graph.mcpServers.map((server) => {
-                        const selected = draft.capabilities.mcpServers.some(
-                          (current) => current.id === server.id,
-                        );
-                        return (
-                          <button
-                            key={server.id}
-                            className={
-                              selected ? "skill-tag selected" : "skill-tag"
-                            }
-                            title={`Add or remove MCP server ${server.label}.`}
-                            onClick={() => toggleMcpServer(server)}
-                          >
-                            {server.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-                <div className="capability-preview">
-                  <p>
-                    {tx(
-                      "Selected MCP servers for this agent",
-                      "MCP servers seleccionados para este agent",
-                    )}
-                  </p>
-                  {draft.capabilities.mcpServers.length === 0 ? (
-                    <p>
-                      {tx(
-                        "No MCP servers selected.",
-                        "No hay MCP servers seleccionados.",
-                      )}
-                    </p>
-                  ) : (
-                    <div className="chip-row removable-chip-row">
-                      {draft.capabilities.mcpServers.map((server) => (
-                        <span key={server.id} className="selected-chip">
-                          <span style={{ marginRight: 8 }}>
-                            {server.label} ({server.id})
-                          </span>
-                          <label
-                            className="mcp-autorun-label"
-                            htmlFor={`mcp-autorun-${server.id}`}
-                            style={{ marginRight: 8 }}
-                          >
-                            <input
-                              id={`mcp-autorun-${server.id}`}
-                              aria-label={`${tx("Auto-run", "Auto-run")} ${server.label}`}
-                              type="checkbox"
-                              checked={Boolean(server.autoRunMCP)}
-                              onChange={() => toggleMcpAutoRun(server.id)}
-                            />
-                            <span
-                              className="mcp-autorun-text"
-                              style={{ marginLeft: 6 }}
-                            >
-                              {tx("Auto-run", "Auto-run")}
-                            </span>
-                          </label>
-                          <button
-                            aria-label={
-                              tx("Remove MCP server", "Remove MCP server") +
-                              ` ${server.id}`
-                            }
-                            title={`Remove MCP server ${server.label} from this agent.`}
-                            onClick={() => removeMcpServer(server.id)}
-                          >
-                            {tx("Remove", "Quitar")}
-                          </button>
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </>
-            )}
-
-            <div className="capability-preview">
-              <p>
-                {tx("Available tools", "Tools disponibles")}:{" "}
-                {graph.tools.length}
-              </p>
-              <p>
-                {tx("Available skills", "Skills disponibles")}:{" "}
-                {graph.skills.length}
-              </p>
-              <p>
-                {tx("Discovered MCP servers", "MCP servers descubiertos")}:{" "}
-                {graph.mcpServers.length}
-              </p>
+                ))
+              )}
             </div>
           </div>
         );
+      }
       case "Source Preview":
-        return <pre className="source-preview">{markdownPreview}</pre>;
+        return (
+          <div className="preview-card">
+            <div className="preview-card-head">
+              <span className="preview-card-dot" />
+              <span className="preview-card-filename">{draft.id}.agent.md</span>
+              <span className="preview-card-live">{tx("live", "en vivo")}</span>
+            </div>
+            <pre className="source-preview">{markdownPreview}</pre>
+          </div>
+        );
       default:
         return <div />;
     }
@@ -1192,16 +852,86 @@ export function AgentBuilder(): React.JSX.Element {
         (agent) => agent.id === handoff.agent && agent.id !== draft.id,
       ),
   );
+  const canSave = hasValidContent && brokenHandoffs.length === 0;
+  const isDirty = JSON.stringify(draft) !== JSON.stringify(selectedAgent);
+
+  const handleSave = (): void => {
+    setSaveError(null);
+    if (!vscode) {
+      setSaveError(
+        tx(
+          "Cannot save: VS Code API unavailable in this context.",
+          "No se puede guardar: API de VS Code no disponible en este contexto.",
+        ),
+      );
+      return;
+    }
+    try {
+      vscode.postMessage({ type: "saveAgent", payload: draft });
+    } catch (e) {
+      setSaveError(
+        tx(
+          "Failed to send save message to extension.",
+          "Fallo al enviar mensaje de guardado a la extensión.",
+        ),
+      );
+    }
+  };
+
+  const tabBadge: Partial<Record<BuilderTab, number>> = {
+    Handoffs: draft.handoffs.length,
+    Capabilities:
+      draft.capabilities.tools.length +
+      draft.capabilities.skills.length +
+      draft.capabilities.mcpServers.length,
+  };
 
   return (
     <section className="builder">
+      <div className="builder-identity-header">
+        <span
+          className="builder-identity-avatar"
+          style={{
+            borderColor:
+              draft.sourceScope === "global"
+                ? "rgba(243,201,65,0.4)"
+                : "rgba(63,185,80,0.4)",
+          }}
+        >
+          {initials(draft.name || draft.id)}
+        </span>
+        <div className="builder-identity-text">
+          <div className="builder-identity-row">
+            <span className="builder-identity-name">
+              {draft.name || draft.id}
+            </span>
+            <span className="choose-card-scope">
+              {draft.sourceScope === "global"
+                ? tx("Global", "Global")
+                : tx("Repository", "Repositorio")}
+            </span>
+            <span
+              className={
+                isDirty
+                  ? "builder-identity-saved dirty"
+                  : "builder-identity-saved"
+              }
+            >
+              <span className="builder-identity-saved-dot" />
+              {isDirty ? tx("Unsaved", "Sin guardar") : tx("Saved", "Guardado")}
+            </span>
+          </div>
+          <div className="builder-identity-path">
+            .github/agents/{draft.id}.agent.md
+          </div>
+        </div>
+      </div>
       <div className="builder-header">
-        <h2>{tx("Agent Builder", "Builder de Agent")}</h2>
-        <div className="tab-row">
+        <div className="editor-tabs">
           {tabs.map((tab) => (
             <button
               key={tab}
-              className={tab === selectedTab ? "active" : ""}
+              className={tab === selectedTab ? "editor-tab active" : "editor-tab"}
               title={tx(
                 `Open the ${tab} section of the selected agent.`,
                 `Abre la sección ${tabLabels[tab]} del agent seleccionado.`,
@@ -1209,6 +939,9 @@ export function AgentBuilder(): React.JSX.Element {
               onClick={() => setTab(tab)}
             >
               {tabLabels[tab]}
+              {Boolean(tabBadge[tab]) && (
+                <span className="tab-badge">{tabBadge[tab]}</span>
+              )}
             </button>
           ))}
         </div>
@@ -1241,43 +974,8 @@ export function AgentBuilder(): React.JSX.Element {
       <div className="builder-actions">
         <button
           title="Save all changes made to this agent definition."
-          disabled={!hasValidContent || brokenHandoffs.length > 0}
-          onClick={() => {
-            setSaveError(null);
-            if (!vscode) {
-              setSaveError(
-                tx(
-                  "Cannot save: VS Code API unavailable in this context.",
-                  "No se puede guardar: API de VS Code no disponible en este contexto.",
-                ),
-              );
-              try {
-                // eslint-disable-next-line no-console
-                console.error(
-                  "[AgentBuilder] VS Code API unavailable; cannot post message.",
-                );
-              } catch {}
-              return;
-            }
-
-            try {
-              // eslint-disable-next-line no-console
-              console.log("[AgentBuilder] saveAgent payload:", draft);
-            } catch (e) {
-              // ignore
-            }
-
-            try {
-              vscode.postMessage({ type: "saveAgent", payload: draft });
-            } catch (e) {
-              setSaveError(
-                tx(
-                  "Failed to send save message to extension.",
-                  "Fallo al enviar mensaje de guardado a la extensión.",
-                ),
-              );
-            }
-          }}
+          disabled={!canSave}
+          onClick={handleSave}
         >
           {tx("Save", "Guardar")}
         </button>

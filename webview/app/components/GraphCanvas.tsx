@@ -305,43 +305,31 @@ export function GraphCanvas(): React.JSX.Element {
         .filter((edge): edge is NonNullable<typeof edge> => Boolean(edge));
     }
 
-    // Only render handoffs that touch the currently selected agent — with
-    // every agent's handoffs drawn at once the graph reads as "everything is
-    // connected to everything," even when most agents have zero handoffs.
-    if (!selectedAgentId) return [];
-
-    return agents
-      .filter(
-        (agent) =>
-          agent.id === selectedAgentId ||
-          agent.handoffs.some((handoff) => handoff.agent === selectedAgentId),
-      )
-      .flatMap((agent) =>
-        agent.handoffs
-          .filter(
-            (handoff) =>
-              agent.id === selectedAgentId || handoff.agent === selectedAgentId,
-          )
-          .map((handoff) => {
-            const from = nodeById.get(agent.id);
-            const to = nodeById.get(handoff.agent);
-            if (!from || !to) return null;
-            const outgoing = agent.id === selectedAgentId;
-            const bz = bezier(from, to);
-            return {
-              id: `${agent.id}->${handoff.agent}`,
-              d: bz.d,
-              mx: bz.mx,
-              my: bz.my,
-              label: undefined,
-              stroke: outgoing ? "var(--studio-accent)" : "var(--studio-edge, #5b6473)",
-              marker: outgoing ? "url(#agentStudioArrowActive)" : "url(#agentStudioArrow)",
-              width: outgoing ? "1.8" : "1.4",
-              opacity: "1",
-            };
-          })
-          .filter((edge): edge is NonNullable<typeof edge> => Boolean(edge)),
-      );
+    // Show every handoff, but emphasize the selected agent's own outgoing
+    // edges in accent color — matching the design, all relationships stay
+    // visible, just de-emphasized when they don't touch the current agent.
+    return agents.flatMap((agent) =>
+      agent.handoffs
+        .map((handoff) => {
+          const from = nodeById.get(agent.id);
+          const to = nodeById.get(handoff.agent);
+          if (!from || !to) return null;
+          const outgoing = agent.id === selectedAgentId;
+          const bz = bezier(from, to);
+          return {
+            id: `${agent.id}->${handoff.agent}`,
+            d: bz.d,
+            mx: bz.mx,
+            my: bz.my,
+            label: undefined,
+            stroke: outgoing ? "var(--studio-accent)" : "var(--studio-edge, #5b6473)",
+            marker: outgoing ? "url(#agentStudioArrowActive)" : "url(#agentStudioArrow)",
+            width: outgoing ? "1.8" : "1.4",
+            opacity: outgoing ? "1" : "0.65",
+          };
+        })
+        .filter((edge): edge is NonNullable<typeof edge> => Boolean(edge)),
+    );
   }, [agents, isWorkflow, nodeById, selectedAgentId, selectedEdgeId, selectedWorkflow]);
 
   const tempPath = dragging
@@ -397,7 +385,7 @@ export function GraphCanvas(): React.JSX.Element {
     const ordered = entry
       ? [entry, ...selectedWorkflow.nodes.filter((n) => n.id !== entry.id)]
       : selectedWorkflow.nodes;
-    return ordered.slice(0, 4).map((node, index) => {
+    return ordered.slice(0, 3).map((node, index) => {
       const agent = agents.find((a) => a.id === node.agentId);
       return {
         name: agent?.name ?? node.agentId,
@@ -411,7 +399,7 @@ export function GraphCanvas(): React.JSX.Element {
 
   return (
     <div className="graph-view">
-      <div className="graph-toolbar-row">
+      <div className="graph-toolbar-overlay-left">
         <div className="graph-mode-toggle">
           <button
             className={!isWorkflow ? "active" : ""}
@@ -428,8 +416,10 @@ export function GraphCanvas(): React.JSX.Element {
             {tx("Workflow graph", "Grafo de workflow")}
           </button>
         </div>
+      </div>
 
-        {isWorkflow && (
+      {isWorkflow && (
+        <div className="graph-toolbar-overlay-right">
           <div className="graph-toolbar-actions">
             <select
               title={tx("Choose which workflow to view and edit.", "Elige qué workflow ver y editar.")}
@@ -458,6 +448,7 @@ export function GraphCanvas(): React.JSX.Element {
                   ))}
                 </select>
                 <button
+                  className="secondary-button"
                   disabled={!agentToAdd}
                   title={tx("Add the selected agent as a new step.", "Agrega el agent seleccionado como nuevo step.")}
                   onClick={() => {
@@ -470,10 +461,11 @@ export function GraphCanvas(): React.JSX.Element {
                   {tx("Add Step", "Agregar Step")}
                 </button>
                 <button
+                  className="secondary-button"
                   title={tx("Automatically reposition workflow nodes.", "Reubica automáticamente los nodos del workflow.")}
                   onClick={() => autoLayoutWorkflow(selectedWorkflow.id)}
                 >
-                  {tx("Auto Layout", "Auto Layout")}
+                  ⤢ {tx("Auto Layout", "Auto Layout")}
                 </button>
                 <button
                   title={tx("Persist this workflow to disk.", "Guarda este workflow en disco.")}
@@ -498,16 +490,7 @@ export function GraphCanvas(): React.JSX.Element {
               </>
             )}
           </div>
-        )}
-      </div>
-
-      {!isWorkflow && !selectedAgentId && (
-        <p className="field-hint">
-          {tx(
-            "Select an agent in the rail to see its handoffs here.",
-            "Selecciona un agent en el riel para ver sus handoffs aquí.",
-          )}
-        </p>
+        </div>
       )}
 
       {isEmptyAgentGraph || isEmptyWorkflowGraph ? (

@@ -3,7 +3,15 @@ import { useStudioStore } from "../store/useStudioStore";
 import { filterAgentsByCapabilities } from "../utils/agentFilters";
 import { useI18n } from "../i18n";
 
-export function CapabilityFiltersPanel(): React.JSX.Element {
+interface CapabilityFiltersPanelProps {
+  onClose: () => void;
+  style?: React.CSSProperties;
+}
+
+export function CapabilityFiltersPanel({
+  onClose,
+  style,
+}: CapabilityFiltersPanelProps): React.JSX.Element {
   const { tx } = useI18n();
   const agents = useStudioStore((s) => s.agents);
   const filters = useStudioStore((s) => s.filters);
@@ -21,7 +29,7 @@ export function CapabilityFiltersPanel(): React.JSX.Element {
   if (filters.toolId) {
     activeFilters.push({
       key: "toolId",
-      label: "Tool",
+      label: tx("Tool", "Tool"),
       value:
         graph.tools.find((tool) => tool.id === filters.toolId)?.label ||
         filters.toolId,
@@ -31,7 +39,7 @@ export function CapabilityFiltersPanel(): React.JSX.Element {
   if (filters.skillId) {
     activeFilters.push({
       key: "skillId",
-      label: "Skill",
+      label: tx("Skill", "Skill"),
       value:
         graph.skills.find((skill) => skill.id === filters.skillId)?.label ||
         filters.skillId,
@@ -68,30 +76,42 @@ export function CapabilityFiltersPanel(): React.JSX.Element {
     setFilter("scope", undefined);
   };
 
-  return (
-    <div className="toolbar-section filter-section">
-      <div className="toolbar-title-row">
-        <h2 className="toolbar-title">
-          {tx("Capability Filters", "Filtros de Capability")}
-        </h2>
-        <p className="field-hint">
-          {tx(
-            "Narrow the capability layer by tool, skill, and MCP server.",
-            "Acota la capa de capabilities por Tool, Skill y MCP server.",
-          )}
-        </p>
-      </div>
+  const activeBorder = "var(--studio-accent-soft-border, rgba(79,143,247,0.4))";
 
-      <div className="filter-grid">
+  return (
+    <div className="capability-filters-flyout" style={style}>
+      <div className="capability-filters-flyout-head">
+        <span className="capability-filters-flyout-title">
+          {tx("Capability", "Capability")}
+        </span>
+        <button
+          className="capability-filters-flyout-close"
+          title={tx("Close.", "Cerrar.")}
+          onClick={onClose}
+        >
+          ✕
+        </button>
+      </div>
+      <p className="capability-filters-flyout-sub">
+        {tx(
+          "Narrow the capability layer by tool, skill, and MCP server.",
+          "Acota la capa de capabilities por Tool, Skill y MCP server.",
+        )}
+      </p>
+
+      <div className="capability-filters-flyout-fields">
         <label>
-          {tx("Tool filter", "Filtro de Tool")}
+          <span className="capability-filters-flyout-label">
+            {tx("Tool filter", "Filtro de Tool")}
+          </span>
           <select
             title={tx(
-              "Show only agents connected to the selected tool in the capability layer.",
-              "Muestra solo los agents conectados al Tool seleccionado en la capa de capabilities.",
+              "Show only agents connected to the selected tool.",
+              "Muestra solo los agents conectados al Tool seleccionado.",
             )}
             value={filters.toolId || ""}
             onChange={(e) => setFilter("toolId", e.target.value)}
+            style={filters.toolId ? { borderColor: activeBorder } : undefined}
           >
             <option value="">{tx("All tools", "Todos los Tools")}</option>
             {graph.tools.map((tool) => (
@@ -102,14 +122,17 @@ export function CapabilityFiltersPanel(): React.JSX.Element {
           </select>
         </label>
         <label>
-          {tx("Skill filter", "Filtro de Skill")}
+          <span className="capability-filters-flyout-label">
+            {tx("Skill filter", "Filtro de Skill")}
+          </span>
           <select
             title={tx(
-              "Show only agents connected to the selected skill in the capability layer.",
-              "Muestra solo los agents conectados al Skill seleccionado en la capa de capabilities.",
+              "Show only agents connected to the selected skill.",
+              "Muestra solo los agents conectados al Skill seleccionado.",
             )}
             value={filters.skillId || ""}
             onChange={(e) => setFilter("skillId", e.target.value)}
+            style={filters.skillId ? { borderColor: activeBorder } : undefined}
           >
             <option value="">{tx("All skills", "Todos los Skills")}</option>
             {graph.skills.map((skill) => (
@@ -120,14 +143,17 @@ export function CapabilityFiltersPanel(): React.JSX.Element {
           </select>
         </label>
         <label>
-          {tx("MCP filter", "Filtro de MCP")}
+          <span className="capability-filters-flyout-label">
+            {tx("MCP filter", "Filtro de MCP")}
+          </span>
           <select
             title={tx(
-              "Show only agents connected to the selected MCP server in the capability layer.",
-              "Muestra solo los agents conectados al MCP server seleccionado en la capa de capabilities.",
+              "Show only agents connected to the selected MCP server.",
+              "Muestra solo los agents conectados al MCP server seleccionado.",
             )}
             value={filters.mcpId || ""}
             onChange={(e) => setFilter("mcpId", e.target.value)}
+            style={filters.mcpId ? { borderColor: activeBorder } : undefined}
           >
             <option value="">
               {tx("All MCP servers", "Todos los MCP servers")}
@@ -140,7 +166,9 @@ export function CapabilityFiltersPanel(): React.JSX.Element {
           </select>
         </label>
         <label>
-          {tx("Scope filter", "Filtro de Scope")}
+          <span className="capability-filters-flyout-label">
+            {tx("Scope filter", "Filtro de Scope")}
+          </span>
           <select
             title={tx(
               "Show only repository agents, only global agents, or both.",
@@ -148,6 +176,7 @@ export function CapabilityFiltersPanel(): React.JSX.Element {
             )}
             value={filters.scope || ""}
             onChange={(e) => setFilter("scope", e.target.value || undefined)}
+            style={filters.scope ? { borderColor: activeBorder } : undefined}
           >
             <option value="">{tx("All scopes", "Todos los scopes")}</option>
             <option value="repository">
@@ -158,25 +187,24 @@ export function CapabilityFiltersPanel(): React.JSX.Element {
         </label>
       </div>
 
-      <div className="filter-actions">
-        <button
-          className="secondary-button"
-          title={tx(
-            "Remove every active capability filter and show the full agent list again.",
-            "Quita todos los filtros de capability activos y vuelve a mostrar la lista completa de agents.",
-          )}
-          onClick={clearAllFilters}
-          disabled={!hasActiveFilters}
-        >
-          {tx("Clear Filters", "Limpiar filtros")}
-        </button>
-      </div>
-
-      <div className="filter-feedback">
-        <span className="metric-chip">
-          {tx("Showing", "Mostrando")} {filteredAgents.length}{" "}
-          {tx("of", "de")} {agents.length} {tx("agents", "agents")}
-        </span>
+      <div className="capability-filters-flyout-footer">
+        <div className="capability-filters-flyout-summary">
+          <span className="metric-chip">
+            {tx("Showing", "Mostrando")} {filteredAgents.length}{" "}
+            {tx("of", "de")} {agents.length} {tx("agents", "agents")}
+          </span>
+          <button
+            className="capability-filters-clear"
+            title={tx(
+              "Remove every active capability filter.",
+              "Quita todos los filtros de capability activos.",
+            )}
+            onClick={clearAllFilters}
+            disabled={!hasActiveFilters}
+          >
+            {tx("Clear Filters", "Limpiar filtros")}
+          </button>
+        </div>
         {hasActiveFilters && (
           <div className="active-filter-chips">
             {activeFilters.map((filter) => (
@@ -189,7 +217,7 @@ export function CapabilityFiltersPanel(): React.JSX.Element {
                 )}
                 onClick={() => setFilter(filter.key, undefined)}
               >
-                {filter.label}: {filter.value} x
+                {filter.label}: {filter.value} ✕
               </button>
             ))}
           </div>

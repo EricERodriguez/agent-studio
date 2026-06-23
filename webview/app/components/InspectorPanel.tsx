@@ -2,14 +2,21 @@ import React from "react";
 import { useStudioStore, selectors } from "../store/useStudioStore";
 import { vscode } from "../hooks/useVsCodeApi";
 import { useI18n } from "../i18n";
+import { roleColor } from "../utils/roleColor";
+
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "—";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[1][0]).toUpperCase();
+}
 
 export function InspectorPanel(): React.JSX.Element {
   const { tx } = useI18n();
   const selectedAgent = useStudioStore(selectors.selectedAgent);
-  const capabilityGraph = useStudioStore((s) => s.capabilityGraph);
-  const selectedCapabilityId = useStudioStore((s) => s.selectedCapabilityId);
   const inspectorOpen = useStudioStore((s) => s.uiPanels.inspector);
   const setUiPanelOpen = useStudioStore((s) => s.setUiPanelOpen);
+  const setCenterView = useStudioStore((s) => s.setCenterView);
 
   if (!inspectorOpen) {
     return (
@@ -27,160 +34,172 @@ export function InspectorPanel(): React.JSX.Element {
     );
   }
 
-  if (selectedCapabilityId) {
-    const tool = capabilityGraph.tools.find(
-      (item) => item.id === selectedCapabilityId,
-    );
-    const skill = capabilityGraph.skills.find(
-      (item) => item.id === selectedCapabilityId,
-    );
-    const mcp = capabilityGraph.mcpServers.find(
-      (item) => item.id === selectedCapabilityId,
-    );
-    const title =
-      tool?.label ||
-      skill?.label ||
-      mcp?.label ||
-      tx("Capability", "Capability");
-    const users =
-      capabilityGraph.usage.tools[selectedCapabilityId] ||
-      capabilityGraph.usage.skills[selectedCapabilityId] ||
-      capabilityGraph.usage.mcpServers[selectedCapabilityId] ||
-      [];
-
-    return (
-      <aside className="inspector">
-        <div className="inspector-header-row">
-          <h3>{title}</h3>
-          <button
-            className="secondary-button"
-            title={tx("Collapse Inspector.", "Colapsar Inspector.")}
-            onClick={() => setUiPanelOpen("inspector", false)}
-          >
-            ›
-          </button>
-        </div>
-        <p>
-          {tx("Used by", "Usado por")} {users.length} {tx("agents", "agents")}
-        </p>
-        <ul>
-          {users.map((id) => (
-            <li key={id}>{id}</li>
-          ))}
-        </ul>
-      </aside>
-    );
-  }
-
-  if (!selectedAgent) {
-    return (
-      <aside className="inspector">
-        <div className="inspector-header-row">
-          <h3>{tx("Inspector", "Inspector")}</h3>
-          <button
-            className="secondary-button"
-            title={tx("Collapse Inspector.", "Colapsar Inspector.")}
-            onClick={() => setUiPanelOpen("inspector", false)}
-          >
-            ›
-          </button>
-        </div>
-        <p>
-          {tx(
-            "Select an agent, node, or capability to inspect details.",
-            "Selecciona un agent, nodo o capability para inspeccionar detalles.",
-          )}
-        </p>
-      </aside>
-    );
-  }
-
   return (
     <aside className="inspector">
       <div className="inspector-header-row">
-        <h3>
-          {selectedAgent.name}{" "}
-          <span className="scope-badge">
-            {selectedAgent.sourceScope === "global"
-              ? tx("Global", "Global")
-              : tx("Repo", "Repo")}
-          </span>
-        </h3>
+        <span className="inspector-title">{tx("Inspector", "Inspector")}</span>
         <button
-          className="secondary-button"
+          className="inspector-collapse-btn"
           title={tx("Collapse Inspector.", "Colapsar Inspector.")}
           onClick={() => setUiPanelOpen("inspector", false)}
         >
           ›
         </button>
       </div>
-      <p>
-        {selectedAgent.description || tx("No description", "Sin descripción")}
-      </p>
-      {selectedAgent.shadowedAgent && (
-        <p className="message warning" title={selectedAgent.shadowedAgent.sourcePath}>
+
+      {!selectedAgent ? (
+        <p className="field-hint inspector-body-empty">
           {tx(
-            `This agent id also exists as a ${selectedAgent.shadowedAgent.sourceScope} agent, which is shadowed and ignored.`,
-            `Este id de agent también existe como agent ${selectedAgent.shadowedAgent.sourceScope === "global" ? "global" : "de repositorio"}, que queda oculto e ignorado.`,
+            "Select an agent, node, or capability to inspect details.",
+            "Selecciona un agent, nodo o capability para inspeccionar detalles.",
           )}
         </p>
+      ) : (
+        <>
+          <div className="inspector-body">
+            <div className="inspector-card-head">
+              <span
+                className="inspector-avatar"
+                style={{
+                  borderColor:
+                    selectedAgent.sourceScope === "global"
+                      ? "rgba(243,201,65,0.4)"
+                      : "rgba(63,185,80,0.4)",
+                }}
+              >
+                {initials(selectedAgent.name)}
+              </span>
+              <div className="inspector-card-title">
+                <span className="inspector-card-name">{selectedAgent.name}</span>
+                <span className="inspector-card-meta">
+                  {selectedAgent.sourceScope === "global"
+                    ? tx("Global", "Global")
+                    : tx("Repository", "Repositorio")}
+                  {" · "}
+                  {selectedAgent.role || tx("no role", "sin role")}
+                </span>
+              </div>
+            </div>
+
+            {selectedAgent.shadowedAgent && (
+              <p className="message warning" title={selectedAgent.shadowedAgent.sourcePath}>
+                {tx(
+                  `This agent id also exists as a ${selectedAgent.shadowedAgent.sourceScope} agent, which is shadowed and ignored.`,
+                  `Este id de agent también existe como agent ${selectedAgent.shadowedAgent.sourceScope === "global" ? "global" : "de repositorio"}, que queda oculto e ignorado.`,
+                )}
+              </p>
+            )}
+
+            <p className="inspector-description">
+              {selectedAgent.description || tx("No description", "Sin descripción")}
+            </p>
+
+            <div className="inspector-stat-grid">
+              <div className="inspector-stat-box">
+                <div className="inspector-stat-value">
+                  {selectedAgent.capabilities.tools.length}
+                </div>
+                <div className="inspector-stat-label">{tx("Tools", "Tools")}</div>
+              </div>
+              <div className="inspector-stat-box">
+                <div className="inspector-stat-value">
+                  {selectedAgent.capabilities.skills.length}
+                </div>
+                <div className="inspector-stat-label">{tx("Skills", "Skills")}</div>
+              </div>
+              <div className="inspector-stat-box">
+                <div className="inspector-stat-value">
+                  {selectedAgent.capabilities.mcpServers.length}
+                </div>
+                <div className="inspector-stat-label">MCP</div>
+              </div>
+            </div>
+
+            <div className="inspector-section-heading">
+              {tx("capabilities", "capacidades")}
+            </div>
+            <div className="chip-row inspector-cap-chips">
+              {selectedAgent.capabilities.tools.length === 0 ? (
+                <span className="field-hint">
+                  {tx("No tools configured.", "Sin Tools configurados.")}
+                </span>
+              ) : (
+                selectedAgent.capabilities.tools.slice(0, 8).map((tool) => (
+                  <span key={tool.id} className="inspector-cap-chip">
+                    {tool.id}
+                  </span>
+                ))
+              )}
+            </div>
+
+            <div className="inspector-section-heading">
+              {tx("Handoffs", "Handoffs")}
+            </div>
+            <div className="inspector-handoff-list">
+              {selectedAgent.handoffs.length === 0 ? (
+                <span className="field-hint">
+                  {tx("No handoffs configured.", "Sin handoffs configurados.")}
+                </span>
+              ) : (
+                selectedAgent.handoffs.map((handoff) => {
+                  const target = handoff.agent;
+                  return (
+                    <div key={target} className="inspector-handoff-row">
+                      <span className="inspector-handoff-arrow">⇄</span>
+                      {handoff.label || target}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+
+          <div className="inspector-footer">
+            <button
+              className="inspector-open-chat"
+              title={tx(
+                "Open this agent directly in chat to use it immediately.",
+                "Abre este agent directamente en chat para usarlo de inmediato.",
+              )}
+              onClick={() =>
+                vscode?.postMessage({
+                  type: "openInChat",
+                  payload: { agentId: selectedAgent.id },
+                })
+              }
+            >
+              {tx("Open in Chat", "Abrir en Chat")}
+            </button>
+            <div className="inspector-footer-row">
+              <button
+                className="secondary-button"
+                title={tx(
+                  "Open this agent in Agent Builder for editing.",
+                  "Abre este agent en Agent Builder para editarlo.",
+                )}
+                onClick={() => setCenterView("editor")}
+              >
+                {tx("Edit", "Editar")}
+              </button>
+              <button
+                className="secondary-button"
+                title={tx(
+                  "Reveal the source file that defines this agent.",
+                  "Muestra el archivo fuente que define este agent.",
+                )}
+                onClick={() =>
+                  vscode?.postMessage({
+                    type: "openRawAgent",
+                    payload: { agentId: selectedAgent.id },
+                  })
+                }
+              >
+                {tx("Reveal File", "Mostrar archivo")}
+              </button>
+            </div>
+          </div>
+        </>
       )}
-      <p>
-        <strong>{tx("Role", "Role")}:</strong> {selectedAgent.role || "n/a"}
-      </p>
-      <p>
-        <strong>Tools:</strong> {selectedAgent.capabilities.tools.length}
-      </p>
-      <p>
-        <strong>Skills:</strong> {selectedAgent.capabilities.skills.length}
-      </p>
-      <p>
-        <strong>MCP:</strong> {selectedAgent.capabilities.mcpServers.length}
-      </p>
-      <div className="inspector-actions">
-        <button
-          title={tx(
-            "Open this agent directly in chat to use it immediately.",
-            "Abre este agent directamente en chat para usarlo de inmediato.",
-          )}
-          onClick={() =>
-            vscode?.postMessage({
-              type: "openInChat",
-              payload: { agentId: selectedAgent.id },
-            })
-          }
-        >
-          {tx("Open in Chat", "Abrir en Chat")}
-        </button>
-        <button
-          title={tx(
-            "Open this agent in Agent Builder for editing.",
-            "Abre este agent en Agent Builder para editarlo.",
-          )}
-          onClick={() =>
-            vscode?.postMessage({
-              type: "editAgent",
-              payload: { agentId: selectedAgent.id },
-            })
-          }
-        >
-          {tx("Edit", "Editar")}
-        </button>
-        <button
-          title={tx(
-            "Reveal the source file that defines this agent.",
-            "Muestra el archivo fuente que define este agent.",
-          )}
-          onClick={() =>
-            vscode?.postMessage({
-              type: "openRawAgent",
-              payload: { agentId: selectedAgent.id },
-            })
-          }
-        >
-          {tx("Reveal File", "Mostrar archivo")}
-        </button>
-      </div>
     </aside>
   );
 }

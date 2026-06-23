@@ -38,6 +38,10 @@ interface StudioState {
   infoMessage?: string;
   errorMessage?: string;
   workflowRun?: WorkflowRunState;
+  /** Mirrors the AgentBuilder draft's validity/dirty state so the steps bar
+   * can show a live Save/Saved/Fix errors pill without owning the draft. */
+  agentDraftStatus: { valid: boolean; dirty: boolean };
+  saveRequestId: number;
   setStateFromExtension: (payload: {
     agents: AgentDefinition[];
     workflows: WorkflowDefinition[];
@@ -80,6 +84,8 @@ interface StudioState {
   setInfoMessage: (message?: string) => void;
   setErrorMessage: (message?: string) => void;
   setWorkflowRun: (run?: WorkflowRunState) => void;
+  setAgentDraftStatus: (status: { valid: boolean; dirty: boolean }) => void;
+  requestAgentSave: () => void;
 }
 
 const emptyGraph: CapabilityGraph = {
@@ -101,6 +107,8 @@ export const useStudioStore = create<StudioState>((set, get) => ({
     inspector: true,
   },
   filters: {},
+  agentDraftStatus: { valid: false, dirty: false },
+  saveRequestId: 0,
   setStateFromExtension: ({ agents, workflows, capabilityGraph }) =>
     set((state) => ({
       agents,
@@ -258,6 +266,9 @@ export const useStudioStore = create<StudioState>((set, get) => ({
   setInfoMessage: (infoMessage) => set({ infoMessage }),
   setErrorMessage: (errorMessage) => set({ errorMessage }),
   setWorkflowRun: (workflowRun) => set({ workflowRun }),
+  setAgentDraftStatus: (agentDraftStatus) => set({ agentDraftStatus }),
+  requestAgentSave: () =>
+    set((state) => ({ saveRequestId: state.saveRequestId + 1 })),
 }));
 
 export const selectors = {
