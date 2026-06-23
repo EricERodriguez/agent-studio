@@ -8,3 +8,9 @@ node_modules/**
 tsconfig.json
 vite.config.*
 webview/**
+design-reference/**
+scripts/**
+.codex
+*.vsix
+.eslintrc.cjs
+.vscodeignore
