@@ -160,6 +160,16 @@ Re-running the export is safe: Claude/Antigravity files are overwritten in place
 
 > **Note on global-scoped agents:** when exporting an agent whose `Scope` is `global`, Claude Code and Antigravity files are written to `~/.claude/agents` / `~/.antigravity/agents` instead of the workspace, since both are global locations. Codex has no equivalent global file, so exporting a global agent for Codex is skipped with an explanation message — export it as a repository-scoped agent instead if you need an `AGENTS.md` entry.
 
+### Exporting, scaffolding, or importing every agent at once
+
+The per-agent export above writes provider-specific files (Claude/Codex/Antigravity) for one agent. If you want to move or share your **whole** agent set instead, open the **Choose** view and scroll to **Export / Import**:
+
+- **Export All Agents** — pick a destination folder, and Agent Studio writes every currently loaded agent as a plain `<id>.agent.md` file there. Useful for backups or handing your agents to someone on another machine.
+- **Create Repo Structure** — pick a destination folder, and Agent Studio creates a `.github/agents/` folder inside it (with all your agents) plus a short `README.md` explaining the layout. The result is a folder ready to `git init` and push as its own repository — Agent Studio does not run git for you.
+- **Import Agents** — pick a folder that contains `.agent.md` files (it searches recursively, so a folder created by either action above works). You'll be asked whether to import as **Repository** or **Global** agents. Files whose id already matches an agent you have are skipped, so importing is safe to run more than once.
+
+These three actions work on your **entire** agent list, not a single agent, and are available with English/Spanish labels depending on your selected dashboard language.
+
 ### 3. Write Instructions
 
 In the Agent Builder → **Instructions** tab, describe:

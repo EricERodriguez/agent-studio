@@ -1,208 +1,96 @@
+---
+prev:
+  text: Tools and Skills
+  link: /tools-and-skills
+next:
+  text: "Visibility: Tools, Skills & MCP"
+  link: /visibility
+---
+
 # Visual Dashboard
 
-The Agent Studio dashboard is where you spend most of your time. It's designed for clarity, speed, and confidence at scale.
+The Agent Studio dashboard is a single-screen workspace, structured as a guided 4-step flow: **Choose → Edit → Graph → Inspect**. You always know where you are, and every step is one click away from the others.
 
 ## Layout Overview
 
-The dashboard has three main regions:
+The dashboard has four regions, top to bottom and left to right:
 
-**Sidebar Rail** (left)
+- **Header** — the Agent Studio logo and title, live counts of agents/workflows/capabilities, the EN/ES language switch, and the **+ Agent**, **Workflow**, and refresh buttons.
+- **Steps bar** — the `1 Choose › 2 Edit › 3 Graph › 4 Inspect` breadcrumb (click any step to jump there), plus an Editor/Graph shortcut and a live **Save** indicator for the agent you're editing.
+- **Agent rail** (left) — search, scope filter (All/Repo/Global), the agent list, and the **Capability filters** toggle.
+- **Center stage** — whichever step is active: Choose, Edit, Graph, or Inspect.
+- **Inspector** (right) — a collapsible summary of the selected agent, available whenever you're in **Edit** or **Graph**.
 
-- Quick Actions (templates, import, export)
-- Views: Agents, Workflows, Capabilities, Templates
-- Search and filter across all entities
+## 1. Choose
 
-**Main Canvas** (center/right)
+The starting point. Pick an agent to edit, open a workflow, or manage your agents in bulk.
 
-- Context-sensitive editor based on what you selected
-- Agent Builder, Workflow Editor, Capability Inspector, Handoff Graph
-- Live `.agent.md` and workflow `.json` previews
+![Choose view](/screenshots/dashboard-choose.png)
 
-**Bottom Inspector** (optional)
+- **Agent cards** — name, role, scope badge (Repo/Global), description, and a `T·S·M` capability count. Click **Open ›** to jump straight into the **Edit** step for that agent.
+- **Workflows** — listed below the agents, with step count, entry count, and scope. Click **Open ›** to jump to the **Graph** step in workflow mode.
+- **Export / Import** — at the bottom of this view:
+  - **Export All Agents** writes every loaded agent as a `.agent.md` file into a folder you choose.
+  - **Create Repo Structure** scaffolds a fresh `.github/agents/` folder (with a short `README.md`) containing all your agents, ready to become its own repository.
+  - **Import Agents** lets you pick a folder of previously exported `.agent.md` files; you choose Repository or Global scope, and Agent Studio imports the ones that don't already exist in your current list (matching ids are skipped, not overwritten).
 
-- Details pane for the selected agent or capability
-- Relationships, recent edits, usage stats
+## 2. Edit (Agent Builder)
 
-## Agent Builder Tab
+Six tabs cover everything an agent definition needs. The header above the tabs always shows the agent's avatar, name, scope badge, live Saved/Unsaved indicator, and its file path.
 
-Create and edit agents visually.
+![Identity tab](/screenshots/dashboard-edit-identity.png)
 
-**Identity**
+- **Identity** — Agent ID (read-only), Scope, Name, and Role in a 2×2 grid, plus Description, Role quick-picks, Tags, and **Generate agent for AI providers** (Claude Code / OpenAI Codex / Google Antigravity, with **✨ All AIs** and **Export now**). The provider you've selected shows a small accent dot.
+- **Instructions** — the agent's system prompt, with a live token estimate and a required-field warning if it's empty.
+- **Context** — optional extra context, constraints, or conventions.
+- **Handoffs** — click any other agent to toggle whether this one can delegate to it; selected agents show a filled checkmark.
+- **Capabilities** — see below.
+- **Preview** — the live-generated `.agent.md` markdown (frontmatter + instructions), exactly what gets written to disk on Save.
 
-- Agent name and emoji
-- One-line role description
-- Background color for visual distinction
-- Created/edited timestamps
+![Capabilities tab](/screenshots/dashboard-edit-capabilities.png)
 
-**Instructions**
+The **Capabilities** tab has its own Tools/Skills/MCP sub-tabs (each shows a count). For the active kind:
 
-- Rich markdown editor with live preview
-- Format agents with headers, lists, tables
-- Copy-paste instructions from docs
-- Character count and word count
+- Click any chip in **Available …** to toggle it on or off for this agent.
+- Click **+ Add new** to register a capability that doesn't exist yet — enter an ID, a label, and (for Tools) a kind, then **Add**.
+- **Selected …** lists what's currently assigned, each removable with **✕**. Selected MCP servers also get an **Auto-run** toggle.
 
-**Capabilities**
+## 3. Graph
 
-- Search bar to find Tools, Skills, MCP servers (fuzzy matching)
-- Add by clicking; drag to reorder
-- See descriptions and usage counts
-- Identify which other agents use the same tool
+Visualizes either the relationships between all your agents, or the steps of a single workflow. Switch between the two with the **Agent graph / Workflow graph** toggle floating in the top-left corner of the canvas.
 
-**Handoffs**
+![Agent graph](/screenshots/dashboard-graph-agents.png)
 
-- List all agents this agent can delegate to
-- Mark as "requires approval" for human-in-the-loop
-- Set constraints: max retries, timeout, fallback behavior
-- See the Handoff Graph visualization
+**Agent graph** — every agent as a node; the selected agent's outgoing handoffs are highlighted in accent color, everything else stays dimmed so the graph doesn't read as "everyone connected to everyone."
 
-**Context**
+![Workflow graph](/screenshots/dashboard-graph-workflow.png)
 
-- Show inherited instructions from Skills or MCP servers
-- Read-only reference for what this agent actually "knows"
-- Helps debug capability mismatches
+**Workflow graph** — steps as nodes, with the entry point outlined in green. Selecting a step reveals **Set entry** / **Remove** buttons beneath it, and dragging from the small handle on a node's right edge draws a new connection to another step. The floating **Run status** panel on the left shows step-by-step progress, plus controls to add a step, auto-layout, save, delete the workflow, and run it (Chat or Plan mode).
 
-## Handoff Graph
+**Common canvas controls** (bottom-left): zoom in/out, reset view, and the current zoom percentage. **Minimap** (bottom-right): click anywhere on it to jump the view there. You can also pan by dragging the empty canvas background, and zoom with the mouse wheel.
 
-Interactive visualization of agent relationships.
+## 4. Inspect
 
-**Controls**
+A read-only, full-page view of one agent's place in your system — useful for understanding impact before you change something.
 
-- **Zoom**: Scroll wheel or pinch on trackpad
-- **Pan**: Click and drag the canvas
-- **Minimap**: Bottom-right corner shows you where you are in large graphs
-- **Search**: Cmd/Ctrl+F to highlight agents by name
-- **Focus**: Double-click an agent to center and zoom
+![Inspect view](/screenshots/dashboard-inspect.png)
 
-**Node Details**
+- **Capability layer** — the agent's Tools, Skills, and MCP servers as chips. Click one to see exactly which agents share it.
+- **Delegates to / Delegated from** — outgoing and incoming handoffs, each clickable to jump to that agent.
+- **Used in workflows** — every workflow this agent appears in, and whether it's the entry step.
 
-- Hover over an agent to see its role and capability count
-- Color coding: green = healthy, yellow = missing capabilities, red = no capabilities
-- Size reflects complexity (number of handoffs and capabilities)
+## Capability Filters
 
-**Edges (Handoff Flows)**
+Click **Capability filters** at the bottom of the agent rail to open a floating panel for narrowing the agent list by Tool, Skill, MCP server, or Scope.
 
-- Solid lines = direct delegation
-- Dashed lines = conditional delegation
-- Arrow direction shows flow direction
-- Hover to see delegation constraints
+![Capability filters](/screenshots/dashboard-capability-filters.png)
 
-**Actions**
+Active filters show as removable chips, and the panel always shows a live "Showing X of Y agents" count. **Clear Filters** resets everything in one click. These filters also apply to the agent grid in the **Choose** step.
 
-- Right-click an agent to edit or delete
-- Right-click an edge to modify handoff rules
-- Drag agents to rearrange (optional; resets to auto-layout on refresh)
+## Inspector Panel
 
-## Capabilities Inspector
-
-See exactly which agents use which tools, skills, and MCP servers.
-
-**Tools Section**
-
-- List all registered tools in the workspace
-- For each tool: agent assignments, last used, description
-- Filter by agent or by tool category
-- Add or remove tool registrations
-
-**Skills Section**
-
-- All .skills directories registered in VS Code settings
-- Browse skills with descriptions and metadata
-- See which agents inherit each skill
-- Create new skill templates
-
-**MCP Servers Section**
-
-- View all MCP servers currently active
-- Connection status (connected, connecting, error)
-- Endpoints and resource types
-- Link or unlink from agents
-
-**Gap Detection**
-
-- Red-highlighted tools/skills are orphaned (no agents use them)
-- Blue-highlighted are high-value (used by 5+ agents)
-- Helps optimize and clean up unused capability registrations
-
-## Workflow Editor
-
-Build multi-agent workflows visually.
-
-**Canvas Elements**
-
-- **Step cards**: Each agent appears as a draggable card
-- **Connectors**: Click and drag from one step to another to create sequence
-- **Branch nodes**: Add parallel execution points
-- **Condition nodes**: Route based on output properties (optional)
-- **Entry point**: Mark where workflow execution starts
-- **Exit point**: Mark where results are collected
-
-**Sidebar for This Workflow**
-
-- Workflow name and description
-- List of steps in order
-- Trigger configuration (manual, webhook, schedule)
-- Output schema expected from the final step
-
-**Run Panel**
-
-- Input parameters for the workflow
-- Run button triggers execution through VS Code chat
-- Live execution log as agents execute
-- Final output display
-
-## Dashboard Home
-
-Your control center when Agent Studio opens.
-
-**Quick Stats Cards**
-
-- Total agents, active workflows, capability coverage
-- Last 3 agents edited (jump to them)
-- Next scheduled workflows
-
-**Activity Stream**
-
-- Recent agent edits across your team
-- Workflow runs in the past 24 hours
-- Capability changes and tool registrations
-
-**Quick Actions Menu**
-
-- Create new agent
-- Create new workflow
-- Import agents from file
-- Export all as `.tar.gz`
-- Access workspace settings
-
-**Search and Filter**
-
-- Global search: Cmd/Ctrl+P searches all agents, workflows, and capabilities
-- Filter by tag: #python, #api, #data
-- Sort by: recently edited, alphabetical, complexity
-
-## Keyboard Shortcuts
-
-| Action           | Shortcut                   |
-| ---------------- | -------------------------- |
-| Focus search     | Cmd/Ctrl+P                 |
-| New agent        | Cmd/Ctrl+N                 |
-| New workflow     | Cmd/Ctrl+Shift+W           |
-| Save             | Cmd/Ctrl+S                 |
-| Zoom in (graph)  | Cmd/Ctrl+=                 |
-| Zoom out (graph) | Cmd/Ctrl+-                 |
-| Jump to agent    | Cmd/Ctrl+J, then type name |
-| Format markdown  | Cmd/Ctrl+Shift+F           |
-
-## Performance and Scaling
-
-Agent Studio is optimized for:
-
-- **3–50 agents**: Instant responsiveness, all features available
-- **50–200 agents**: Virtualized lists (only visible items render), graph rendering optimized
-- **200+ agents**: Recommend workspaces organized into modules; Agent Studio groups by workspace root
-
-Graph rendering uses Canvas for performance. Real-time updates are debounced to prevent jank.
+Available on the right whenever you're in **Edit** or **Graph**. Shows the selected agent's avatar, scope, role, description, Tools/Skills/MCP counts, a capability chip list, its handoffs, and **Open in Chat** / **Edit** / **Reveal File** actions. Collapse it to a thin vertical handle with the arrow in its header, and expand it again the same way.
 
 ---
 
-**[← Features](/features)** | **[Get Started →](/getting-started)**
+**[← Tools and Skills](/tools-and-skills)** | **[Visibility: Tools, Skills & MCP →](/visibility)**

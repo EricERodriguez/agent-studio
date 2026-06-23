@@ -85,6 +85,16 @@ Agent Studio stores everything locally in your workspace.
 
 Your agent definitions are `.agent.md` files in your repo. Treat them like code.
 
+## Bulk Export, Repo Scaffolding, and Import
+
+Move your whole agent set, not just one agent at a time.
+
+- **Export All Agents**: write every loaded agent to a folder you choose.
+- **Create Repo Structure**: scaffold a `.github/agents/` folder (plus a short README) ready to become its own repository.
+- **Import Agents**: bring in `.agent.md` files exported earlier, choosing Repository or Global scope; agents that already exist are skipped.
+
+Find all three under **Export / Import** in the **Choose** view — see [Visual Dashboard](/visual-dashboard) and [Creating Agents](/creating-agents#exporting-scaffolding-or-importing-every-agent-at-once).
+
 ## Integration Points
 
 **VS Code features you already love:**

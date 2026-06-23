@@ -47,18 +47,35 @@ Agent Studio gives you a visual dashboard to design agents, inspect relationship
 - Pick **✨ All AIs** to produce every provider's file in one step.
 - Export (or re-export) any existing agent later from its context menu — see [Creating Agents](docs-site/docs/creating-agents.md#generating-agents-for-claude-codex-or-antigravity).
 
+### 📦 Bulk Export, Repo Scaffolding, and Import
+
+- **Export All Agents**: write every loaded agent as a `.agent.md` file into any folder you choose.
+- **Create Repo Structure**: scaffold a fresh `.github/agents/` folder (plus a short `README.md`) with all your agents, ready to become its own repo.
+- **Import Agents**: pick a folder of previously exported `.agent.md` files and bring in the ones you don't already have.
+- All three live in the **Choose** view's **Export / Import** section, with bilingual (English/Spanish) labels and hints.
+
 ## Screenshots
 
-> Replace these placeholders with real captures before Marketplace publication.
+![Choose view](media/dashboard-choose.png)
+_Choose what to work on — agents, workflows, and the Export / Import section, all in one screen._
 
-![Agent Studio Dashboard placeholder](media/placeholder-dashboard.png)
-_Visual Agent Dashboard (placeholder)_
+![Agent editor — Identity tab](media/dashboard-edit-identity.png)
+_Agent Builder, Identity tab — Agent ID, Scope, Name, and Role in a single grid._
 
-![Agent graph placeholder](media/placeholder-graph.png)
-_Agent relationships and workflow graph (placeholder)_
+![Agent editor — Capabilities tab](media/dashboard-edit-capabilities.png)
+_Capabilities tab — toggle Tools/Skills/MCP servers, or add a new one on the fly._
 
-![Capabilities inspector placeholder](media/placeholder-capabilities.png)
-_Tools, Skills, and MCP visibility (placeholder)_
+![Agent relationship graph](media/dashboard-graph-agents.png)
+_Agent graph — handoff relationships between agents, with the selected agent's connections highlighted._
+
+![Workflow graph](media/dashboard-graph-workflow.png)
+_Workflow graph — steps, entry point, run status, and inline controls to add steps or run the workflow._
+
+![Inspect view](media/dashboard-inspect.png)
+_Inspect view — an agent's capability layer, handoffs in/out, and the workflows it's used in._
+
+![Capability filters](media/dashboard-capability-filters.png)
+_Capability filters — narrow the agent list by tool, skill, MCP server, or scope._
 
 ## Why Agent Studio?
 
