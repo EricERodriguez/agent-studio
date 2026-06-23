@@ -23,7 +23,10 @@ export type WebviewToExtensionMessage =
   | {
       type: "exportAgent";
       payload: { agentId: string; providers: AgentProvider[] };
-    };
+    }
+  | { type: "exportAllAgents" }
+  | { type: "createRepoStructure" }
+  | { type: "importAgents" };
 
 export interface WorkflowRunStep {
   nodeId: string;

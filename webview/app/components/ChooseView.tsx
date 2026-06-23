@@ -3,6 +3,7 @@ import { useStudioStore } from "../store/useStudioStore";
 import { useI18n } from "../i18n";
 import { roleColor } from "../utils/roleColor";
 import { filterAgentsByCapabilities } from "../utils/agentFilters";
+import { vscode } from "../hooks/useVsCodeApi";
 
 function initials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -121,6 +122,52 @@ export function ChooseView(): React.JSX.Element {
           ))}
         </div>
       )}
+
+      <div className="choose-section-heading">
+        {tx("Export / Import", "Exportar / Importar")}
+      </div>
+      <div className="export-import-card">
+        <p className="field-hint">
+          {tx(
+            "Move agents between machines or share them with your team: export everything to a folder, scaffold a fresh repo-shaped folder ready to commit, or import agents that were exported earlier.",
+            "Movés agents entre máquinas o los compartís con tu equipo: exportá todo a una carpeta, armá una carpeta nueva con forma de repo lista para subir, o importá agents que se exportaron antes.",
+          )}
+        </p>
+        <div className="export-import-actions">
+          <button
+            type="button"
+            title={tx(
+              "Write every loaded agent as a .agent.md file into a folder you choose.",
+              "Escribe cada agent cargado como un archivo .agent.md en una carpeta que elijas.",
+            )}
+            onClick={() => vscode?.postMessage({ type: "exportAllAgents" })}
+          >
+            {tx("Export All Agents", "Exportar Todos los Agents")}
+          </button>
+          <button
+            type="button"
+            className="secondary-button"
+            title={tx(
+              "Create a new folder with a .github/agents structure (plus a short README) containing every loaded agent, ready to become a repo.",
+              "Crea una carpeta nueva con estructura .github/agents (y un README breve) con todos los agents cargados, lista para convertirse en un repo.",
+            )}
+            onClick={() => vscode?.postMessage({ type: "createRepoStructure" })}
+          >
+            {tx("Create Repo Structure", "Crear Estructura de Repo")}
+          </button>
+          <button
+            type="button"
+            className="secondary-button"
+            title={tx(
+              "Pick a folder with previously exported .agent.md files and import the ones that don't already exist here.",
+              "Elegí una carpeta con archivos .agent.md exportados antes e importá los que todavía no existen acá.",
+            )}
+            onClick={() => vscode?.postMessage({ type: "importAgents" })}
+          >
+            {tx("Import Agents", "Importar Agents")}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

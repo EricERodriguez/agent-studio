@@ -1653,6 +1653,25 @@ h4 {
   color: var(--vscode-descriptionForeground);
 }
 
+.export-import-card {
+  background: var(--studio-surface-1);
+  border: 1px solid var(--studio-border);
+  border-radius: 11px;
+  padding: 16px;
+  max-width: 720px;
+}
+
+.export-import-card .field-hint {
+  margin: 0 0 14px;
+  line-height: 1.5;
+}
+
+.export-import-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 /* Inspect view */
 
 .inspect-view {
@@ -1997,6 +2016,26 @@ h4 {
   display: grid;
   grid-template-columns: 1fr;
   gap: 10px;
+  max-width: 880px;
+}
+
+.identity-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px 20px;
+}
+
+.provider-chip {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.provider-chip-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 2px;
+  background: var(--studio-accent);
 }
 
 .builder-form label,

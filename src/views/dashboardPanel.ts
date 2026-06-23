@@ -23,6 +23,9 @@ export interface DashboardPanelHandlers {
   onCreateAgent: () => Promise<void>;
   onEditAgent: (agentId: string) => Promise<void>;
   onExportAgent: (agentId: string, providers: AgentProvider[]) => Promise<void>;
+  onExportAllAgents: () => Promise<void>;
+  onCreateRepoStructure: () => Promise<void>;
+  onImportAgents: () => Promise<void>;
 }
 
 export class DashboardPanel {
@@ -111,6 +114,15 @@ export class DashboardPanel {
               message.payload.agentId,
               message.payload.providers,
             );
+            break;
+          case "exportAllAgents":
+            await this.handlers.onExportAllAgents();
+            break;
+          case "createRepoStructure":
+            await this.handlers.onCreateRepoStructure();
+            break;
+          case "importAgents":
+            await this.handlers.onImportAgents();
             break;
         }
       },

@@ -360,46 +360,56 @@ export function AgentBuilder(): React.JSX.Element {
       case "Identity":
         return (
           <div className="builder-form">
-            <label>
-              {tx("Agent ID", "ID del Agent")}
-              <input
-                value={draft.id}
-                readOnly
-                title="Unique agent identifier used in files and references."
-              />
-            </label>
-            <label>
-              {tx("Scope", "Scope")}
-              <select
-                title="Choose whether this agent belongs to the current repository or is available globally."
-                value={draft.sourceScope || "repository"}
-                onChange={(e) =>
-                  update({
-                    sourceScope: e.target.value as "repository" | "global",
-                  })
-                }
-              >
-                <option value="repository">
-                  {tx("Repository", "Repositorio")}
-                </option>
-                <option value="global">{tx("Global", "Global")}</option>
-              </select>
-              <small className="field-hint">
-                {tx(
-                  "Repository agents are saved in the current repo. Global agents are available across repos.",
-                  "Los agents de repositorio se guardan en el repo actual. Los globales están disponibles en cualquier repo.",
-                )}
-              </small>
-            </label>
-            <label>
-              {tx("Name", "Nombre")}
-              <input
-                title="Human-friendly name shown in the sidebar and dashboard."
-                value={draft.name}
-                onChange={(e) => update({ name: e.target.value })}
-                className={draft.name.trim() ? "" : "field-invalid"}
-              />
-            </label>
+            <div className="identity-grid">
+              <label>
+                {tx("Agent ID", "ID del Agent")}
+                <input
+                  value={draft.id}
+                  readOnly
+                  title="Unique agent identifier used in files and references."
+                />
+              </label>
+              <label>
+                {tx("Scope", "Scope")}
+                <select
+                  title="Choose whether this agent belongs to the current repository or is available globally."
+                  value={draft.sourceScope || "repository"}
+                  onChange={(e) =>
+                    update({
+                      sourceScope: e.target.value as "repository" | "global",
+                    })
+                  }
+                >
+                  <option value="repository">
+                    {tx("Repository", "Repositorio")}
+                  </option>
+                  <option value="global">{tx("Global", "Global")}</option>
+                </select>
+              </label>
+              <label>
+                {tx("Name", "Nombre")}
+                <input
+                  title="Human-friendly name shown in the sidebar and dashboard."
+                  value={draft.name}
+                  onChange={(e) => update({ name: e.target.value })}
+                  className={draft.name.trim() ? "" : "field-invalid"}
+                />
+              </label>
+              <label>
+                {tx("Role", "Role")}
+                <input
+                  title="Optional role label used as quick context in the sidebar."
+                  value={draft.role || ""}
+                  onChange={(e) => update({ role: e.target.value })}
+                />
+              </label>
+            </div>
+            <small className="field-hint">
+              {tx(
+                "Repository agents are saved in the current repo. Global agents are available across repos.",
+                "Los agents de repositorio se guardan en el repo actual. Los globales están disponibles en cualquier repo.",
+              )}
+            </small>
             <label>
               {tx("Description", "Descripción")}
               <input
@@ -409,12 +419,7 @@ export function AgentBuilder(): React.JSX.Element {
               />
             </label>
             <label>
-              {tx("Role", "Role")}
-              <input
-                title="Optional role label used as quick context in the sidebar."
-                value={draft.role || ""}
-                onChange={(e) => update({ role: e.target.value })}
-              />
+              {tx("Role quick-picks", "Roles sugeridos")}
               <div className="chip-row quick-pick-row">
                 {ROLE_SUGGESTIONS.map((role) => (
                   <button
@@ -456,20 +461,24 @@ export function AgentBuilder(): React.JSX.Element {
                 "Generar agent para proveedores de IA",
               )}
               <div className="chip-row quick-pick-row">
-                {ALL_PROVIDERS.map((provider) => (
-                  <button
-                    key={provider}
-                    type="button"
-                    title={tx(
-                      `Include ${PROVIDER_LABELS[provider]} when exporting this agent.`,
-                      `Incluir ${PROVIDER_LABELS[provider]} al exportar este agent.`,
-                    )}
-                    className={`secondary-button ${(draft.providers || []).includes(provider) ? "quick-pick-active" : ""}`}
-                    onClick={() => toggleProvider(provider)}
-                  >
-                    {PROVIDER_LABELS[provider]}
-                  </button>
-                ))}
+                {ALL_PROVIDERS.map((provider) => {
+                  const active = (draft.providers || []).includes(provider);
+                  return (
+                    <button
+                      key={provider}
+                      type="button"
+                      title={tx(
+                        `Include ${PROVIDER_LABELS[provider]} when exporting this agent.`,
+                        `Incluir ${PROVIDER_LABELS[provider]} al exportar este agent.`,
+                      )}
+                      className={`secondary-button provider-chip ${active ? "quick-pick-active" : ""}`}
+                      onClick={() => toggleProvider(provider)}
+                    >
+                      {active && <span className="provider-chip-dot" />}
+                      {PROVIDER_LABELS[provider]}
+                    </button>
+                  );
+                })}
                 <button
                   type="button"
                   title={tx(
