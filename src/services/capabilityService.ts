@@ -212,7 +212,7 @@ async function loadSkillsFromPath(pathToScan: string): Promise<SkillRef[]> {
     );
     const skills = await Promise.all(
       entries
-        .filter(([, fileType]) => fileType === vscode.FileType.Directory)
+        .filter(([, fileType]) => fileType & vscode.FileType.Directory)
         .map(([name]) =>
           loadSkillFromDirectory(path.join(pathToScan, name), name),
         ),

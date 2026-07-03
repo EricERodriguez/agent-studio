@@ -51,10 +51,13 @@ export class AgentRegistryService {
       const files = await Promise.all(
         entries.map(async ([name, fileType]) => {
           const absolutePath = path.join(dirPath, name);
-          if (fileType === vscode.FileType.Directory) {
+          // Bitwise checks: VS Code OR's in FileType.SymbolicLink for symlinked
+          // entries, so a strict `=== FileType.File` (or `.Directory`) check
+          // silently skips anything symlinked (e.g. a shared agents repo).
+          if (fileType & vscode.FileType.Directory) {
             return this.collectAgentFilesFromDirectory(absolutePath, pattern);
           }
-          if (fileType === vscode.FileType.File && pattern.test(name)) {
+          if (fileType & vscode.FileType.File && pattern.test(name)) {
             return [vscode.Uri.file(absolutePath)];
           }
           return [] as vscode.Uri[];

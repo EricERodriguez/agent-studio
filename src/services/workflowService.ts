@@ -19,8 +19,11 @@ export class WorkflowService {
       );
       return entries
         .filter(
+          // Bitwise check: VS Code OR's in FileType.SymbolicLink for symlinked
+          // entries, so a strict `=== FileType.File` check silently skips
+          // anything symlinked (e.g. a shared workflows repo).
           ([name, fileType]) =>
-            fileType === vscode.FileType.File && /\.json$/i.test(name),
+            fileType & vscode.FileType.File && /\.json$/i.test(name),
         )
         .map(([name]) => vscode.Uri.file(path.join(dirPath, name)));
     } catch {

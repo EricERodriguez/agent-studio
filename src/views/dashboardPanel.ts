@@ -19,13 +19,19 @@ export interface DashboardPanelHandlers {
   onOpenInChat: (agentId: string) => Promise<void>;
   onDeleteWorkflow: (workflowId: string) => Promise<void>;
   onSaveWorkflow: (workflow: WorkflowDefinition) => Promise<void>;
-  onRunWorkflow: (workflowId: string, mode: "chat" | "plan") => Promise<void>;
+  onRunWorkflow: (
+    workflowId: string,
+    mode: "chat" | "plan" | "cli-claude" | "cli-codex",
+  ) => Promise<void>;
   onCreateAgent: () => Promise<void>;
   onEditAgent: (agentId: string) => Promise<void>;
   onExportAgent: (agentId: string, providers: AgentProvider[]) => Promise<void>;
   onExportAllAgents: () => Promise<void>;
   onCreateRepoStructure: () => Promise<void>;
   onImportAgents: () => Promise<void>;
+  onCreateWorkflow: () => Promise<void>;
+  onExportAllWorkflows: () => Promise<void>;
+  onImportWorkflows: () => Promise<void>;
 }
 
 export class DashboardPanel {
@@ -123,6 +129,15 @@ export class DashboardPanel {
             break;
           case "importAgents":
             await this.handlers.onImportAgents();
+            break;
+          case "createWorkflow":
+            await this.handlers.onCreateWorkflow();
+            break;
+          case "exportAllWorkflows":
+            await this.handlers.onExportAllWorkflows();
+            break;
+          case "importWorkflows":
+            await this.handlers.onImportWorkflows();
             break;
         }
       },

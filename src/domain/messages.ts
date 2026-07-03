@@ -16,7 +16,10 @@ export type WebviewToExtensionMessage =
   | { type: "deleteWorkflow"; payload: { workflowId: string } }
   | {
       type: "runWorkflow";
-      payload: { workflowId: string; mode: "chat" | "plan" };
+      payload: {
+        workflowId: string;
+        mode: "chat" | "plan" | "cli-claude" | "cli-codex";
+      };
     }
   | { type: "createAgent" }
   | { type: "editAgent"; payload: { agentId: string } }
@@ -26,7 +29,10 @@ export type WebviewToExtensionMessage =
     }
   | { type: "exportAllAgents" }
   | { type: "createRepoStructure" }
-  | { type: "importAgents" };
+  | { type: "importAgents" }
+  | { type: "createWorkflow" }
+  | { type: "exportAllWorkflows" }
+  | { type: "importWorkflows" };
 
 export interface WorkflowRunStep {
   nodeId: string;
@@ -38,7 +44,7 @@ export interface WorkflowRunStep {
 
 export interface WorkflowRunState {
   workflowId: string;
-  mode: "chat" | "plan";
+  mode: "chat" | "plan" | "cli-claude" | "cli-codex";
   status: "running" | "completed" | "failed";
   currentStepIndex?: number;
   steps: WorkflowRunStep[];

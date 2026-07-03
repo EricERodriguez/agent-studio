@@ -2,8 +2,8 @@ import * as vscode from "vscode";
 import type { AgentDefinition } from "../domain/models";
 
 export class ChatBridgeService {
-  async openAgentInChat(agent: AgentDefinition): Promise<void> {
-    const prompt = [
+  buildPrompt(agent: AgentDefinition): string {
+    return [
       `Agent: ${agent.name}`,
       agent.description ? `Description: ${agent.description}` : "",
       agent.role ? `Role: ${agent.role}` : "",
@@ -13,6 +13,16 @@ export class ChatBridgeService {
     ]
       .filter(Boolean)
       .join("\n");
+  }
+
+  /** Types the agent's prompt into an already-running CLI session (e.g. `claude` or `codex`). */
+  sendAgentToTerminal(agent: AgentDefinition, terminal: vscode.Terminal): void {
+    const prompt = this.buildPrompt(agent).replace(/\r?\n+/g, " ").trim();
+    terminal.sendText(prompt, true);
+  }
+
+  async openAgentInChat(agent: AgentDefinition): Promise<void> {
+    const prompt = this.buildPrompt(agent);
 
     try {
       await vscode.commands.executeCommand("workbench.action.chat.open");

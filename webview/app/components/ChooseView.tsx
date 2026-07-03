@@ -167,6 +167,35 @@ export function ChooseView(): React.JSX.Element {
             {tx("Import Agents", "Importar Agents")}
           </button>
         </div>
+        <p className="field-hint">
+          {tx(
+            "Same idea for workflows: export every workflow graph to a folder, or import workflows exported earlier.",
+            "La misma idea para workflows: exportá cada grafo de workflow a una carpeta, o importá workflows exportados antes.",
+          )}
+        </p>
+        <div className="export-import-actions">
+          <button
+            type="button"
+            title={tx(
+              "Write every loaded workflow as a .json file into a folder you choose.",
+              "Escribe cada workflow cargado como un archivo .json en una carpeta que elijas.",
+            )}
+            onClick={() => vscode?.postMessage({ type: "exportAllWorkflows" })}
+          >
+            {tx("Export All Workflows", "Exportar Todos los Workflows")}
+          </button>
+          <button
+            type="button"
+            className="secondary-button"
+            title={tx(
+              "Pick a folder with previously exported workflow .json files and import the ones that don't already exist here.",
+              "Elegí una carpeta con archivos .json de workflows exportados antes e importá los que todavía no existen acá.",
+            )}
+            onClick={() => vscode?.postMessage({ type: "importWorkflows" })}
+          >
+            {tx("Import Workflows", "Importar Workflows")}
+          </button>
+        </div>
       </div>
     </div>
   );

@@ -183,6 +183,9 @@ export async function activate(
     onCreateAgent: async () => {
       await createAgent();
     },
+    onCreateWorkflow: async () => {
+      await createWorkflow();
+    },
     onEditAgent: async (agentId) => {
       await editAgent(agentId);
     },
@@ -362,6 +365,132 @@ export async function activate(
         dashboard.postError(message);
       }
     },
+    onExportAllWorkflows: async () => {
+      if (workflows.length === 0) {
+        dashboard.postError("No workflows to export.");
+        return;
+      }
+
+      const picked = await vscode.window.showOpenDialog({
+        canSelectFolders: true,
+        canSelectFiles: false,
+        canSelectMany: false,
+        openLabel: "Export here",
+        title: "Choose a folder to export all workflows into",
+      });
+      if (!picked || picked.length === 0) {
+        return;
+      }
+
+      const destDir = picked[0].fsPath;
+      try {
+        await ensureDirectory(destDir);
+        for (const workflow of workflows) {
+          const { sourcePath, sourceScope, shadowedWorkflow, ...rest } =
+            workflow;
+          const filePath = path.join(destDir, `${workflow.id}.json`);
+          await vscode.workspace.fs.writeFile(
+            vscode.Uri.file(filePath),
+            Buffer.from(JSON.stringify(rest, null, 2), "utf8"),
+          );
+        }
+        dashboard.postInfo(
+          `Exported ${workflows.length} workflow${workflows.length === 1 ? "" : "s"} to ${destDir}.`,
+        );
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Failed to export workflows.";
+        dashboard.postError(message);
+      }
+    },
+    onImportWorkflows: async () => {
+      const picked = await vscode.window.showOpenDialog({
+        canSelectFolders: true,
+        canSelectFiles: false,
+        canSelectMany: false,
+        openLabel: "Import from here",
+        title: "Choose a folder to import workflows from",
+      });
+      if (!picked || picked.length === 0) {
+        return;
+      }
+
+      const scopeChoice = await vscode.window.showQuickPick(
+        [
+          { label: "Repository", value: "repository" as const },
+          { label: "Global", value: "global" as const },
+        ],
+        { title: "Import workflows as repository or global workflows?" },
+      );
+      if (!scopeChoice) {
+        return;
+      }
+
+      if (
+        scopeChoice.value === "repository" &&
+        !(await ensureWorkspaceOpen())
+      ) {
+        dashboard.postError(
+          "Open a folder/workspace first to import repository workflows.",
+        );
+        return;
+      }
+
+      const sourceDir = picked[0].fsPath;
+      try {
+        const found = await collectFilesByPattern(sourceDir, /\.json$/i);
+        if (found.length === 0) {
+          dashboard.postInfo("No .json workflow files found in that folder.");
+          return;
+        }
+
+        let imported = 0;
+        let skipped = 0;
+        let invalid = 0;
+        for (const fileUri of found) {
+          const buffer = await vscode.workspace.fs.readFile(fileUri);
+          let parsed: WorkflowDefinition;
+          try {
+            parsed = JSON.parse(
+              Buffer.from(buffer).toString("utf8"),
+            ) as WorkflowDefinition;
+          } catch {
+            invalid += 1;
+            continue;
+          }
+
+          if (workflowService.validateWorkflow(parsed).length > 0) {
+            invalid += 1;
+            continue;
+          }
+
+          if (workflows.some((existing) => existing.id === parsed.id)) {
+            skipped += 1;
+            continue;
+          }
+
+          parsed.sourceScope = scopeChoice.value;
+          await workflowService.saveWorkflow(parsed);
+          imported += 1;
+        }
+
+        await refreshState();
+        const notes = [
+          skipped > 0 ? `skipped ${skipped} (id already exists)` : "",
+          invalid > 0 ? `skipped ${invalid} (invalid workflow file)` : "",
+        ].filter(Boolean);
+        dashboard.postInfo(
+          `Imported ${imported} workflow${imported === 1 ? "" : "s"}` +
+            (notes.length > 0 ? `, ${notes.join(", ")}.` : "."),
+        );
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Failed to import workflows.";
+        dashboard.postError(message);
+      }
+    },
   });
 
   const refreshState = async (): Promise<void> => {
@@ -477,7 +606,7 @@ export async function activate(
 
   const runWorkflow = async (
     workflowId: string,
-    mode: "chat" | "plan",
+    mode: "chat" | "plan" | "cli-claude" | "cli-codex",
   ): Promise<void> => {
     const workflow = workflows.find((candidate) => candidate.id === workflowId);
     if (!workflow) {
@@ -579,10 +708,37 @@ export async function activate(
       ...step,
     }));
 
+    const isCliMode = mode === "cli-claude" || mode === "cli-codex";
+    const cliCommand = mode === "cli-claude" ? "claude" : "codex";
+    let cliTerminal: vscode.Terminal | undefined;
+
+    if (isCliMode) {
+      const terminalName = `Agent Studio: ${workflow.name} (${cliCommand})`;
+      cliTerminal = vscode.window.terminals.find(
+        (terminal) => terminal.name === terminalName,
+      );
+      const isNewTerminal = !cliTerminal;
+      if (!cliTerminal) {
+        cliTerminal = vscode.window.createTerminal({
+          name: terminalName,
+          cwd:
+            vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ||
+            context.extensionPath,
+        });
+      }
+      cliTerminal.show();
+      if (isNewTerminal) {
+        cliTerminal.sendText(cliCommand, true);
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+      }
+    }
+
     for (let index = 0; index < stepStates.length; index += 1) {
       const step = stepStates[index];
       step.status = "running";
-      step.message = "Opening agent in chat";
+      step.message = isCliMode
+        ? `Sending to ${cliCommand} CLI`
+        : "Opening agent in chat";
       publish({
         ...baseState,
         status: "running",
@@ -611,9 +767,14 @@ export async function activate(
       }
 
       try {
-        await chatBridgeService.openAgentInChat(agent);
+        if (isCliMode && cliTerminal) {
+          chatBridgeService.sendAgentToTerminal(agent, cliTerminal);
+          step.message = `Sent to ${cliCommand} CLI`;
+        } else {
+          await chatBridgeService.openAgentInChat(agent);
+          step.message = "Agent invoked in chat";
+        }
         step.status = "completed";
-        step.message = "Agent invoked in chat";
       } catch (error) {
         step.status = "failed";
         step.message =
@@ -640,6 +801,10 @@ export async function activate(
         currentStepIndex: index,
         steps: [...stepStates],
       });
+
+      if (isCliMode && index < stepStates.length - 1) {
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      }
     }
 
     publish({

@@ -142,7 +142,7 @@ export interface WorkflowRunStep {
 
 export interface WorkflowRunState {
   workflowId: string;
-  mode: "chat" | "plan";
+  mode: "chat" | "plan" | "cli-claude" | "cli-codex";
   status: "running" | "completed" | "failed";
   currentStepIndex?: number;
   steps: WorkflowRunStep[];

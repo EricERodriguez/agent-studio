@@ -89,7 +89,9 @@ export function GraphCanvas(): React.JSX.Element {
   const [pan, setPan] = useState({ x: 40, y: 30 });
   const [isPanning, setIsPanning] = useState(false);
   const [agentToAdd, setAgentToAdd] = useState("");
-  const [runMode, setRunMode] = useState<"chat" | "plan">("chat");
+  const [runMode, setRunMode] = useState<
+    "chat" | "plan" | "cli-claude" | "cli-codex"
+  >("chat");
   const [draggingNodeId, setDraggingNodeId] = useState<string | null>(null);
   const [manualPositions, setManualPositions] = useState<Record<string, Point>>({});
   const viewportRef = useRef<HTMLDivElement | null>(null);
@@ -746,13 +748,23 @@ export function GraphCanvas(): React.JSX.Element {
                   <select
                     value={runMode}
                     title={tx(
-                      "Choose whether the workflow opens agents in chat or only generates a plan.",
-                      "Elige si el workflow abre agents en chat o solo genera un plan.",
+                      "Choose whether the workflow opens agents in chat, only generates a plan, or types each step into a Claude/Codex CLI terminal.",
+                      "Elige si el workflow abre agents en chat, solo genera un plan, o escribe cada paso en una terminal CLI de Claude/Codex.",
                     )}
-                    onChange={(e) => setRunMode(e.target.value as "chat" | "plan")}
+                    onChange={(e) =>
+                      setRunMode(
+                        e.target.value as
+                          | "chat"
+                          | "plan"
+                          | "cli-claude"
+                          | "cli-codex",
+                      )
+                    }
                   >
-                    <option value="chat">Chat</option>
-                    <option value="plan">Plan</option>
+                    <option value="chat">{tx("Chat", "Chat")}</option>
+                    <option value="plan">{tx("Plan", "Plan")}</option>
+                    <option value="cli-claude">{tx("Claude CLI", "CLI de Claude")}</option>
+                    <option value="cli-codex">{tx("Codex CLI", "CLI de Codex")}</option>
                   </select>
                   <button
                     disabled={selectedWorkflowRun?.status === "running"}
