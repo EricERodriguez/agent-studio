@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.2] - 2026-07-03
+
+### Graph layout fix
+
+- Fixed the workflow run-status panel overlapping other floating controls in the Graph view. It no longer floats at its own fixed coordinates; it now stacks in normal flow below the workflow action toolbar (workflow picker, Add Step, Auto Layout, Save Workflow, Delete), so the two can never cover each other regardless of how many lines the toolbar wraps to, and the Agent graph/Workflow graph toggle in the top-left corner stays clickable.
+
+## [1.0.1] - 2026-07-03
+
+### Run workflows in a real CLI
+
+- Added two new "Run Workflow" modes, **Claude CLI** and **Codex CLI**, alongside the existing Chat and Plan modes. Instead of pasting into VS Code's chat, each step's prompt is typed straight into an integrated terminal running `claude` or `codex`, so a workflow run drives the actual CLI session.
+
+### Workflow import/export
+
+- Added **Export All Workflows** and **Import Workflows** to the Choose view's Export/Import section, mirroring the existing agent export/import: write every loaded workflow as a `.json` file into a folder you choose, or import workflow files from a folder (skipping ids that already exist).
+
+### Fixes
+
+- Fixed the header's **Workflow** button doing nothing: the webview posted a `createWorkflow` message that the extension side never handled.
+- Fixed agents, workflows, and skills going silently missing from discovery when their files were symlinks (e.g. a shared agents/workflows repo linked into `~/.claude/agents` or `~/.agents/workflows`). File-type checks compared against `vscode.FileType.File`/`.Directory` with strict equality, which fails for symlinked entries since VS Code reports those with the `SymbolicLink` bit also set; switched to bitwise checks.
+
 ## [1.0.0] - 2026-06-23
 
 ### Dashboard redesign

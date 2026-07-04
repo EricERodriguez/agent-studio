@@ -492,6 +492,71 @@ export function GraphCanvas(): React.JSX.Element {
               </>
             )}
           </div>
+
+          <div className="graph-run-panel">
+            <div className="graph-run-panel-head">
+              <span>{tx("Run status", "Estado de corrida")}</span>
+              <span className="graph-run-state">
+                {selectedWorkflowRun?.status || tx("idle", "en espera")}
+              </span>
+            </div>
+            {orderedRunSteps.map((step, index) => (
+              <div key={`${step.name}-${index}`} className="graph-run-step">
+                <span
+                  className={
+                    "graph-run-step-mark" +
+                    (step.state === "ready" || step.state === "completed"
+                      ? " ready"
+                      : step.state === "running"
+                        ? " running"
+                        : step.state === "failed"
+                          ? " failed"
+                          : "")
+                  }
+                />
+                <span className="graph-run-step-name">{step.name}</span>
+                <span className="graph-run-step-state">{step.state}</span>
+              </div>
+            ))}
+            {selectedWorkflow && (
+              <div className="graph-run-panel-actions">
+                <select
+                  value={runMode}
+                  title={tx(
+                    "Choose whether the workflow opens agents in chat, only generates a plan, or types each step into a Claude/Codex CLI terminal.",
+                    "Elige si el workflow abre agents en chat, solo genera un plan, o escribe cada paso en una terminal CLI de Claude/Codex.",
+                  )}
+                  onChange={(e) =>
+                    setRunMode(
+                      e.target.value as
+                        | "chat"
+                        | "plan"
+                        | "cli-claude"
+                        | "cli-codex",
+                    )
+                  }
+                >
+                  <option value="chat">{tx("Chat", "Chat")}</option>
+                  <option value="plan">{tx("Plan", "Plan")}</option>
+                  <option value="cli-claude">{tx("Claude CLI", "CLI de Claude")}</option>
+                  <option value="cli-codex">{tx("Codex CLI", "CLI de Codex")}</option>
+                </select>
+                <button
+                  disabled={selectedWorkflowRun?.status === "running"}
+                  onClick={() =>
+                    vscode?.postMessage({
+                      type: "runWorkflow",
+                      payload: { workflowId: selectedWorkflow.id, mode: runMode },
+                    })
+                  }
+                >
+                  {selectedWorkflowRun?.status === "running"
+                    ? tx("Running…", "Ejecutando…")
+                    : tx("Run Workflow", "Ejecutar Workflow")}
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -716,73 +781,6 @@ export function GraphCanvas(): React.JSX.Element {
               );
             })}
           </div>
-
-          {isWorkflow && (
-            <div className="graph-run-panel">
-              <div className="graph-run-panel-head">
-                <span>{tx("Run status", "Estado de corrida")}</span>
-                <span className="graph-run-state">
-                  {selectedWorkflowRun?.status || tx("idle", "en espera")}
-                </span>
-              </div>
-              {orderedRunSteps.map((step, index) => (
-                <div key={`${step.name}-${index}`} className="graph-run-step">
-                  <span
-                    className={
-                      "graph-run-step-mark" +
-                      (step.state === "ready" || step.state === "completed"
-                        ? " ready"
-                        : step.state === "running"
-                          ? " running"
-                          : step.state === "failed"
-                            ? " failed"
-                            : "")
-                    }
-                  />
-                  <span className="graph-run-step-name">{step.name}</span>
-                  <span className="graph-run-step-state">{step.state}</span>
-                </div>
-              ))}
-              {selectedWorkflow && (
-                <div className="graph-run-panel-actions">
-                  <select
-                    value={runMode}
-                    title={tx(
-                      "Choose whether the workflow opens agents in chat, only generates a plan, or types each step into a Claude/Codex CLI terminal.",
-                      "Elige si el workflow abre agents en chat, solo genera un plan, o escribe cada paso en una terminal CLI de Claude/Codex.",
-                    )}
-                    onChange={(e) =>
-                      setRunMode(
-                        e.target.value as
-                          | "chat"
-                          | "plan"
-                          | "cli-claude"
-                          | "cli-codex",
-                      )
-                    }
-                  >
-                    <option value="chat">{tx("Chat", "Chat")}</option>
-                    <option value="plan">{tx("Plan", "Plan")}</option>
-                    <option value="cli-claude">{tx("Claude CLI", "CLI de Claude")}</option>
-                    <option value="cli-codex">{tx("Codex CLI", "CLI de Codex")}</option>
-                  </select>
-                  <button
-                    disabled={selectedWorkflowRun?.status === "running"}
-                    onClick={() =>
-                      vscode?.postMessage({
-                        type: "runWorkflow",
-                        payload: { workflowId: selectedWorkflow.id, mode: runMode },
-                      })
-                    }
-                  >
-                    {selectedWorkflowRun?.status === "running"
-                      ? tx("Running…", "Ejecutando…")
-                      : tx("Run Workflow", "Ejecutar Workflow")}
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
 
           <div className="graph-zoom-controls">
             <button onClick={() => setZoom((z) => Math.min(200, z + 10))}>+</button>
