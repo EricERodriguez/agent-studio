@@ -306,8 +306,12 @@ encadena al siguiente paso usa el contenido de `step-N-final.txt` (con fallback 
 si por algún motivo viniera vacío). `claude -p` no tiene un flag equivalente cableado porque su
 stdout ya se veía limpio en las pruebas — se sigue usando tal cual.
 
-**Todavía no se corrió este fix en la práctica** — compila limpio pero falta que el usuario lo
-pruebe de nuevo con Codex y confirme que `step-N-final.txt` tiene sólo la respuesta, sin ruido.
+**Confirmado por el usuario (2026-08-09)** contra
+`/home/eric44/Github/agents-fleet/.agent-studio/runs/changes-config-1786312984979/` — el fix
+funciona: `step-N-final.txt` queda con la respuesta limpia y es lo que se encadena al siguiente
+paso. Con esto, la Fase 5 (detección de fin de turno) queda **cerrada de punta a punta** para
+`claude` y `codex`: inyección resuelta, objetivo/encadenado funcionando, output limpio para
+encadenar, y ambos flags de invocación confirmados contra corridas reales.
 
 ### Cómo probar este cambio
 
@@ -335,21 +339,24 @@ pruebe de nuevo con Codex y confirme que `step-N-final.txt` tiene sólo la respu
 
 ## Qué falta (próximo paso sugerido)
 
-Fase 5 (detección de fin de turno) queda validada de punta a punta para `claude` y `codex`:
-inyección cerrada, objetivo/encadenado funcionando, ambos flags confirmados contra corridas
-reales. Único detalle menor sin cerrar: confirmar que el *contenido* de las respuestas de Codex
-es coherente (no sólo que no tira error) — pedirle al usuario que revise
-`step-0-output.txt` de la corrida de Codex la próxima vez que se retome esto.
+**Fase 5 (detección de fin de turno) queda cerrada de punta a punta** para `claude` y `codex`,
+confirmada por el usuario contra corridas reales de 5 pasos: inyección resuelta, objetivo del run
+funcionando, encadenado real entre pasos, output limpio para encadenar (sin banner/traza), y
+ambos flags de invocación (`claude -p` / `codex exec -o`) confirmados. No queda nada pendiente de
+validación en esta fase salvo un turno de varios minutos (sólo se probó hasta ~11s) y el
+comportamiento si el usuario interactúa manualmente con la terminal durante un turno — ninguno de
+los dos bloquea seguir.
 
-El siguiente paso real de desarrollo, no ya de validación:
-- Modelo de datos extendido (Fase 1) — no depende de nada de lo anterior, se puede hacer en
-  paralelo.
-- `WorkflowRunManager` (Fase 4) integrando N terminales (Fase 5) + gating humano in-process
-  (Fase 6, sólo `automatic`/`human` — IA-en-el-loop se logra modelando un nodo revisor en el
-  grafo, no con lógica de motor aparte).
+El siguiente paso real es la parte que originalmente pidió el usuario y todavía no se construyó:
+**N terminales en paralelo, una por agente**, en vez de las secuenciales en una sola terminal que
+hay hoy. Orden sugerido:
+- Modelo de datos extendido (Fase 1: `HandoffMode`, estado `queued`) — no depende de nada de lo
+  anterior, se puede hacer en paralelo con lo que sigue.
+- `WorkflowRunManager` con N terminales reales (Fase 4+5 de la UI, distinto de la detección de
+  fin de turno ya resuelta) + gating humano in-process (Fase 6, sólo `automatic`/`human`).
 - Catálogo de templates con prompts propios (Fase 3).
 - Idioma de interacción (Fase 2).
-- Estado/recuperación, panel, preflight, pruebas (Fases 7-10).
+- Estado/recuperación, panel visual del grafo, preflight, pruebas (Fases 7-10).
 
 ## Notas de handoff
 
