@@ -713,6 +713,8 @@ export async function activate(
     const isCliMode = mode === "cli-claude" || mode === "cli-codex";
     const cliCommand = mode === "cli-claude" ? "claude" : "codex";
     let cliTerminal: vscode.Terminal | undefined;
+    let objective: string | undefined;
+    let previousStepOutput: string | undefined;
     const runDir = path.join(
       vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || context.extensionPath,
       ".agent-studio",
@@ -721,6 +723,16 @@ export async function activate(
     );
 
     if (isCliMode) {
+      objective = await vscode.window.showInputBox({
+        prompt: `What should the "${workflow.name}" workflow do?`,
+        placeHolder: "Describe the task or user story for this run",
+        ignoreFocusOut: true,
+      });
+      if (!objective) {
+        dashboard.postInfo("Workflow run cancelled.");
+        return;
+      }
+
       const terminalName = `Agent Studio: ${workflow.name} (${cliCommand})`;
       cliTerminal = vscode.window.terminals.find(
         (terminal) => terminal.name === terminalName,
@@ -770,11 +782,11 @@ export async function activate(
       }
 
       try {
-        if (isCliMode && cliTerminal) {
+        if (isCliMode && cliTerminal && objective) {
           const turn = await runAgentTurn({
             terminal: cliTerminal,
             executable: cliCommand,
-            prompt: chatBridgeService.buildPrompt(agent),
+            prompt: chatBridgeService.buildTurnPrompt(agent, objective, previousStepOutput),
             runDir,
             stepIndex: index,
           });
@@ -798,6 +810,7 @@ export async function activate(
             dashboard.postError(`Workflow failed at step ${index + 1}. ${step.message}`);
             return;
           }
+          previousStepOutput = turn.output;
           step.message = `${cliCommand} CLI exited 0`;
         } else {
           await chatBridgeService.openAgentInChat(agent);

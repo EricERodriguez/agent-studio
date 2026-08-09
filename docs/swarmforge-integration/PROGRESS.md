@@ -240,33 +240,108 @@ el prototipo de diagnóstico (antes estaban duplicados).
 `npm run check` y `npm run build:extension` pasan limpios (mismo único error preexistente de
 `agentRegistryService.ts`, no tocado).
 
-**Todavía no se probó en la práctica** — el cambio compila pero no se corrió un workflow real en
-modo CLI todavía. Sigue abierto: no confirmado el flag `-p`/stdin de `codex` con un prompt bien
-formado (sólo se probó `-p <args rotos>` en la sesión anterior), y no probado con un turno de
-varios minutos.
+## Primera prueba real (2026-08-09) — encontró dos huecos, ya corregidos
+
+El usuario corrió el cambio contra un workflow real de 5 pasos (`agents-fleet`, workflow
+"changes-config": Functional Analyst → Technical Lead → Developer → ... → QA Engineer). Resultado
+positivo en lo que se buscaba probar: **el paso quedó "running" hasta que `claude` terminaba de
+verdad, y recién ahí pasó a "completed"** — confirmado por el usuario ("el flow que probé esperaba
+que un agente terminara para comenzar el siguiente" / "el run status fue cambiando de color y
+diciendo completed y running"). Pero encontró dos huecos reales, ambos ya corregidos en el código:
+
+1. **Cada agente respondía "no veo ninguna tarea"** — el prompt de cada turno sólo tenía la
+   definición estática del agente (`buildPrompt`), sin ningún objetivo ni conexión con lo que
+   hizo el paso anterior. Arreglado: `runWorkflow` ahora pide el objetivo del run con un
+   `showInputBox` antes de arrancar (sólo en modo CLI; si se cancela, el run se aborta con
+   `dashboard.postInfo("Workflow run cancelled.")`), y `ChatBridgeService.buildTurnPrompt()`
+   (nuevo) arma el prompt de cada paso como: definición del agente + objetivo del run + output
+   del paso anterior (si hay). El output de cada turno ahora se captura redirigiendo el stdout
+   del CLI a un archivo (`step-<i>-output.txt`, junto al `step-<i>-prompt.txt`) en vez de leer el
+   stream crudo de la terminal — evita tener que lidiar con secuencias de escape ANSI.
+2. **`codex -p` no es "prompt", es `--profile`** — el CLI real de codex tiró
+   `error: a value is required for '--profile <CONFIG_PROFILE_V2>' but none was supplied`.
+   Arreglado: `oneShotTurnRunner.ts` ahora usa un mapeo por ejecutable
+   (`claude -p` / `codex exec`) en vez de asumir `-p` para los dos.
+
+También se confirmó, sin sorpresas: el grafo (`.graph-node`) no cambió de color durante el run —
+esperado, es la Fase 8 (paneles/estados visuales), diseñada pero no implementada todavía. El
+panel lateral de Run status sí cambió de color correctamente (pending → running → completed),
+confirmado por el usuario.
+
+## Segunda prueba real (2026-08-09) — objetivo/encadenado y `codex exec` confirmados
+
+El usuario repitió el mismo workflow de 5 pasos con los dos fixes ya aplicados:
+
+- **Claude CLI**: confirmado que el objetivo se incorpora al prompt y que el encadenado funciona
+  de verdad — el output del paso 1 (Technical Lead) dice literalmente "El README confirma lo que
+  ya había reportado el agente anterior... valido y entrego la respuesta final", mostrando que
+  recibió y usó el output real del paso 0 (Functional Analyst). Colores y estados del panel
+  cambiaron correctamente en todo el run.
+- **Codex CLI**: primera corrida se hizo sin cambiar el selector de la corrida anterior (quedó en
+  "Claude CLI"), detectado porque el log mostraba `claude -p`, no `codex exec` — no era un bug,
+  el `<select>` de la UI mantiene el último valor elegido. Repetida seleccionando "Codex CLI"
+  explícitamente: los 5 pasos corrieron con `codex exec < ... > ... 2>&1` **sin ningún error de
+  flag**, confirmando que `codex exec` es la invocación correcta. Contenido de las respuestas
+  pendiente de que el usuario confirme que son coherentes (no sólo que no hay error de shell).
+
+Con esto, el punto 1 de "Qué falta validar" en `02-arquitectura-motor-nativo.md` queda cerrado
+para los dos backends soportados hoy.
+
+## Tercer hallazgo real: el stdout de `codex exec` no es sólo la respuesta — arreglado con `-o`
+
+El usuario revisó el contenido de `step-0-output.txt` de la corrida de Codex y encontró que
+Codex **sí** había respondido en 3 líneas como se le pidió, pero ese texto quedaba enterrado
+dentro de: un banner de arranque (versión, modelo, sandbox, session id), el prompt completo
+ecoado de vuelta, y una traza completa de herramientas — Codex ejecutó comandos de shell reales
+(`rg --files`, lectura del vault de memoria, del README) para investigar el repo antes de
+responder. Ese blob completo es justo lo que se estaba encadenando como "output del paso
+anterior" al siguiente agente — no la respuesta real.
+
+Se corrió `codex exec --help` (evidencia real, no otra adivinanza) y apareció el flag
+correcto para esto: `-o, --output-last-message <FILE>` — "Specifies file where the last message
+from the agent should be written". Se agregó a `oneShotTurnRunner.ts`: ahora `codex exec` corre
+con `-o "<runDir>/step-N-final.txt"` además de la redirección de stdout completa a
+`step-N-output.txt` (que se sigue guardando para debug/transparencia), y el campo `output` que se
+encadena al siguiente paso usa el contenido de `step-N-final.txt` (con fallback al stdout crudo
+si por algún motivo viniera vacío). `claude -p` no tiene un flag equivalente cableado porque su
+stdout ya se veía limpio en las pruebas — se sigue usando tal cual.
+
+**Todavía no se corrió este fix en la práctica** — compila limpio pero falta que el usuario lo
+pruebe de nuevo con Codex y confirme que `step-N-final.txt` tiene sólo la respuesta, sin ruido.
 
 ### Cómo probar este cambio
 
 1. F5 en `agent-studio` → Extension Development Host, con un workspace que tenga al menos un
    agente y un workflow de un solo paso (para la primera prueba, cuanto más simple mejor).
-2. Abrir el dashboard de Agent Studio, elegir ese workflow, modo **"Claude CLI"** (o Codex CLI).
-3. Ejecutar. La terminal debería mostrar el comando one-shot real
-   (`claude -p < "…/.agent-studio/runs/…/step-0-prompt.txt"`) en vez de un `claude` interactivo.
-4. En el panel de "Run status" del grafo, el paso debería quedar en **"running"** mientras el CLI
-   está pensando/respondiendo, y recién pasar a **"completed"** cuando el CLI termina de verdad
-   (no apenas arranca).
-5. Revisar `.agent-studio/runs/<workflowId>-<timestamp>/step-0-prompt.txt` en el workspace — debe
-   tener el prompt completo del agente, legible, sin romperse.
-6. Si algo falla, el paso debería quedar en **"failed"** con un mensaje (`exited with code N` o
-   `did not report completion in time`), no colgado indefinidamente ni marcado falsamente
-   "completed".
+2. Abrir el dashboard de Agent Studio, elegir ese workflow, modo **"Claude CLI"** o **"Codex CLI"**.
+3. Va a aparecer un cuadro de texto arriba pidiendo el objetivo del run — escribir algo concreto
+   (ej. "Explicá qué hace este repo en 3 líneas") y Enter.
+4. La terminal debería mostrar el comando one-shot real con redirección de entrada y salida
+   (`claude -p < ".../step-0-prompt.txt" > ".../step-0-output.txt" 2>&1`, o para Codex
+   `codex exec -o ".../step-0-final.txt" < ... > ".../step-0-output.txt" 2>&1`), no un CLI
+   interactivo esperando input.
+5. En el panel de "Run status" del grafo, el paso debería quedar en **"running"** mientras el CLI
+   está pensando/respondiendo, y recién pasar a **"completed"** cuando termina de verdad.
+6. Revisar en el workspace `.agent-studio/runs/<workflowId>-<timestamp>/`: `step-0-prompt.txt`
+   debe tener la definición del agente + el objetivo que escribiste; `step-0-output.txt` debe
+   tener la respuesta real del CLI (texto plano, sin códigos de escape). Si hay más de un paso,
+   `step-1-prompt.txt` debería incluir el output de `step-0` como contexto.
+7. ~~Con Codex específicamente: confirmar si `codex exec` corre en modo no interactivo~~ —
+   **confirmado 2026-08-09**, ver "Segunda prueba real" arriba.
+8. **Nuevo, sin probar todavía:** con Codex, revisar `step-0-final.txt` — debería tener sólo la
+   respuesta final (sin banner, sin prompt ecoado, sin traza de herramientas), y ese debería ser
+   el texto que aparece como "output del paso anterior" en `step-1-prompt.txt`, no el contenido
+   completo de `step-0-output.txt`.
 
 ## Qué falta (próximo paso sugerido)
 
-El siguiente paso concreto es **probar el cambio de `runWorkflow`** corriendo un workflow real en
-modo CLI (ver "Cómo probar" abajo) y confirmar en la práctica que un paso queda "running" hasta
-que el CLI termina de verdad, no apenas se envía el prompt. Recién después de confirmar eso tiene
-sentido seguir con:
+Fase 5 (detección de fin de turno) queda validada de punta a punta para `claude` y `codex`:
+inyección cerrada, objetivo/encadenado funcionando, ambos flags confirmados contra corridas
+reales. Único detalle menor sin cerrar: confirmar que el *contenido* de las respuestas de Codex
+es coherente (no sólo que no tira error) — pedirle al usuario que revise
+`step-0-output.txt` de la corrida de Codex la próxima vez que se retome esto.
+
+El siguiente paso real de desarrollo, no ya de validación:
 - Modelo de datos extendido (Fase 1) — no depende de nada de lo anterior, se puede hacer en
   paralelo.
 - `WorkflowRunManager` (Fase 4) integrando N terminales (Fase 5) + gating humano in-process

@@ -15,6 +15,25 @@ export class ChatBridgeService {
       .join("\n");
   }
 
+  /** Prompt for one CLI-mode workflow turn: the agent definition, the run's overall objective,
+   * and (for every step after the first) the previous step's output, so agents build on each
+   * other's work instead of each starting with no task. */
+  buildTurnPrompt(
+    agent: AgentDefinition,
+    objective: string,
+    previousStepOutput?: string,
+  ): string {
+    return [
+      this.buildPrompt(agent),
+      "",
+      "Task:",
+      objective,
+      previousStepOutput ? `\nPrevious agent's output:\n${previousStepOutput}` : "",
+    ]
+      .filter((line) => line !== "")
+      .join("\n");
+  }
+
   async openAgentInChat(agent: AgentDefinition): Promise<void> {
     const prompt = this.buildPrompt(agent);
 

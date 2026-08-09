@@ -128,14 +128,15 @@ interpretación de shell involucrada.
 
 ### Qué falta validar antes de construir nada más encima de esto
 
-1. ~~Confirmar el flag real de modo no interactivo de `claude` y de `codex`~~ — **parcialmente
-   confirmado (2026-08-09):** `claude -p <prompt>` corre en modo no interactivo y devuelve
-   `exitCode=0`; `codex -p <prompt>` también corre (`exitCode=2` en la prueba, pero fue por el
-   prompt roto por `args[]`, no porque `-p` sea inválido — no está confirmado si `-p` es el flag
-   correcto de codex o si por eso rompió el parseo). **Sigue pendiente:** confirmar el flag real
-   de codex con un prompt bien formado (vía archivo, no `args[]`), y confirmar si `claude`/`codex`
-   soportan leer el prompt desde un archivo o stdin en vez de como argumento — necesario para la
-   mitigación de la sección anterior.
+1. ~~Confirmar el flag real de modo no interactivo de `claude` y de `codex`~~ — **confirmado
+   (2026-08-09), contra workflows reales de 5 pasos con encadenado de contexto:** `claude -p <
+   archivo` corre en modo no interactivo, `exitCode=0`, respuestas coherentes y con el output del
+   paso anterior correctamente incorporado (confirmado leyendo el contenido real de
+   `step-N-output.txt`). `codex -p` NO es el flag correcto — significa `--profile`, no "prompt"
+   (`codex -p < archivo` tira `error: a value is required for '--profile <CONFIG_PROFILE_V2>'`).
+   `codex exec < archivo` sí funciona: corrió los 5 pasos sin errores de flag. Implementado en
+   `src/services/workflowRun/oneShotTurnRunner.ts` con un mapeo por ejecutable
+   (`claude -p` / `codex exec`).
 2. ~~Confirmar que `onDidEndTerminalShellExecution` dispara de forma confiable~~ — **confirmado
    para invocaciones cortas y medianas (2026-08-09):** `echo` (Test 1, 4642ms), `claude -p`
    (10724ms) y `codex -p` (4957ms) entregaron `exitCode` real en los tres casos. **Sigue
