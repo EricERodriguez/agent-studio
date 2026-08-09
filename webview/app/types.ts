@@ -136,7 +136,14 @@ export interface WorkflowRunStep {
   nodeId: string;
   agentId: string;
   agentName: string;
-  status: "pending" | "running" | "completed" | "failed" | "skipped";
+  status:
+    | "pending"
+    | "queued"
+    | "running"
+    | "waiting_approval"
+    | "completed"
+    | "failed"
+    | "skipped";
   message?: string;
 }
 

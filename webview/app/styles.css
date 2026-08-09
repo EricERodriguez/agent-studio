@@ -1401,6 +1401,16 @@ h4 {
   border-color: var(--vscode-charts-red, #f85149);
 }
 
+.graph-run-step-mark.queued {
+  background: var(--vscode-charts-orange, #d18616);
+  border-color: var(--vscode-charts-orange, #d18616);
+}
+
+.graph-run-step-mark.waiting-approval {
+  background: var(--vscode-charts-yellow, #d7ba7d);
+  border-color: var(--vscode-charts-yellow, #d7ba7d);
+}
+
 .graph-run-step-name {
   flex: 1;
   font-size: 12px;

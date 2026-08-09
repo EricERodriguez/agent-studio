@@ -69,11 +69,22 @@ export interface WorkflowNode {
   isEntry?: boolean;
 }
 
+export type HandoffMode = "automatic" | "human";
+
 export interface WorkflowEdge {
   id: string;
   source: string;
   target: string;
   label?: string;
+  /** How the target node's turn gets dispatched once the source node completes.
+   * Missing/undefined means "automatic" (today's default behavior). "human" pauses the target
+   * node until the user approves from a prompt — see src/services/workflowRun/workflowRunManager.ts.
+   * There is deliberately no "ai-review" mode: an AI reviewer is modeled as a regular node in the
+   * graph (an edge into it, edges out of it), not as special engine logic that trusts a
+   * structured decision an agent produces — see docs/swarmforge-integration/03-arquitectura-handoff-control.md. */
+  handoff?: {
+    mode: HandoffMode;
+  };
 }
 
 export interface WorkflowDefinition {

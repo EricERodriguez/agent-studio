@@ -59,8 +59,14 @@ export interface AgentTurnRequest {
   executable: string;
   prompt: string;
   runDir: string;
-  stepIndex: number;
+  /** Identifies this turn's files within runDir — typically the workflow node id. Sanitized
+   * before use, so any string is safe to pass. */
+  stepId: string;
   timeoutMs?: number;
+}
+
+function sanitizeForFilename(value: string): string {
+  return value.replace(/[^a-zA-Z0-9_-]/g, "-");
 }
 
 async function writeTextFile(filePath: string, content: string): Promise<void> {
@@ -82,12 +88,13 @@ async function readTextFileIfExists(filePath: string): Promise<string> {
 export async function runAgentTurn(
   request: AgentTurnRequest,
 ): Promise<AgentTurnResult> {
-  const { terminal, executable, prompt, runDir, stepIndex, timeoutMs = 10 * 60 * 1000 } = request;
+  const { terminal, executable, prompt, runDir, stepId, timeoutMs = 10 * 60 * 1000 } = request;
+  const safeStepId = sanitizeForFilename(stepId);
 
   await vscode.workspace.fs.createDirectory(vscode.Uri.file(runDir));
-  const promptFilePath = path.join(runDir, `step-${stepIndex}-prompt.txt`);
-  const rawOutputFilePath = path.join(runDir, `step-${stepIndex}-output.txt`);
-  const cleanOutputFilePath = path.join(runDir, `step-${stepIndex}-final.txt`);
+  const promptFilePath = path.join(runDir, `step-${safeStepId}-prompt.txt`);
+  const rawOutputFilePath = path.join(runDir, `step-${safeStepId}-output.txt`);
+  const cleanOutputFilePath = path.join(runDir, `step-${safeStepId}-final.txt`);
   await writeTextFile(promptFilePath, prompt);
 
   const shellIntegration = await waitForShellIntegration(terminal);
@@ -96,7 +103,7 @@ export async function runAgentTurn(
   }
 
   // Only the *FilePath variables are interpolated here — every one of them is a path Agent
-  // Studio itself constructs (runDir + a numeric step index), never the prompt content. Do not
+  // Studio itself constructs (runDir + a sanitized step id), never the prompt content. Do not
   // change this to pass the prompt (or any agent-generated text) as a shell argument; see the
   // empirical findings referenced above.
   const spec = ONE_SHOT_SPEC[executable] ?? { command: `${executable} -p` };

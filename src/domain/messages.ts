@@ -14,6 +14,8 @@ export type WebviewToExtensionMessage =
   | { type: "openInChat"; payload: { agentId: string } }
   | { type: "saveWorkflow"; payload: WorkflowDefinition }
   | { type: "deleteWorkflow"; payload: { workflowId: string } }
+  | { type: "renameWorkflow"; payload: { workflowId: string } }
+  | { type: "openRawWorkflow"; payload: { workflowId: string } }
   | {
       type: "runWorkflow";
       payload: {
@@ -38,7 +40,14 @@ export interface WorkflowRunStep {
   nodeId: string;
   agentId: string;
   agentName: string;
-  status: "pending" | "running" | "completed" | "failed" | "skipped";
+  status:
+    | "pending"
+    | "queued"
+    | "running"
+    | "waiting_approval"
+    | "completed"
+    | "failed"
+    | "skipped";
   message?: string;
 }
 

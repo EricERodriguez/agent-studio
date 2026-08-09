@@ -33,12 +33,12 @@ el diseño nuevo (motor nativo, sin tmux, sin socket externo, gating in-process)
 | Fase | Descripción | Estado | Última actualización |
 |---|---|---|---|
 | 0 | Distribución y alcance legal | Revisada para motor nativo — riesgo legal bajó de "bloqueante de runtime" a "no copiar texto literal de role prompts de SwarmForge" | 2026-08-09 |
-| 1 | Modelo de datos extendido (`WorkflowDefinition`/`Node`/`Edge`, `handoffMode` por edge) | Diseño cerrado, no implementado | 2026-08-09 |
+| 1 | Modelo de datos extendido (`WorkflowDefinition`/`Node`/`Edge`, `HandoffMode` por edge) | **Implementado** — `HandoffMode`/`WorkflowEdge.handoff` en `src/domain/models.ts`, estados `queued`/`waiting_approval` en `WorkflowRunStep` (`src/domain/messages.ts`, `webview/app/types.ts`). Sin UI todavía para setear `handoff.mode` desde el editor de grafo — sólo editando el JSON del workflow a mano | 2026-08-09 |
 | 2 | Separación `uiLanguage` / `interactionLanguage` / `languageOverride` | Diseño cerrado, no implementado, sin cambios por el pivot | 2026-08-09 |
 | 3 | Catálogo de templates inspirados en two/four/six-pack | Revisada — prompts propios en vez de copiar los de SwarmForge, ver `01-plan-revisado.md` | 2026-08-09 |
-| 4 | `WorkflowRunManager` nativo (reemplaza el adaptador `src/services/swarmforge/*` de la v2) | Diseño técnico concreto listo, no implementado | 2026-08-09 |
-| 5 | N terminales de VS Code por workflow + detección de fin de turno | Diseño técnico concreto listo (Terminal Shell Integration API + convención one-shot/marcador), no implementado ni prototipado — **es el punto de mayor incertidumbre técnica del plan nuevo**. Confirmado por el usuario: `runWorkflow` debe marcar "completed" al terminar de verdad, no al enviar el prompt | 2026-08-09 |
-| 6 | Handoff control: Human-in-the-Loop + IA como nodo del grafo (`HandoffMode` = sólo `automatic`/`human`) | Diseño técnico concreto listo, simplificado tras cerrar un riesgo de inyección — ya no hay modo `ai-review` de edge | 2026-08-09 |
+| 4 | `WorkflowRunManager` nativo (reemplaza el adaptador `src/services/swarmforge/*` de la v2) | **Implementado** — `src/services/workflowRun/workflowRunManager.ts`, scheduler real basado en dependencias del grafo (no DFS lineal), compila y buildea limpio, todavía no probado en la práctica | 2026-08-09 |
+| 5 | N terminales de VS Code por workflow + detección de fin de turno | **Cerrado (detección de fin de turno) e implementado (N terminales)**. Detección de fin de turno validada de punta a punta contra `claude`/`codex` reales. N terminales en paralelo (`WorkflowTerminalService`, un `vscode.Terminal` por nodo) implementado en `workflowRunManager.ts`, sin probar todavía en la práctica | 2026-08-09 |
+| 6 | Handoff control: Human-in-the-Loop + IA como nodo del grafo (`HandoffMode` = sólo `automatic`/`human`) | **Implementado** — `workflowRunManager.ts` pausa el nodo en `waiting_approval` y muestra `vscode.window.showWarningMessage` modal (Approve/Reject) cuando el edge entrante tiene `handoff.mode: "human"`; automático si no. Sin probar todavía en la práctica (no hay UI para setear `human` desde el editor, hay que editar el JSON) | 2026-08-09 |
 | 7 | Estado y recuperación (persistencia de un run, reconexión al reabrir VS Code) | Sin revisar en detalle todavía | No iniciado |
 | 8 | Panel de ejecución y estados visuales del grafo (`queued`/`running` animado/`completed`) | Diseño técnico concreto listo (`04-panel-ejecucion.md`), anclado a `GraphCanvas.tsx`/`styles.css` reales, no implementado | 2026-08-09 |
 | 9 | Preflight de seguridad | Parcialmente cubierto por `05-riesgos.md` | No iniciado |
@@ -337,6 +337,82 @@ encadenar, y ambos flags de invocación confirmados contra corridas reales.
    el texto que aparece como "output del paso anterior" en `step-1-prompt.txt`, no el contenido
    completo de `step-0-output.txt`.
 
+## N terminales en paralelo + gating humano — implementado, sin probar todavía (2026-08-09)
+
+Con Fase 5 (detección de fin de turno) cerrada, se construyó lo que originalmente pidió el
+usuario y todavía no existía: cada agente del workflow corre en su propia terminal integrada, en
+paralelo cuando el grafo lo permite, en vez de secuencialmente en una sola terminal compartida.
+
+- `src/domain/models.ts`: `HandoffMode = "automatic" | "human"` y `WorkflowEdge.handoff?.mode`.
+  Sin `handoff` en un edge, se comporta como `"automatic"` (retrocompatible con workflows
+  existentes). Deliberadamente no hay `"ai-review"` — un revisor de IA se modela como un nodo más
+  del grafo, no como un modo especial de edge (ver `03-arquitectura-handoff-control.md`).
+- `src/domain/messages.ts` / `webview/app/types.ts`: `WorkflowRunStep.status` suma `"queued"` y
+  `"waiting_approval"`.
+- `src/services/workflowRun/workflowTerminalService.ts` (nuevo): `Map<nodeId, vscode.Terminal>`
+  — una terminal por nodo, reusada entre turnos de ese nodo dentro del mismo run.
+- `src/services/workflowRun/workflowRunManager.ts` (nuevo, reemplaza el loop secuencial de
+  `runWorkflow` para modo CLI): scheduler real basado en el grafo de dependencias, no en el orden
+  DFS de antes. Un nodo se dispara apenas **todos** sus predecesores (dentro del subgrafo
+  alcanzable) están `"completed"` — nodos sin dependencia entre sí corren en paralelo, cada uno en
+  su propia terminal vía `runAgentTurn` (el runner de Fase 5, sin cambios). Si el edge entrante
+  tiene `handoff.mode: "human"`, el nodo pasa a `"waiting_approval"` y se muestra un
+  `vscode.window.showWarningMessage` modal (Approve/Reject) con un preview del output del
+  predecesor antes de despachar el turno — si se rechaza, se aborta la programación de nodos
+  nuevos (los que ya estaban corriendo se dejan terminar, no se cancelan a mitad de turno). Si un
+  nodo falla, sus sucesores que dependen únicamente de él pasan a `"skipped"` (cálculo de punto
+  fijo simple, no maneja todos los casos de un DAG arbitrario con fan-in complejo, alcanza para
+  los workflows lineales/con ramas simples que existen hoy).
+- `src/extension.ts`: `runWorkflow` ahora bifurca temprano — si el modo es CLI, delega
+  íntegramente a `runWorkflowGraph` (nuevo); si es chat/plan, sigue con la lógica secuencial de
+  siempre (sin cambios de fondo, sólo se le sacó la rama CLI que ya no le pertenece).
+
+`npm run check` (limpio, mismo error preexistente de siempre) y `npm run build:extension` +
+`npm run build:webview` (ambos limpios) verificados. **Nada de esto se corrió todavía en la
+práctica** — es la pieza más grande de código nueva de todo este plan hasta ahora.
+
+### Limitación conocida: no hay UI para configurar `handoff.mode` todavía
+
+El editor de grafo (`GraphCanvas.tsx`) no tiene ningún control específico de handoff (todavía no
+hay un selector "automatic/human" por edge) — eso sigue pendiente (edge inspector). Pero al probar
+esto el usuario encontró que **tampoco había forma de abrir el JSON del workflow ni de
+renombrarlo** desde la UI — sólo existía para agentes (`openRawAgent`). Se agregó, siguiendo el
+mismo patrón que ya existía para agentes:
+
+- Mensajes nuevos `renameWorkflow`/`openRawWorkflow` en `src/domain/messages.ts`.
+- Handlers `onRenameWorkflow`/`onOpenRawWorkflow` en `src/views/dashboardPanel.ts` y su
+  implementación en `src/extension.ts` (`onRenameWorkflow` pide el nombre nuevo con
+  `showInputBox` y llama a `workflowService.saveWorkflow`; `onOpenRawWorkflow` abre
+  `workflow.sourcePath` como documento de texto — si el workflow todavía no se guardó nunca,
+  `sourcePath` no existe y se avisa "guardá primero").
+- Botones **"Rename"** y **"Edit JSON"** nuevos en el toolbar de `GraphCanvas.tsx`, junto a "Save
+  Workflow"/"Delete".
+
+Con "Edit JSON" ya se puede llegar al archivo real del workflow y agregar
+`"handoff": {"mode": "human"}` a mano a un edge para probar el gating humano, sin tener que andar
+buscando el archivo por fuera de VS Code. `npm run check`, `build:extension` y `build:webview`
+verificados limpios.
+
+### Cómo probar esto
+
+1. F5 en `agent-studio` → Extension Development Host, workspace con un workflow de **al menos 2
+   pasos** (idealmente 3+, con alguna rama, para ver paralelismo real — si el workflow es
+   puramente lineal vas a ver terminales apareciendo una por vez igual, pero cada una en su
+   propia ventana, no una compartida).
+2. Correr en modo CLI, con un objetivo simple. Confirmar que se abre **una terminal por agente**
+   (no una sola reusada), cada una nombrada `Agent Studio: <workflow> · <agente> (<cli>)`.
+3. Si el workflow tiene dos nodos sin dependencia entre sí (dos edges saliendo del mismo
+   predecesor hacia nodos distintos), confirmar que ambas terminales arrancan **a la vez**, no
+   una después de la otra.
+4. Para probar el gating humano: parar la extensión, editarle a mano un edge del JSON del
+   workflow agregando `"handoff": {"mode": "human"}`, volver a F5. Al llegar a ese edge, debería
+   aparecer un diálogo modal "Approve handoff to...?" con un preview del output del paso
+   anterior, y el nodo destino no debería arrancar su terminal hasta aprobar. Probar también
+   "Reject" y confirmar que el run se marca `"failed"` con el mensaje correspondiente, sin que
+   los nodos ya en curso (si hay otras ramas) se corten a mitad de turno.
+5. Revisar el panel "Run status": debería verse `queued` (naranja) brevemente antes de `running`
+   en nodos que arrancan, y `waiting_approval` (amarillo) en el que está pausado.
+
 ## Qué falta (próximo paso sugerido)
 
 **Fase 5 (detección de fin de turno) queda cerrada de punta a punta** para `claude` y `codex`,
@@ -347,16 +423,16 @@ validación en esta fase salvo un turno de varios minutos (sólo se probó hasta
 comportamiento si el usuario interactúa manualmente con la terminal durante un turno — ninguno de
 los dos bloquea seguir.
 
-El siguiente paso real es la parte que originalmente pidió el usuario y todavía no se construyó:
-**N terminales en paralelo, una por agente**, en vez de las secuenciales en una sola terminal que
-hay hoy. Orden sugerido:
-- Modelo de datos extendido (Fase 1: `HandoffMode`, estado `queued`) — no depende de nada de lo
-  anterior, se puede hacer en paralelo con lo que sigue.
-- `WorkflowRunManager` con N terminales reales (Fase 4+5 de la UI, distinto de la detección de
-  fin de turno ya resuelta) + gating humano in-process (Fase 6, sólo `automatic`/`human`).
+**N terminales en paralelo + gating humano ya están implementados** (ver la sección de arriba) —
+falta correrlos en la práctica, que es el próximo paso concreto (ver "Cómo probar esto"). Después
+de confirmar eso:
+- Editor de grafo: agregar UI para setear `handoff.mode` por edge (hoy sólo se puede editando el
+  JSON a mano) — es la pieza que falta para que el gating humano sea usable sin editar archivos.
 - Catálogo de templates con prompts propios (Fase 3).
 - Idioma de interacción (Fase 2).
-- Estado/recuperación, panel visual del grafo, preflight, pruebas (Fases 7-10).
+- Estado/recuperación (persistir un run y reconectar terminales al reabrir VS Code, Fase 7),
+  colores/animación reales en los nodos del grafo — hoy sólo cambia el panel lateral, no
+  `.graph-node` (Fase 8, ya diseñada en `04-panel-ejecucion.md`), preflight, pruebas (Fases 9-10).
 
 ## Notas de handoff
 

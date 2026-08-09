@@ -17,7 +17,7 @@ import { ChatBridgeService } from "./services/chatBridgeService";
 import { SampleDataService } from "./services/sampleDataService";
 import { WorkflowService } from "./services/workflowService";
 import { runShellIntegrationPrototype } from "./services/workflowRun/shellIntegrationPrototype";
-import { runAgentTurn } from "./services/workflowRun/oneShotTurnRunner";
+import { runWorkflowGraph } from "./services/workflowRun/workflowRunManager";
 import {
   AgentsTreeProvider,
   CapabilitiesTreeProvider,
@@ -181,6 +181,40 @@ export async function activate(
     },
     onDeleteWorkflow: async (workflowId) => {
       await deleteWorkflow(workflowId);
+    },
+    onRenameWorkflow: async (workflowId) => {
+      const workflow = workflows.find((candidate) => candidate.id === workflowId);
+      if (!workflow) {
+        return;
+      }
+      const newName = await vscode.window.showInputBox({
+        prompt: "New workflow name",
+        value: workflow.name,
+        ignoreFocusOut: true,
+      });
+      if (!newName || newName === workflow.name) {
+        return;
+      }
+      try {
+        await workflowService.saveWorkflow({ ...workflow, name: newName });
+        await refreshState();
+        dashboard.postInfo(`Renamed workflow to ${newName}`);
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Failed to rename workflow.";
+        dashboard.postError(message);
+      }
+    },
+    onOpenRawWorkflow: async (workflowId) => {
+      const workflow = workflows.find((candidate) => candidate.id === workflowId);
+      if (!workflow?.sourcePath) {
+        dashboard.postError(
+          "This workflow has not been saved to disk yet — click Save Workflow first.",
+        );
+        return;
+      }
+      const doc = await vscode.workspace.openTextDocument(workflow.sourcePath);
+      await vscode.window.showTextDocument(doc, { preview: false });
     },
     onCreateAgent: async () => {
       await createAgent();
@@ -629,6 +663,61 @@ export async function activate(
       return;
     }
 
+    if (mode === "cli-claude" || mode === "cli-codex") {
+      const cliCommand = mode === "cli-claude" ? "claude" : "codex";
+      const objective = await vscode.window.showInputBox({
+        prompt: `What should the "${workflow.name}" workflow do?`,
+        placeHolder: "Describe the task or user story for this run",
+        ignoreFocusOut: true,
+      });
+      if (!objective) {
+        dashboard.postInfo("Workflow run cancelled.");
+        return;
+      }
+
+      const cwd =
+        vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || context.extensionPath;
+      const runDir = path.join(cwd, ".agent-studio", "runs", `${workflow.id}-${Date.now()}`);
+
+      const baseState: WorkflowRunState = {
+        workflowId,
+        mode,
+        status: "running",
+        steps: [],
+        startedAt: Date.now(),
+      };
+      dashboard.postWorkflowRunUpdate(baseState);
+
+      let lastSteps: WorkflowRunState["steps"] = [];
+      const result = await runWorkflowGraph({
+        workflow,
+        agents,
+        cliCommand,
+        objective,
+        runDir,
+        cwd,
+        chatBridgeService,
+        onUpdate: (steps) => {
+          lastSteps = steps;
+          dashboard.postWorkflowRunUpdate({ ...baseState, status: "running", steps });
+        },
+      });
+
+      dashboard.postWorkflowRunUpdate({
+        ...baseState,
+        status: result.status,
+        finishedAt: Date.now(),
+        error: result.error,
+        steps: lastSteps,
+      });
+      if (result.status === "failed") {
+        dashboard.postError(`Workflow failed. ${result.error ?? ""}`.trim());
+      } else {
+        dashboard.postInfo(`Workflow executed: ${workflow.name}`);
+      }
+      return;
+    }
+
     const orderedNodeIds: string[] = [];
     const visited = new Set<string>();
 
@@ -710,50 +799,10 @@ export async function activate(
       ...step,
     }));
 
-    const isCliMode = mode === "cli-claude" || mode === "cli-codex";
-    const cliCommand = mode === "cli-claude" ? "claude" : "codex";
-    let cliTerminal: vscode.Terminal | undefined;
-    let objective: string | undefined;
-    let previousStepOutput: string | undefined;
-    const runDir = path.join(
-      vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || context.extensionPath,
-      ".agent-studio",
-      "runs",
-      `${workflow.id}-${Date.now()}`,
-    );
-
-    if (isCliMode) {
-      objective = await vscode.window.showInputBox({
-        prompt: `What should the "${workflow.name}" workflow do?`,
-        placeHolder: "Describe the task or user story for this run",
-        ignoreFocusOut: true,
-      });
-      if (!objective) {
-        dashboard.postInfo("Workflow run cancelled.");
-        return;
-      }
-
-      const terminalName = `Agent Studio: ${workflow.name} (${cliCommand})`;
-      cliTerminal = vscode.window.terminals.find(
-        (terminal) => terminal.name === terminalName,
-      );
-      if (!cliTerminal) {
-        cliTerminal = vscode.window.createTerminal({
-          name: terminalName,
-          cwd:
-            vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ||
-            context.extensionPath,
-        });
-      }
-      cliTerminal.show();
-    }
-
     for (let index = 0; index < stepStates.length; index += 1) {
       const step = stepStates[index];
       step.status = "running";
-      step.message = isCliMode
-        ? `Sending to ${cliCommand} CLI`
-        : "Opening agent in chat";
+      step.message = "Opening agent in chat";
       publish({
         ...baseState,
         status: "running",
@@ -782,40 +831,8 @@ export async function activate(
       }
 
       try {
-        if (isCliMode && cliTerminal && objective) {
-          const turn = await runAgentTurn({
-            terminal: cliTerminal,
-            executable: cliCommand,
-            prompt: chatBridgeService.buildTurnPrompt(agent, objective, previousStepOutput),
-            runDir,
-            stepIndex: index,
-          });
-          if (!turn.success) {
-            step.status = "failed";
-            step.message = turn.timedOut
-              ? `${cliCommand} CLI did not report completion in time`
-              : `${cliCommand} CLI exited with code ${turn.exitCode}`;
-            for (let j = index + 1; j < stepStates.length; j += 1) {
-              stepStates[j].status = "skipped";
-              stepStates[j].message = "Skipped after failure";
-            }
-            publish({
-              ...baseState,
-              status: "failed",
-              currentStepIndex: index,
-              steps: [...stepStates],
-              finishedAt: Date.now(),
-              error: step.message,
-            });
-            dashboard.postError(`Workflow failed at step ${index + 1}. ${step.message}`);
-            return;
-          }
-          previousStepOutput = turn.output;
-          step.message = `${cliCommand} CLI exited 0`;
-        } else {
-          await chatBridgeService.openAgentInChat(agent);
-          step.message = "Agent invoked in chat";
-        }
+        await chatBridgeService.openAgentInChat(agent);
+        step.message = "Agent invoked in chat";
         step.status = "completed";
       } catch (error) {
         step.status = "failed";

@@ -478,6 +478,33 @@ export function GraphCanvas(): React.JSX.Element {
                   {tx("Save Workflow", "Guardar Workflow")}
                 </button>
                 <button
+                  className="secondary-button"
+                  title={tx("Rename this workflow.", "Cambia el nombre de este workflow.")}
+                  onClick={() =>
+                    vscode?.postMessage({
+                      type: "renameWorkflow",
+                      payload: { workflowId: selectedWorkflow.id },
+                    })
+                  }
+                >
+                  {tx("Rename", "Renombrar")}
+                </button>
+                <button
+                  className="secondary-button"
+                  title={tx(
+                    "Open this workflow's JSON file (must be saved first).",
+                    "Abre el archivo JSON de este workflow (hay que guardarlo primero).",
+                  )}
+                  onClick={() =>
+                    vscode?.postMessage({
+                      type: "openRawWorkflow",
+                      payload: { workflowId: selectedWorkflow.id },
+                    })
+                  }
+                >
+                  {tx("Edit JSON", "Editar JSON")}
+                </button>
+                <button
                   className="danger"
                   title={tx("Delete this workflow.", "Borra este workflow.")}
                   onClick={() =>
@@ -511,7 +538,11 @@ export function GraphCanvas(): React.JSX.Element {
                         ? " running"
                         : step.state === "failed"
                           ? " failed"
-                          : "")
+                          : step.state === "queued"
+                            ? " queued"
+                            : step.state === "waiting_approval"
+                              ? " waiting-approval"
+                              : "")
                   }
                 />
                 <span className="graph-run-step-name">{step.name}</span>
