@@ -15,12 +15,6 @@ export class ChatBridgeService {
       .join("\n");
   }
 
-  /** Types the agent's prompt into an already-running CLI session (e.g. `claude` or `codex`). */
-  sendAgentToTerminal(agent: AgentDefinition, terminal: vscode.Terminal): void {
-    const prompt = this.buildPrompt(agent).replace(/\r?\n+/g, " ").trim();
-    terminal.sendText(prompt, true);
-  }
-
   async openAgentInChat(agent: AgentDefinition): Promise<void> {
     const prompt = this.buildPrompt(agent);
 

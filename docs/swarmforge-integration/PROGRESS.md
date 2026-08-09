@@ -213,18 +213,60 @@ fallo pudo ser sólo por el prompt roto, no por el flag en sí — hace falta re
 el prompt bien formado, pasado por archivo) y el comportamiento de Shell Integration en un turno
 de varios minutos (sólo se probó hasta ~11s).
 
+## `runWorkflow` cambiado — CONFIRMADO 2026-08-09
+
+Se implementó el cambio: `runWorkflow` en `src/extension.ts` (modo `cli-claude`/`cli-codex`) ya
+no tipea el prompt en una REPL persistente y marca "completed" al instante. Ahora, por cada paso:
+
+1. Escribe el prompt completo (sin aplanar) a un archivo en
+   `.agent-studio/runs/<workflowId>-<timestamp>/step-<index>-prompt.txt` — nueva función
+   `runAgentTurn()` en `src/services/workflowRun/oneShotTurnRunner.ts`.
+2. Corre `<cliCommand> -p < "<ruta del archivo>"` como invocación one-shot real vía
+   `terminal.shellIntegration.executeCommand(commandLine)` — el único string interpolado es la
+   ruta del archivo (controlada por Agent Studio), nunca el contenido del prompt, siguiendo la
+   mitigación validada empíricamente en la sesión anterior.
+3. Espera el evento real de `onDidEndTerminalShellExecution` (con timeout de 10 minutos) y recién
+   ahí marca el paso `"completed"` (si `exitCode === 0`) o `"failed"` (si no, con el exit code o
+   "no reportó a tiempo" en el mensaje), siguiendo el mismo patrón de "marcar siguientes pasos
+   como skipped" que ya usaba el bloque de manejo de errores existente.
+
+Se removieron: el bootstrapping de una REPL persistente (`cliTerminal.sendText(cliCommand, true)`
++ espera fija de 1.5s) y el `setTimeout` fijo de 500ms entre pasos — ya no hacen falta, la espera
+real reemplaza a ambos. Se borró `ChatBridgeService.sendAgentToTerminal()` (quedó sin uso, se
+confirmó con `grep` antes de borrarla). Se creó `src/services/workflowRun/shellIntegrationUtil.ts`
+con los helpers `waitForShellIntegration`/`waitForExecutionEnd` compartidos entre el runner real y
+el prototipo de diagnóstico (antes estaban duplicados).
+
+`npm run check` y `npm run build:extension` pasan limpios (mismo único error preexistente de
+`agentRegistryService.ts`, no tocado).
+
+**Todavía no se probó en la práctica** — el cambio compila pero no se corrió un workflow real en
+modo CLI todavía. Sigue abierto: no confirmado el flag `-p`/stdin de `codex` con un prompt bien
+formado (sólo se probó `-p <args rotos>` en la sesión anterior), y no probado con un turno de
+varios minutos.
+
+### Cómo probar este cambio
+
+1. F5 en `agent-studio` → Extension Development Host, con un workspace que tenga al menos un
+   agente y un workflow de un solo paso (para la primera prueba, cuanto más simple mejor).
+2. Abrir el dashboard de Agent Studio, elegir ese workflow, modo **"Claude CLI"** (o Codex CLI).
+3. Ejecutar. La terminal debería mostrar el comando one-shot real
+   (`claude -p < "…/.agent-studio/runs/…/step-0-prompt.txt"`) en vez de un `claude` interactivo.
+4. En el panel de "Run status" del grafo, el paso debería quedar en **"running"** mientras el CLI
+   está pensando/respondiendo, y recién pasar a **"completed"** cuando el CLI termina de verdad
+   (no apenas arranca).
+5. Revisar `.agent-studio/runs/<workflowId>-<timestamp>/step-0-prompt.txt` en el workspace — debe
+   tener el prompt completo del agente, legible, sin romperse.
+6. Si algo falla, el paso debería quedar en **"failed"** con un mensaje (`exited with code N` o
+   `did not report completion in time`), no colgado indefinidamente ni marcado falsamente
+   "completed".
+
 ## Qué falta (próximo paso sugerido)
 
-Con la inyección confirmada, su mitigación validada, y la señal de Shell Integration confirmada
-para invocaciones cortas/medianas, el siguiente paso real de producción es: cambiar `runWorkflow`
-en `src/extension.ts` (línea ~777) para que `step.status = "completed"` se setee desde el
-resultado real de `onDidEndTerminalShellExecution` en vez de al enviar el prompt — hoy sigue sin
-tocarse. Dos cosas quedan abiertas y no bloquean empezar, pero conviene tenerlas presentes: (1)
-no se probó Shell Integration con un turno de varios minutos, sólo hasta ~11s; (2) no está
-confirmado el flag real de modo no interactivo de `codex` con un prompt bien formado (pasado por
-archivo, no por `args[]`).
-
-Después de eso, en orden:
+El siguiente paso concreto es **probar el cambio de `runWorkflow`** corriendo un workflow real en
+modo CLI (ver "Cómo probar" abajo) y confirmar en la práctica que un paso queda "running" hasta
+que el CLI termina de verdad, no apenas se envía el prompt. Recién después de confirmar eso tiene
+sentido seguir con:
 - Modelo de datos extendido (Fase 1) — no depende de nada de lo anterior, se puede hacer en
   paralelo.
 - `WorkflowRunManager` (Fase 4) integrando N terminales (Fase 5) + gating humano in-process
@@ -239,10 +281,14 @@ Después de eso, en orden:
 - El clon local de `swarm-forge` de la sesión 1 vivió en un scratchpad efímero y ya no existe.
   Ya no hace falta releerlo salvo que se quiera reconsiderar el motor dual — el motor nativo no
   depende de su código.
-- **Desde la Sesión 6 sí hay código real**: `src/services/workflowRun/shellIntegrationPrototype.ts`
-  (nuevo), más cambios en `src/commands/registerCommands.ts`, `src/extension.ts` y `package.json`
-  para registrar el comando de desarrollo. Es diagnóstico, no producción — no toca `runWorkflow`
-  ni el modelo de datos todavía. `npm run check` y `npm run build:extension` pasan limpios.
+- **Desde la Sesión 6 hay código real, y desde la Sesión 7 toca `runWorkflow`**:
+  `src/services/workflowRun/{shellIntegrationPrototype,shellIntegrationUtil,oneShotTurnRunner}.ts`
+  (nuevos), cambios en `src/commands/registerCommands.ts`, `src/extension.ts` (import +
+  `runWorkflow` reescrito para modo CLI) y `package.json`. Se borró
+  `ChatBridgeService.sendAgentToTerminal` (quedó sin uso). El modelo de datos (`WorkflowRunStep`,
+  `WorkflowEdge`) todavía no se tocó — sigue siendo el mismo de siempre, sin `HandoffMode` ni
+  `queued` implementados de verdad todavía, sólo diseñados en los docs. `npm run check` y
+  `npm run build:extension` pasan limpios.
 - El usuario pidió explícitamente no commitear nada por su cuenta; estos archivos (docs y código)
   quedan sin stagear ni commitear en el working tree para que el usuario revise el diff. Nota: el
   usuario ya hizo al menos un commit propio sobre esta carpeta en una sesión anterior — eso es

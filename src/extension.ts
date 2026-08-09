@@ -17,6 +17,7 @@ import { ChatBridgeService } from "./services/chatBridgeService";
 import { SampleDataService } from "./services/sampleDataService";
 import { WorkflowService } from "./services/workflowService";
 import { runShellIntegrationPrototype } from "./services/workflowRun/shellIntegrationPrototype";
+import { runAgentTurn } from "./services/workflowRun/oneShotTurnRunner";
 import {
   AgentsTreeProvider,
   CapabilitiesTreeProvider,
@@ -712,13 +713,18 @@ export async function activate(
     const isCliMode = mode === "cli-claude" || mode === "cli-codex";
     const cliCommand = mode === "cli-claude" ? "claude" : "codex";
     let cliTerminal: vscode.Terminal | undefined;
+    const runDir = path.join(
+      vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || context.extensionPath,
+      ".agent-studio",
+      "runs",
+      `${workflow.id}-${Date.now()}`,
+    );
 
     if (isCliMode) {
       const terminalName = `Agent Studio: ${workflow.name} (${cliCommand})`;
       cliTerminal = vscode.window.terminals.find(
         (terminal) => terminal.name === terminalName,
       );
-      const isNewTerminal = !cliTerminal;
       if (!cliTerminal) {
         cliTerminal = vscode.window.createTerminal({
           name: terminalName,
@@ -728,10 +734,6 @@ export async function activate(
         });
       }
       cliTerminal.show();
-      if (isNewTerminal) {
-        cliTerminal.sendText(cliCommand, true);
-        await new Promise((resolve) => setTimeout(resolve, 1500));
-      }
     }
 
     for (let index = 0; index < stepStates.length; index += 1) {
@@ -769,8 +771,34 @@ export async function activate(
 
       try {
         if (isCliMode && cliTerminal) {
-          chatBridgeService.sendAgentToTerminal(agent, cliTerminal);
-          step.message = `Sent to ${cliCommand} CLI`;
+          const turn = await runAgentTurn({
+            terminal: cliTerminal,
+            executable: cliCommand,
+            prompt: chatBridgeService.buildPrompt(agent),
+            runDir,
+            stepIndex: index,
+          });
+          if (!turn.success) {
+            step.status = "failed";
+            step.message = turn.timedOut
+              ? `${cliCommand} CLI did not report completion in time`
+              : `${cliCommand} CLI exited with code ${turn.exitCode}`;
+            for (let j = index + 1; j < stepStates.length; j += 1) {
+              stepStates[j].status = "skipped";
+              stepStates[j].message = "Skipped after failure";
+            }
+            publish({
+              ...baseState,
+              status: "failed",
+              currentStepIndex: index,
+              steps: [...stepStates],
+              finishedAt: Date.now(),
+              error: step.message,
+            });
+            dashboard.postError(`Workflow failed at step ${index + 1}. ${step.message}`);
+            return;
+          }
+          step.message = `${cliCommand} CLI exited 0`;
         } else {
           await chatBridgeService.openAgentInChat(agent);
           step.message = "Agent invoked in chat";
@@ -802,10 +830,6 @@ export async function activate(
         currentStepIndex: index,
         steps: [...stepStates],
       });
-
-      if (isCliMode && index < stepStates.length - 1) {
-        await new Promise((resolve) => setTimeout(resolve, 500));
-      }
     }
 
     publish({

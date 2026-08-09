@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import * as path from "path";
+import { waitForShellIntegration, waitForExecutionEnd } from "./shellIntegrationUtil";
 
 /**
  * Diagnostic-only prototype for docs/swarmforge-integration/ Fase 5 (detección de fin de turno).
@@ -9,47 +10,6 @@ import * as path from "path";
  */
 
 const OUTPUT_CHANNEL_NAME = "Agent Studio: Shell Integration Prototype";
-
-async function waitForShellIntegration(
-  terminal: vscode.Terminal,
-  timeoutMs = 5000,
-): Promise<vscode.TerminalShellIntegration | undefined> {
-  if (terminal.shellIntegration) {
-    return terminal.shellIntegration;
-  }
-  return new Promise((resolve) => {
-    const timer = setTimeout(() => {
-      disposable.dispose();
-      resolve(undefined);
-    }, timeoutMs);
-    const disposable = vscode.window.onDidChangeTerminalShellIntegration((e) => {
-      if (e.terminal === terminal) {
-        clearTimeout(timer);
-        disposable.dispose();
-        resolve(e.shellIntegration);
-      }
-    });
-  });
-}
-
-async function waitForExecutionEnd(
-  execution: vscode.TerminalShellExecution,
-  timeoutMs: number,
-): Promise<number | undefined> {
-  return new Promise((resolve) => {
-    const timer = setTimeout(() => {
-      disposable.dispose();
-      resolve(undefined);
-    }, timeoutMs);
-    const disposable = vscode.window.onDidEndTerminalShellExecution((e) => {
-      if (e.execution === execution) {
-        clearTimeout(timer);
-        disposable.dispose();
-        resolve(e.exitCode);
-      }
-    });
-  });
-}
 
 async function runOneShot(
   output: vscode.OutputChannel,
