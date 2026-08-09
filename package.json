@@ -132,6 +132,10 @@
             {
                 "command": "agentStudio.showToolsGuide",
                 "title": "Agent Studio: Show Tools Guide"
+            },
+            {
+                "command": "agentStudio.debugShellIntegrationPrototype",
+                "title": "Agent Studio: [Dev] Shell Integration Prototype (Fase 5)"
             }
         ],
         "menus": {

@@ -16,6 +16,7 @@ import { CapabilityService } from "./services/capabilityService";
 import { ChatBridgeService } from "./services/chatBridgeService";
 import { SampleDataService } from "./services/sampleDataService";
 import { WorkflowService } from "./services/workflowService";
+import { runShellIntegrationPrototype } from "./services/workflowRun/shellIntegrationPrototype";
 import {
   AgentsTreeProvider,
   CapabilitiesTreeProvider,
@@ -1051,6 +1052,10 @@ export async function activate(
     await vscode.window.showTextDocument(doc, { preview: false });
   };
 
+  const debugShellIntegrationPrototype = async (): Promise<void> => {
+    await runShellIntegrationPrototype();
+  };
+
   const refreshStudio = async (): Promise<void> => {
     await refreshState();
     dashboard.postInfo("Agent Studio refreshed.");
@@ -1240,6 +1245,7 @@ export async function activate(
     focusCapability,
     focusWorkflow,
     showToolsGuide,
+    debugShellIntegrationPrototype,
   });
 
   await refreshState();

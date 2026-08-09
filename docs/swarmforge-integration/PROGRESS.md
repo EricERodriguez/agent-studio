@@ -118,18 +118,86 @@ Sesión 5 (simplificación de Fase 6, cierre del riesgo de inyección de raíz):
     (reescrito completo), `02-arquitectura-motor-nativo.md`, `04-panel-ejecucion.md` (se eliminó
     el estado `waiting_ai_review`) y `05-riesgos.md`.
 
+Sesión 6 (primer código de producción — prototipo de Fase 5):
+15. Antes de codear, se leyó `node_modules/@types/vscode/index.d.ts` directamente (no asumido) y
+    se encontró que el doc-comment del propio overload `executeCommand(executable, args[])` dice
+    explícitamente que su escaping **"no está pensado como medida de seguridad"** y que `$(...)`
+    puede seguir ejecutando código — esto invalidaba la mitigación que se había propuesto en la
+    Sesión 5. Se corrigió `02-arquitectura-motor-nativo.md` y `05-riesgos.md`: la mitigación real
+    es no pasar nunca el prompt como argumento de shell — escribirlo a un archivo en
+    `.agent-studio/runs/<run-id>/` e invocar al backend con una ruta (string controlado por Agent
+    Studio, no por el agente) o por stdin; si ningún backend lo soporta, usar
+    `child_process.spawn(..., { shell: false })` sin shell de por medio.
+16. **Primer código de producción de todo este plan:** `src/services/workflowRun/shellIntegrationPrototype.ts`
+    (nuevo), registrado como comando de desarrollo `agentStudio.debugShellIntegrationPrototype`
+    ("Agent Studio: [Dev] Shell Integration Prototype (Fase 5)" en la Command Palette) vía
+    `src/commands/registerCommands.ts`, `src/extension.ts` y `package.json`. El comando ofrece 3
+    tests manuales, corridos dentro del Extension Development Host (F5):
+    - **Test 1 — confiabilidad:** confirma que `onDidChangeTerminalShellIntegration` /
+      `onDidEndTerminalShellExecution` entregan un exit code real para un comando one-shot simple.
+    - **Test 2 — prueba empírica de inyección:** corre el mismo payload adversarial
+      (`$(touch <marcador>)`) por 3 vías (`commandLine` string, `executeCommand(exe, args[])`,
+      archivo con sólo una ruta interpolada) y confirma cuál(es) ejecutan el `$(...)` de verdad,
+      chequeando si el archivo marcador se creó — no es una afirmación teórica, es una prueba que
+      se puede correr y ver el resultado.
+    - **Test 3 — CLI real:** invoca `claude`/`codex` (u otro) en modo one-shot con un prompt de
+      prueba configurable, reporta exit code y duración.
+    `npm run check` y `npm run build:extension` pasan limpios (el único error de `tsc` es
+    preexistente en `agentRegistryService.ts`, no tocado por este cambio — confirmado corriendo
+    `tsc --noEmit` también con los cambios stasheados). `npm run lint` falla por una
+    incompatibilidad preexistente de ESLint 9 vs `.eslintrc.cjs` del repo, no relacionada con este
+    cambio — no se tocó, está fuera de alcance.
+
+## Cómo correr el prototipo (para la próxima sesión, humana o de otra IA)
+
+1. Abrir este repo en VS Code y presionar F5 (o "Run Extension" en el panel de Run and Debug) —
+   esto abre un Extension Development Host con la extensión cargada.
+2. En esa segunda ventana, abrir cualquier carpeta como workspace (el prototipo necesita un
+   workspace folder para escribir archivos de prueba en `.agent-studio/prototype/`).
+3. Command Palette → "Agent Studio: [Dev] Shell Integration Prototype (Fase 5)".
+4. Correr primero el Test 2 (inyección) — es el que más condiciona el resto del diseño. Si alguna
+   variante da "VULNERABLE", hay que ajustar el diseño de `02-arquitectura-motor-nativo.md` antes
+   de seguir. Si sólo la variante C (archivo) da "seguro", eso confirma la mitigación ya
+   documentada.
+5. Después correr el Test 1 (confiabilidad) y, si hay un CLI de `claude`/`codex` instalado, el
+   Test 3, para confirmar el flag real de modo one-shot (pendiente de la Fase 5, punto 1 de "Qué
+   falta validar" en `02-arquitectura-motor-nativo.md`).
+6. Documentar el resultado acá mismo (reemplazar este bloque por lo que se haya encontrado) antes
+   de avanzar a construir `WorkflowRunManager` (Fase 4) sobre este supuesto.
+
+## Resultado real del Test 2 (prueba de inyección) — CONFIRMADO 2026-08-09
+
+El usuario corrió el Test 2 (F5, Extension Development Host, workspace `agents-fleet`, shell
+zsh). Resultado, leído directo de las 3 terminales y del árbol de archivos resultante en
+`.agent-studio/prototype/`:
+
+| Variante | Resultado | Evidencia |
+|---|---|---|
+| A) `commandLine` string | **VULNERABLE** | `zsh: command not found: backtick` (el backtick del payload se interpretó como comando) + se creó `injection-proof-...-A.txt` (el `$(touch ...)` corrió de verdad) |
+| B) `executeCommand(executable, args[])` | **VULNERABLE** | mismo error, se creó `injection-proof-...-B.txt` — confirma empíricamente el doc-comment de VS Code ("this escaping is not intended to be a security measure") |
+| C) archivo (sólo se interpola una ruta) | **segura** | `cat` imprimió el payload tal cual como texto; no se creó ningún `injection-proof-...-C.txt` |
+
+**Conclusión validada, no sólo argumentada:** la mitigación correcta para Fase 5 es la que ya
+está documentada en `02-arquitectura-motor-nativo.md` — nunca pasar el prompt como argumento de
+shell (ni `commandLine` ni `args[]`), sólo como contenido de un archivo cuya ruta arma Agent
+Studio. Esto cierra el punto más importante de "Qué falta validar" de esa fase.
+
+Detalle de UX corregido en el código: `terminal.show()` (llamado una vez por variante) le saca el
+foco al panel "Output", así que el bloque `=== Resumen ===` queda escrito pero no visible sin
+cambiar de pestaña manualmente — se agregó `output.show(true)` después de correr los tests en
+`testReliability`/`testInjection`/`testRealCli` para que esto no vuelva a pasar.
+
+**Todavía no se corrieron** el Test 1 (confiabilidad con turnos largos, no sólo `echo`) ni el
+Test 3 (CLI real `claude`/`codex`) — quedan pendientes antes de dar por cerrada toda la Fase 5.
+
 ## Qué falta (próximo paso sugerido)
 
-El punto de mayor incertidumbre técnica del plan nuevo es la **Fase 5 (detección de fin de
-turno)**: hoy `runWorkflow` marca un paso "completado" apenas envía el prompt, no cuando el
-agente termina, y eso es aceptable en modo secuencial de una sola terminal pero deja de serlo en
-cuanto hay N terminales corriendo en paralelo con handoffs que dependen de saber si el paso
-anterior realmente terminó. Antes de escribir código de producción, el siguiente paso concreto
-es: **prototipar la detección de fin de turno con la API de Terminal Shell Integration de VS
-Code** contra una invocación real de `claude`/`codex` en modo no interactivo (`-p`/one-shot),
-confirmando que el evento de fin de ejecución y el exit code llegan de forma confiable antes de
-diseñar el resto del `WorkflowRunManager` sobre ese supuesto. Ver
-[`02-arquitectura-motor-nativo.md`](./02-arquitectura-motor-nativo.md).
+Con la inyección ya confirmada y su mitigación validada, el siguiente paso real de producción es:
+cambiar `runWorkflow` en `src/extension.ts` (línea ~777) para que `step.status = "completed"` se
+setee desde el resultado real de `onDidEndTerminalShellExecution` en vez de al enviar el prompt —
+hoy sigue sin tocarse. Antes de eso, sigue siendo recomendable correr el Test 1 al menos una vez
+para confirmar que la señal de exit code también es confiable con un comando que tarde más que un
+`echo` instantáneo (un turno real de agente puede tardar minutos).
 
 Después de eso, en orden:
 - Modelo de datos extendido (Fase 1) — no depende de nada de lo anterior, se puede hacer en
@@ -146,10 +214,15 @@ Después de eso, en orden:
 - El clon local de `swarm-forge` de la sesión 1 vivió en un scratchpad efímero y ya no existe.
   Ya no hace falta releerlo salvo que se quiera reconsiderar el motor dual — el motor nativo no
   depende de su código.
-- No se escribió ni un archivo de código de producción todavía — todo lo hecho hasta ahora es
-  plan y arquitectura, ningún cambio en `src/`, `webview/`, o `package.json`.
-- El usuario pidió explícitamente no commitear nada por su cuenta; estos archivos quedan sin
-  stagear ni commitear en el working tree para que el usuario revise el diff.
+- **Desde la Sesión 6 sí hay código real**: `src/services/workflowRun/shellIntegrationPrototype.ts`
+  (nuevo), más cambios en `src/commands/registerCommands.ts`, `src/extension.ts` y `package.json`
+  para registrar el comando de desarrollo. Es diagnóstico, no producción — no toca `runWorkflow`
+  ni el modelo de datos todavía. `npm run check` y `npm run build:extension` pasan limpios.
+- El usuario pidió explícitamente no commitear nada por su cuenta; estos archivos (docs y código)
+  quedan sin stagear ni commitear en el working tree para que el usuario revise el diff. Nota: el
+  usuario ya hizo al menos un commit propio sobre esta carpeta en una sesión anterior — eso es
+  esperado y no una violación de la regla (la regla es que el asistente no commitea, no que el
+  usuario no pueda).
 - Si una sesión futura quiere reconsiderar el "motor dual" (nativo + SwarmForge opcional)
   descartado en el pivot, el diseño completo del socket Unix y el wrapper de PATH quedó archivado
   tal cual en [`_archive-motor-swarmforge-descartado/`](./_archive-motor-swarmforge-descartado/)

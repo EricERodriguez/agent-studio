@@ -21,6 +21,7 @@ export interface CommandHandlers {
   ) => Promise<void>;
   focusWorkflow: (workflowId?: string) => Promise<void>;
   showToolsGuide: () => Promise<void>;
+  debugShellIntegrationPrototype: () => Promise<void>;
 }
 
 export function registerCommands(
@@ -79,6 +80,10 @@ export function registerCommands(
       (workflowId) => handlers.focusWorkflow(workflowId as string | undefined),
     ],
     ["agentStudio.showToolsGuide", () => handlers.showToolsGuide()],
+    [
+      "agentStudio.debugShellIntegrationPrototype",
+      () => handlers.debugShellIntegrationPrototype(),
+    ],
   ];
 
   for (const [command, cb] of defs) {
