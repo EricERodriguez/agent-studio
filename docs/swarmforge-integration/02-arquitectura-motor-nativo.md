@@ -99,6 +99,21 @@ strings like `$(...)` can often be used in shells to execute code within a strin
 la mitigación que se había propuesto acá — usar `args[]` reduce roturas accidentales (comillas,
 espacios) pero **no es una barrera de seguridad** contra un prompt adversarial.
 
+**Confirmado empíricamente (2026-08-09, prototipo real, no sólo lectura de documentación):** se
+corrió `src/services/workflowRun/shellIntegrationPrototype.ts` contra `echo`/`cat` (Test 2) y
+contra `claude`/`codex` reales (Test 3), todos en zsh. Resultado: variante A (`commandLine`
+string) y variante B (`args[]`) **ejecutaron el `$(...)` adversarial de verdad** (se creó el
+archivo marcador); variante C (payload en archivo, sólo se interpola la ruta) no lo ejecutó.
+Además, contra los backends reales apareció un problema **más allá de la seguridad**: como el
+prompt de prueba tenía comillas y backticks, VS Code no lo empaquetó como un solo argumento
+seguro (exactamente lo que advierte su propio doc-comment) — zsh lo partió en muchas palabras
+sueltas. A `claude` sólo le llegó la primera palabra del prompt ("Responde"), y a `codex`
+directamente se le rompió el parser de argumentos (`error: unrecognized subcommand 'Caracteres'`,
+exit code 2). Es decir: `args[]` no sólo es inseguro, **directamente no entrega el prompt
+completo** en cuanto tiene comillas o backticks — algo común en cualquier prompt real (código,
+mensajes de error, markdown), no sólo en un ataque. Esto hace que la mitigación de archivo sea
+un requisito de correctitud básica del diseño, no sólo un endurecimiento de seguridad opcional.
+
 **Mitigación real:** no pasar el contenido del prompt como argumento de shell en absoluto, ni por
 `commandLine` ni por `args[]`. En su lugar, escribir el prompt de cada turno a un archivo dentro de
 `.agent-studio/runs/<run-id>/` (ruta que arma Agent Studio, no contenido de agente — segura de
@@ -113,20 +128,28 @@ interpretación de shell involucrada.
 
 ### Qué falta validar antes de construir nada más encima de esto
 
-Esto es diseño, no un hecho confirmado en la práctica:
-
-1. Confirmar el flag real de modo no interactivo de `claude` y de `codex` en las versiones que
-   Agent Studio va a soportar (puede no llamarse `-p`/`exec`, puede tener diferencias de
-   comportamiento entre versiones).
-2. Confirmar que `onDidEndTerminalShellExecution` dispara de forma confiable para una invocación
-   larga (un agente puede tardar minutos en responder) y no tiene timeouts o límites raros.
+1. ~~Confirmar el flag real de modo no interactivo de `claude` y de `codex`~~ — **parcialmente
+   confirmado (2026-08-09):** `claude -p <prompt>` corre en modo no interactivo y devuelve
+   `exitCode=0`; `codex -p <prompt>` también corre (`exitCode=2` en la prueba, pero fue por el
+   prompt roto por `args[]`, no porque `-p` sea inválido — no está confirmado si `-p` es el flag
+   correcto de codex o si por eso rompió el parseo). **Sigue pendiente:** confirmar el flag real
+   de codex con un prompt bien formado (vía archivo, no `args[]`), y confirmar si `claude`/`codex`
+   soportan leer el prompt desde un archivo o stdin en vez de como argumento — necesario para la
+   mitigación de la sección anterior.
+2. ~~Confirmar que `onDidEndTerminalShellExecution` dispara de forma confiable~~ — **confirmado
+   para invocaciones cortas y medianas (2026-08-09):** `echo` (Test 1, 4642ms), `claude -p`
+   (10724ms) y `codex -p` (4957ms) entregaron `exitCode` real en los tres casos. **Sigue
+   pendiente:** confirmar con una invocación de varios minutos (un turno real de agente complejo
+   puede tardar bastante más que 11 segundos) — no se probó ese caso todavía.
 3. Confirmar el comportamiento cuando el usuario interactúa manualmente con la terminal mientras
    un agente está corriendo (¿rompe la detección de shell integration? ¿es un caso a bloquear en
-   la UI mientras un turno está en curso?).
+   la UI mientras un turno está en curso?) — no probado.
 4. Decidir explícitamente si "one-shot por turno" es aceptable para el modo `chat` (hoy
    `runWorkflow` también soporta abrir el agente en el panel de chat de VS Code en vez de CLI) o
    si esta funcionalidad de N terminales queda limitada al modo CLI — el modo chat no tiene
-   equivalente de terminal ni de Shell Integration.
+   equivalente de terminal ni de Shell Integration. No decidido todavía.
 
-Este documento no da por cerrado el diseño hasta que el punto 1 del "Orden de entregas" en
-`01-plan-revisado.md` (el prototipo aislado) confirme estos cuatro puntos contra CLIs reales.
+El riesgo de escaping/inyección (más arriba) está cerrado — confirmado empíricamente, con
+mitigación clara. Los puntos 3 y 4 siguen abiertos; el punto 1 necesita una segunda vuelta con el
+prompt pasado por archivo en vez de `args[]`, para separar "el flag es incorrecto" de "el prompt
+llegó roto".

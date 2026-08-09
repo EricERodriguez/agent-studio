@@ -187,17 +187,42 @@ foco al panel "Output", así que el bloque `=== Resumen ===` queda escrito pero 
 cambiar de pestaña manualmente — se agregó `output.show(true)` después de correr los tests en
 `testReliability`/`testInjection`/`testRealCli` para que esto no vuelva a pasar.
 
-**Todavía no se corrieron** el Test 1 (confiabilidad con turnos largos, no sólo `echo`) ni el
-Test 3 (CLI real `claude`/`codex`) — quedan pendientes antes de dar por cerrada toda la Fase 5.
+## Resultado real del Test 1 y Test 3 — CONFIRMADO 2026-08-09
+
+**Test 1 (confiabilidad):** `exitCode=0 en 4642ms` contra `echo` — Shell Integration entrega la
+señal real de forma confiable para una invocación corta.
+
+**Test 3 (CLI real), dos hallazgos:**
+
+| CLI | Comando | Resultado |
+|---|---|---|
+| `claude` | `claude -p <prompt con comillas/backticks>` | `exitCode=0` en 10724ms, pero Claude respondió "No veo ninguna pregunta... solo dice 'Responde'" — **al agente sólo le llegó la primera palabra del prompt** |
+| `codex` | `codex -p <mismo prompt>` | `exitCode=2` en 4957ms, `error: unrecognized subcommand 'Caracteres'` — **el parser de argumentos de codex se rompió** |
+
+En ambos casos zsh reportó `command not found: backtick` antes de ejecutar el CLI — el mismo
+mecanismo que ya había roto la Variante B del Test 2. Confirmado con backends reales: el problema
+de `args[]` no es sólo de seguridad, es de **correctitud básica** — en cuanto el prompt tiene
+comillas o backticks (algo común en cualquier prompt real con código o mensajes de error), VS
+Code no lo empaqueta como un argumento seguro (tal como advierte su propio doc-comment) y el
+shell lo parte en palabras sueltas, así que el agente nunca recibe el prompt completo. Esto se
+agregó a `02-arquitectura-motor-nativo.md`: la mitigación de archivo pasa a ser un requisito de
+correctitud, no sólo de seguridad.
+
+**Qué sigue sin confirmarse:** si `-p` es el flag correcto de `codex` en modo no interactivo (el
+fallo pudo ser sólo por el prompt roto, no por el flag en sí — hace falta repetir la prueba con
+el prompt bien formado, pasado por archivo) y el comportamiento de Shell Integration en un turno
+de varios minutos (sólo se probó hasta ~11s).
 
 ## Qué falta (próximo paso sugerido)
 
-Con la inyección ya confirmada y su mitigación validada, el siguiente paso real de producción es:
-cambiar `runWorkflow` en `src/extension.ts` (línea ~777) para que `step.status = "completed"` se
-setee desde el resultado real de `onDidEndTerminalShellExecution` en vez de al enviar el prompt —
-hoy sigue sin tocarse. Antes de eso, sigue siendo recomendable correr el Test 1 al menos una vez
-para confirmar que la señal de exit code también es confiable con un comando que tarde más que un
-`echo` instantáneo (un turno real de agente puede tardar minutos).
+Con la inyección confirmada, su mitigación validada, y la señal de Shell Integration confirmada
+para invocaciones cortas/medianas, el siguiente paso real de producción es: cambiar `runWorkflow`
+en `src/extension.ts` (línea ~777) para que `step.status = "completed"` se setee desde el
+resultado real de `onDidEndTerminalShellExecution` en vez de al enviar el prompt — hoy sigue sin
+tocarse. Dos cosas quedan abiertas y no bloquean empezar, pero conviene tenerlas presentes: (1)
+no se probó Shell Integration con un turno de varios minutos, sólo hasta ~11s; (2) no está
+confirmado el flag real de modo no interactivo de `codex` con un prompt bien formado (pasado por
+archivo, no por `args[]`).
 
 Después de eso, en orden:
 - Modelo de datos extendido (Fase 1) — no depende de nada de lo anterior, se puede hacer en
