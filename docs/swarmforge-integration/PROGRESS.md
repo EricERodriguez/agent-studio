@@ -38,7 +38,7 @@ el diseño nuevo (motor nativo, sin tmux, sin socket externo, gating in-process)
 | 3 | Catálogo de templates inspirados en two/four/six-pack | Revisada — prompts propios en vez de copiar los de SwarmForge, ver `01-plan-revisado.md` | 2026-08-09 |
 | 4 | `WorkflowRunManager` nativo (reemplaza el adaptador `src/services/swarmforge/*` de la v2) | Diseño técnico concreto listo, no implementado | 2026-08-09 |
 | 5 | N terminales de VS Code por workflow + detección de fin de turno | Diseño técnico concreto listo (Terminal Shell Integration API + convención one-shot/marcador), no implementado ni prototipado — **es el punto de mayor incertidumbre técnica del plan nuevo**. Confirmado por el usuario: `runWorkflow` debe marcar "completed" al terminar de verdad, no al enviar el prompt | 2026-08-09 |
-| 6 | Handoff control HIL/AIL in-process | Diseño técnico concreto listo, mucho más simple que el diseño vía SwarmForge descartado | 2026-08-09 |
+| 6 | Handoff control: Human-in-the-Loop + IA como nodo del grafo (`HandoffMode` = sólo `automatic`/`human`) | Diseño técnico concreto listo, simplificado tras cerrar un riesgo de inyección — ya no hay modo `ai-review` de edge | 2026-08-09 |
 | 7 | Estado y recuperación (persistencia de un run, reconexión al reabrir VS Code) | Sin revisar en detalle todavía | No iniciado |
 | 8 | Panel de ejecución y estados visuales del grafo (`queued`/`running` animado/`completed`) | Diseño técnico concreto listo (`04-panel-ejecucion.md`), anclado a `GraphCanvas.tsx`/`styles.css` reales, no implementado | 2026-08-09 |
 | 9 | Preflight de seguridad | Parcialmente cubierto por `05-riesgos.md` | No iniciado |
@@ -99,6 +99,25 @@ Sesión 4 (verificación de cierre antes de implementar):
     `...OLD.md` para no tener dos archivos con el mismo nombre en la carpeta (hallazgo menor,
     cosmético).
 
+Sesión 5 (simplificación de Fase 6, cierre del riesgo de inyección de raíz):
+12. El usuario propuso resolver el hallazgo de inyección simplificando el modelo en vez de sólo
+    mitigarlo técnicamente: `HandoffMode` pasa a tener sólo `automatic` y `human` — se elimina el
+    modo de edge `ai-review`/`human-or-ai`. "IA en el loop" deja de ser un mecanismo de runtime
+    que el motor intercepta (parseando una decisión JSON de un agente y ramificando
+    automáticamente) y pasa a modelarse como **un nodo más del grafo**, elegido por el usuario,
+    con sus propios edges de salida (`automatic` o `human`).
+13. Esto cierra de raíz el riesgo más grave que quedaba abierto (el motor confiando en una
+    estructura de decisión generada por un agente para automatizar ramificación), no sólo lo
+    mitiga. El riesgo general de escaping en la invocación one-shot (Fase 5) sigue vigente para
+    *cualquier* handoff, no era específico de `ai-review` — se reencuadró en
+    `02-arquitectura-motor-nativo.md` y `05-riesgos.md`, con una mitigación técnica concreta: usar
+    el overload `executeCommand(executable, args[])` de la API de Terminal Shell Integration en
+    vez de armar un `commandLine` string a mano (a confirmar que existe/funciona así en el
+    prototipo de Fase 5).
+14. Se actualizaron `01-plan-revisado.md` (Fase 1, 6, 8), `03-arquitectura-handoff-control.md`
+    (reescrito completo), `02-arquitectura-motor-nativo.md`, `04-panel-ejecucion.md` (se eliminó
+    el estado `waiting_ai_review`) y `05-riesgos.md`.
+
 ## Qué falta (próximo paso sugerido)
 
 El punto de mayor incertidumbre técnica del plan nuevo es la **Fase 5 (detección de fin de
@@ -115,7 +134,9 @@ diseñar el resto del `WorkflowRunManager` sobre ese supuesto. Ver
 Después de eso, en orden:
 - Modelo de datos extendido (Fase 1) — no depende de nada de lo anterior, se puede hacer en
   paralelo.
-- `WorkflowRunManager` (Fase 4) integrando N terminales (Fase 5) + gating in-process (Fase 6).
+- `WorkflowRunManager` (Fase 4) integrando N terminales (Fase 5) + gating humano in-process
+  (Fase 6, sólo `automatic`/`human` — IA-en-el-loop se logra modelando un nodo revisor en el
+  grafo, no con lógica de motor aparte).
 - Catálogo de templates con prompts propios (Fase 3).
 - Idioma de interacción (Fase 2).
 - Estado/recuperación, panel, preflight, pruebas (Fases 7-10).

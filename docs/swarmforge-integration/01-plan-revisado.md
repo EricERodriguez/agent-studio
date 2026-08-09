@@ -23,7 +23,7 @@ Sin cambios respecto a la v2: extender `WorkflowDefinition`/`WorkflowNode`/`Work
 `id, source, target, label?`, así que no hay conflicto con nada existente.
 
 ```ts
-type HandoffMode = "automatic" | "human" | "ai-review" | "human-or-ai";
+type HandoffMode = "automatic" | "human";
 
 interface WorkflowEdge {
   id: string;
@@ -32,7 +32,6 @@ interface WorkflowEdge {
   label?: string;
   handoff?: {
     mode: HandoffMode;
-    reviewerAgentId?: string;   // para "ai-review" / "human-or-ai"
     timeoutSeconds?: number;
     onTimeout?: "wait" | "reject" | "approve" | "fail";
   };
@@ -53,8 +52,9 @@ interface WorkflowNode {
 `WorkflowRunStep.status` (en `src/domain/messages.ts` y `webview/app/types.ts`) también se
 extiende, por el pedido del usuario de distinguir visualmente "corriendo ahora" de "es el
 próximo": de `"pending" | "running" | "completed" | "failed" | "skipped"` pasa a agregar
-`"queued"` (predecesores resueltos, todavía no recibió el prompt) y `"waiting_approval"` /
-`"waiting_ai_review"` (de la Fase 6). Detalle completo del mapeo a color/animación en
+`"queued"` (predecesores resueltos, todavía no recibió el prompt) y `"waiting_approval"` (de la
+Fase 6, único estado de pausa — ya no hay un estado separado de "esperando revisor de IA", ver
+Fase 6 para el porqué). Detalle completo del mapeo a color/animación en
 [`04-panel-ejecucion.md`](./04-panel-ejecucion.md).
 
 Este modelo es igual sin importar si el workflow vino de un template inspirado en SwarmForge o
@@ -123,15 +123,24 @@ no en la línea ~777 actual donde se marca "completed" apenas se llama a
 visuales): sin esta corrección, cualquier animación de "corriendo" sería falsa (se vería
 "completado" antes de que el agente hubiera terminado de verdad).
 
-## Fase 6 — Handoff control HIL/AIL in-process
+## Fase 6 — Handoff control: Human-in-the-Loop + IA como nodo del grafo
 
-Diseño completo en [`03-arquitectura-handoff-control.md`](./03-arquitectura-handoff-control.md).
-Resumen: como `WorkflowRunManager` es quien decide cuándo enviarle el prompt al siguiente nodo,
-Human-in-the-Loop es simplemente no enviarlo hasta que el usuario aprueba desde un panel en la UI
-de Agent Studio, y AI-in-the-Loop es invocar al `reviewerAgentId` configurado (en su propia
-terminal o headless), esperar su decisión JSON, y actuar en consecuencia antes de continuar. No
-hace falta interceptar nada de ningún proceso externo — es control de flujo normal dentro de la
-extensión.
+**Revisado (2026-08-09) para cerrar un riesgo de inyección — ver `05-riesgos.md`.** Diseño
+completo en [`03-arquitectura-handoff-control.md`](./03-arquitectura-handoff-control.md). Resumen:
+`HandoffMode` queda en sólo dos valores, `automatic` y `human` — no hay un tercer modo `ai-review`
+a nivel de edge. Como `WorkflowRunManager` es quien decide cuándo enviarle el prompt al siguiente
+nodo, Human-in-the-Loop es simplemente no enviarlo hasta que el usuario aprueba desde un panel en
+la UI de Agent Studio.
+
+"AI-in-the-Loop" deja de ser un mecanismo de runtime que el motor tiene que interceptar y
+arbitrar (parsear una decisión JSON generada por un agente y ramificar automáticamente según esa
+decisión) y pasa a ser, simplemente, **modelar al revisor como un nodo más del workflow**: el
+usuario agrega un nodo "reviewer" en el grafo, con un edge de entrada normal desde el agente que
+produjo el trabajo a revisar, y sus propios edges de salida (que pueden ser `automatic` o `human`,
+según qué tan estricto quiera ser el usuario después de la revisión). El motor no necesita saber
+que ese nodo "es" un revisor — lo ejecuta igual que a cualquier otro agente del grafo. Esto cierra
+la parte más riesgosa del diseño anterior: el motor ya no confía en, ni actúa automáticamente
+sobre, una estructura de decisión que un agente generó.
 
 ## Fase 7 — Estado y recuperación
 
@@ -150,8 +159,10 @@ incompleta (sin estado "próximo", sin animación). Se agrega un estado nuevo `q
 ejecución", color sólido distinto de `running`) y se anima únicamente el estado `running` (pulso
 de `box-shadow`, respetando `prefers-reduced-motion`) para que sólo lo que está pasando ahora
 mismo tenga movimiento — el resto de los estados (`completed`, `failed`, `waiting_approval`,
-`waiting_ai_review`, `skipped`) son colores estáticos usando los tokens `--vscode-charts-*` que
-VS Code ya expone, para heredar tema claro/oscuro sin trabajo extra.
+`skipped`) son colores estáticos usando los tokens `--vscode-charts-*` que VS Code ya expone,
+para heredar tema claro/oscuro sin trabajo extra. Un nodo "reviewer" de IA (Fase 6) no tiene un
+color propio — se ve como `running`/`completed` igual que cualquier otro nodo, porque para el
+motor es un nodo más.
 
 ## Fase 9 — Preflight de seguridad
 

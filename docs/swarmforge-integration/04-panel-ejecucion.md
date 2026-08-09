@@ -39,7 +39,6 @@ status:
   | "queued"            // NUEVO — predecesores resueltos, es el próximo en recibir el prompt
   | "running"           // turno en curso — animado
   | "waiting_approval"  // pausado por handoff humano (Fase 6)
-  | "waiting_ai_review" // pausado por handoff con reviewer IA (Fase 6)
   | "completed"         // terminó con éxito (exit code 0 real, no "prompt enviado")
   | "failed"            // terminó con error
   | "skipped";          // no se ejecuta por fallo upstream
@@ -47,12 +46,14 @@ status:
 
 `queued` es el estado nuevo que pide el usuario ("siguiente en ejecución"): distinto de `pending`
 porque **ya está listo para arrancar** — sus predecesores terminaron, sólo falta que
-`WorkflowRunManager` le envíe el prompt (lo cual puede tardar si hay un handoff `human`/`ai-review`
-de por medio, ver Fase 6). Puede haber más de un nodo `queued` a la vez si el workflow tiene ramas
+`WorkflowRunManager` le envíe el prompt (lo cual puede tardar si hay un handoff `human` de por
+medio, ver Fase 6). Puede haber más de un nodo `queued` a la vez si el workflow tiene ramas
 paralelas.
 
-`waiting_approval`/`waiting_ai_review` ya estaban previstos en el diseño de la Fase 6; se listan
-acá para que el mapeo de color quede completo en un solo lugar.
+`waiting_approval` ya estaba previsto en el diseño de la Fase 6; se lista acá para que el mapeo de
+color quede completo en un solo lugar. No hay un estado separado para "revisor de IA" — desde que
+Fase 6 se simplificó (`03-arquitectura-handoff-control.md`), un nodo revisor es un nodo normal del
+grafo y pasa por los mismos estados que cualquier otro (`queued` → `running` → `completed`).
 
 ## Mapeo de color (tokens de VS Code, sin inventar paleta nueva)
 
@@ -65,7 +66,6 @@ claro u oscuro, sin trabajo extra):
 | `queued` | `var(--vscode-charts-orange, #d18616)` | ninguna — color sólido, para distinguirlo de `running` a simple vista |
 | `running` | `var(--studio-accent)` (ya usado hoy para "running" en el panel lateral) | **pulso** — ver abajo |
 | `waiting_approval` | `var(--vscode-charts-yellow, #d7ba7d)` | ninguna |
-| `waiting_ai_review` | `var(--vscode-charts-purple, #b180d7)` | ninguna |
 | `completed` | `var(--vscode-charts-green)` | ninguna |
 | `failed` | `var(--vscode-charts-red, #f85149)` | ninguna |
 | `skipped` | `var(--vscode-descriptionForeground)`, opacidad reducida | ninguna |
@@ -100,10 +100,6 @@ pidió el usuario.
   border-color: var(--vscode-charts-yellow, #d7ba7d);
 }
 
-.graph-node.run-waiting-ai-review {
-  border-color: var(--vscode-charts-purple, #b180d7);
-}
-
 .graph-node.run-skipped {
   opacity: 0.5;
 }
@@ -133,7 +129,6 @@ tokens, para que panel y grafo nunca queden en colores distintos para el mismo e
 .graph-run-step-mark.queued { background: var(--vscode-charts-orange, #d18616); border-color: var(--vscode-charts-orange, #d18616); }
 .graph-run-step-mark.completed { background: var(--vscode-charts-green); border-color: var(--vscode-charts-green); }
 .graph-run-step-mark.waiting-approval { background: var(--vscode-charts-yellow, #d7ba7d); border-color: var(--vscode-charts-yellow, #d7ba7d); }
-.graph-run-step-mark.waiting-ai-review { background: var(--vscode-charts-purple, #b180d7); border-color: var(--vscode-charts-purple, #b180d7); }
 ```
 (`ready`, `running`, `failed` ya existen y se mantienen.)
 
@@ -144,18 +139,18 @@ de la ejecución real: un nodo pasa a `queued` en el momento en que **todas** su
 entrantes provienen de nodos en estado `completed` (o la arista no tiene predecesor, es el nodo de
 entrada) y el propio nodo todavía no recibió su prompt. Esto se recalcula cada vez que un nodo
 pasa a `completed`, antes de que `WorkflowRunManager` decida si dispara el siguiente turno de
-inmediato (`automatic`) o lo dejar pausado por un handoff (`waiting_approval`/`waiting_ai_review`,
-Fase 6) — en ese segundo caso el nodo destino permanece visualmente en `queued` hasta que el
-handoff se resuelve, momento en el que recién pasa a `running`.
+inmediato (`automatic`) o lo deja pausado por un handoff (`waiting_approval`, Fase 6) — en ese
+segundo caso el nodo destino permanece visualmente en `queued` hasta que el handoff se resuelve,
+momento en el que recién pasa a `running`.
 
 ## Qué falta decidir (no cerrado en esta pasada)
 
 - Si `queued` debe distinguir visualmente "el próximo va a arrancar apenas termine el turno
-  actual" de "el próximo está esperando un handoff humano/IA" — hoy el diseño de arriba resuelve
-  esto último con un estado aparte (`waiting_approval`/`waiting_ai_review`), así que `queued`
-  puro sólo debería darse en la práctica de forma muy breve (el instante entre que el predecesor
-  termina y `WorkflowRunManager` decide el próximo paso) — a confirmar si vale la pena mostrarlo
-  como estado propio o si conviene fusionarlo visualmente con el estado de handoff cuando aplica.
+  actual" de "el próximo está esperando aprobación humana" — hoy el diseño de arriba resuelve
+  esto último con un estado aparte (`waiting_approval`), así que `queued` puro sólo debería darse
+  en la práctica de forma muy breve (el instante entre que el predecesor termina y
+  `WorkflowRunManager` decide el próximo paso) — a confirmar si vale la pena mostrarlo como estado
+  propio o si conviene fusionarlo visualmente con `waiting_approval` cuando aplica.
 - El pulso de `running` no se prototipó todavía contra un grafo real con varios nodos animados a
   la vez (rendimiento con muchos nodos en paralelo, ej. six-pack) — `box-shadow` animado es barato
   en la mayoría de los navegadores modernos pero conviene confirmarlo en el prototipo de Fase 5

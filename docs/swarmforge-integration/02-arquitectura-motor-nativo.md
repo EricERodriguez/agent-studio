@@ -53,6 +53,9 @@ comando" a nivel de shell, así que Shell Integration puede reportar su inicio/f
 forma limpia, turno por turno, en la misma terminal reutilizada para ese nodo.
 
 ```ts
+// Snippet simplificado para mostrar el mecanismo de detección — la construcción real del
+// comando debe usar el overload de args[], no un commandLine armado a mano, ver más abajo
+// "Riesgo de escaping/inyección al construir la invocación one-shot".
 const execution = terminal.shellIntegration?.executeCommand(commandLine);
 // ...
 vscode.window.onDidEndTerminalShellExecution((e) => {
@@ -75,18 +78,30 @@ con un `FileSystemWatcher` de VS Code). Es más frágil que la señal de Shell I
 de que el agente efectivamente ejecute ese comando), pero da una vía de recuperación cuando la
 API no está disponible.
 
-### Riesgo de escaping/inyección al construir el `commandLine`
+### Riesgo de escaping/inyección al construir la invocación one-shot
 
 El código real (`src/services/chatBridgeService.ts:20`) hoy aplana el prompt con
 `.replace(/\r?\n+/g, " ")` y lo tipea con `terminal.sendText` como input interactivo — no como
-argumento de shell, así que hoy no hay riesgo de inyección. En cuanto Fase 5 arme un
-`commandLine` tipo `claude -p "<prompt>"` para pasarlo a `terminal.shellIntegration.executeCommand()`,
-ese mismo texto sin escapar (que puede traer comillas, backticks, `$()`, y en el caso de
-`ai-review` viene de la salida de **otro agente**, contenido no controlado por el usuario) puede
-romper el comando o inyectar comandos de shell reales. Esto hay que resolverlo antes de que el
-diseño pase de prototipo a producción: escapar el prompt para el shell de destino (o, mejor,
-pasarlo por un archivo temporal / variable de entorno / stdin en vez de interpolarlo directo en
-el `commandLine`) — no interpolar texto de agente sin sanitizar en un comando de shell.
+argumento de shell, así que hoy no hay riesgo de inyección. En cuanto Fase 5 pase a construir una
+invocación one-shot, ese mismo texto (que puede traer comillas, backticks, `$()`) hay que tratarlo
+como no confiable — **no sólo cuando viene de otro agente** (como se pensaba en una versión
+anterior de este documento, cuando existía un modo `ai-review` que interpolaba la salida de un
+reviewer): cualquier prompt puede tener contenido problemático, incluso uno escrito por el propio
+usuario o que cita un mensaje de error real, así que la mitigación tiene que ser general, no
+condicionada a "si el contenido viene de una IA".
+
+**Mitigación recomendada:** la API de Terminal Shell Integration de VS Code expone un segundo
+overload de `executeCommand` pensado exactamente para esto —
+`executeCommand(executable: string, args: string[])`, que recibe el ejecutable y sus argumentos
+como un array en vez de un string armado a mano — en lugar del overload de un solo `commandLine`
+usado en el snippet de arriba. Usando el overload de `args[]`, Agent Studio nunca arma un string
+de shell interpolando el prompt: el prompt viaja como un elemento del array, y es VS Code (no
+código propio de Agent Studio) quien se encarga de pasarlo al proceso de forma segura. Esto es
+preferible a escapar manualmente o a pasar el prompt por archivo temporal — es la vía soportada
+por la propia API para este caso. **A confirmar en el prototipo de Fase 5:** que este overload
+existe y se comporta como se espera contra shells reales (bash/zsh/pwsh) antes de depender de él
+para el diseño final; si no está disponible o no cubre todos los casos, la alternativa de archivo
+temporal/stdin sigue como plan B.
 
 ### Qué falta validar antes de construir nada más encima de esto
 
