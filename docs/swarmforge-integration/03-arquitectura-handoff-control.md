@@ -1,90 +1,82 @@
-# Arquitectura: Human-in-the-Loop / AI-in-the-Loop sin modificar SwarmForge
+# Arquitectura: Human-in-the-Loop / AI-in-the-Loop in-process
 
-## Problema
+## Por qué esto es mucho más simple que el diseño anterior (vía SwarmForge)
 
-Un edge de un workflow de Agent Studio puede estar marcado `automatic`, `human`, `ai-review`, o
-`human-or-ai`. Eso tiene que traducirse en comportamiento real del swarm: pausar la entrega de un
-handoff hasta que alguien (persona o agente revisor) lo apruebe.
+El diseño descartado (ver
+[`_archive-motor-swarmforge-descartado/`](./_archive-motor-swarmforge-descartado/)) necesitaba
+interceptar `swarm_handoff.sh` con un wrapper de `PATH` porque el daemon de SwarmForge
+(`handoffd.bb`, un proceso externo que Agent Studio no controla) entregaba los handoffs
+automáticamente sin ningún gate. Ese wrapper tenía un límite honesto: un agente que invocara el
+script real por ruta absoluta podía saltárselo.
 
-El protocolo real de SwarmForge no tiene ningún gate: el daemon `handoffd.bb` vigila el `outbox`
-de cada agente y, en cuanto un handoff está validado (`swarm_handoff.sh` lo dejó ahí bien
-formado), lo copia directo al `inbox` del destinatario. Modificar `handoffd.bb` para agregar un
-gate ahí está bloqueado por la falta de `LICENSE` de SwarmForge (ver Fase 0).
+En el motor nativo, **no hay ningún proceso externo de por medio**. `WorkflowRunManager` es quien
+decide, en su propio código TypeScript, cuándo enviarle el siguiente prompt al siguiente nodo.
+Human-in-the-Loop deja de ser "interceptar una entrega que iba a pasar igual" y pasa a ser,
+literalmente, "no enviar el prompt todavía" — no hay nada que un agente pueda saltarse, porque el
+agente del nodo siguiente no tiene ningún prompt esperándolo hasta que el run manager decide
+enviarlo.
 
-## Diseño: wrapper de `PATH` sobre `swarm_handoff.sh`
+## Flujo
 
-SwarmForge ya pone `swarmforge/scripts/` en el `PATH` de cada agente (documentado en su propio
-README: "Startup syncs the shared helper scripts into every role worktree ... and puts that
-local directory on the agent's PATH"). Eso es un punto de extensión real: cualquier ejecutable
-que Agent Studio ponga **antes** en el `PATH`, con el mismo nombre (`swarm_handoff.sh`), es lo
-que el agente termina invocando cuando corre ese comando por nombre.
+Cuando un nodo termina su turno (ver Fase 5 / `02-arquitectura-motor-nativo.md` para cómo se
+detecta eso), `WorkflowRunManager` mira el `handoff.mode` de cada edge saliente de ese nodo antes
+de avanzar:
 
-Flujo:
+- **`automatic`**: arma el prompt para el/los nodo(s) destino y lo envía de inmediato a su(s)
+  terminal(es).
+- **`human`**: el paso pasa a estado `waiting_approval`. La UI de Agent Studio muestra un panel
+  con: agente origen, agente(s) destino, el output completo del turno que acaba de terminar
+  (capturado vía Shell Integration, que también expone el stream de output del comando), y
+  acciones: aprobar, aprobar con instrucciones adicionales, redirigir a otro nodo, rechazar (el
+  workflow queda pausado o vuelve al nodo origen, a definir en la Fase 7), cancelar el run
+  completo. El run manager sólo arma y envía el prompt siguiente después de una acción de
+  aprobación.
+- **`ai-review`**: el run manager arma un prompt de revisión para el `reviewerAgentId` configurado
+  en el edge (puede correr en su propia terminal visible, igual que cualquier otro nodo, o
+  invocarse de forma más liviana si el proveedor lo permite) pidiéndole una respuesta estructurada:
 
-1. Agent Studio genera, junto al resto de `.agent-studio/runs/<run-id>/`, un directorio
-   `runtime/path-override/` que contiene un script `swarm_handoff.sh` propio.
-2. Ese directorio se antepone al `PATH` del proceso del agente (vía el mecanismo que exponga la
-   invocación del backend en `swarmforge.conf`, o vía un wrapper del propio comando `codex` /
-   `claude` / etc. que setee `PATH` antes de `exec`).
-3. Cuando el agente corre `swarm_handoff.sh <draft-file>`, en realidad ejecuta el script de
-   Agent Studio, que:
-   - Lee el draft (`type: git_handoff` o `type: note`, con `to:`, `priority:`, etc.).
-   - Si el edge correspondiente (según `to:`/rol origen) es `automatic`: delega inmediatamente al
-     script real de SwarmForge por **ruta absoluta**, no por nombre resuelto en `PATH` (para no
-     reentrar en el propio wrapper).
-   - Si es `human`: bloquea — abre una conexión al mismo socket Unix de
-     [`02-arquitectura-terminal-adapter.md`](./02-arquitectura-terminal-adapter.md) (mismo
-     mecanismo de transporte, otro endpoint: `POST /handoff-approval-request`), la extensión
-     muestra el panel de aprobación descrito en la Fase 7 de la v1, y el wrapper queda esperando
-     la respuesta (aprobar / aprobar con instrucciones / redirigir / rechazar / cancelar) antes
-     de delegar (o no) al script real.
-   - Si es `ai-review`: en vez de bloquear esperando a un humano, invoca al role reviewer (ver
-     abajo) y actúa según su decisión JSON.
-   - Si es `human-or-ai`: intenta primero `ai-review`; si la decisión es `escalate_to_human`, cae
-     al flujo de `human`.
+  ```json
+  {
+    "decision": "approve" | "request_changes" | "escalate_to_human" | "fail",
+    "confidence": 0.0,
+    "summary": "...",
+    "risks": ["..."],
+    "instructions": ["..."]
+  }
+  ```
 
-### AI-in-the-loop como role adicional, no como lógica embebida en el wrapper
+  Reglas fijas del lado de Agent Studio (no delegadas al reviewer): nunca tratar como aprobación
+  automática una decisión con `confidence` por debajo de un umbral configurable, y ciertas
+  categorías de cambio (definidas por el usuario al configurar el edge — ej. cambios que tocan
+  CI/CD, infraestructura, o ramas protegidas) siempre escalan a `human` sin importar la decisión
+  del reviewer.
+- **`human-or-ai`**: corre primero el flujo `ai-review`; si la decisión es `escalate_to_human` (o
+  cae en alguna de las reglas fijas de arriba), continúa con el flujo `human`.
 
-En vez de que el wrapper mismo invoque un modelo, es más simple y más consistente con cómo ya
-funciona SwarmForge agregar un **role/window extra** en `swarmforge.conf` (ej. `reviewer`), con
-su propio `roles/reviewer.prompt` generado por Agent Studio, que:
-- Recibe (vía handoff normal, sin intervención especial) el draft que el wrapper puso en un
-  outbox intermedio dirigido a `reviewer`.
-- Devuelve una decisión estructurada `{decision, confidence, summary, risks, instructions}` como
-  describía la v1.
-- El wrapper espera esa respuesta (polling de un archivo de resultado, o el mismo socket) y actúa
-  en consecuencia.
+Timeout: si `timeoutSeconds` está configurado en el edge y nadie aprueba/rechaza a tiempo,
+`onTimeout` decide (`wait` deja el paso indefinidamente pendiente, `reject` lo devuelve al nodo
+origen, `approve` avanza igual, `fail` termina el run con error) — misma idea que ya traía el
+plan original, sin cambios porque no depende del runtime.
 
-Esto reutiliza la topología nativa de SwarmForge (cualquier rol es válido, cualquier agente
-backend por rol) en vez de inventar un mecanismo de invocación de modelo paralelo dentro del
-wrapper — más simple de mantener y más observable (el reviewer corre en su propia terminal
-integrada, visible, igual que cualquier otro agente).
+## Qué reemplaza y qué se mantiene del plan original
 
-## Límite honesto de este enfoque
+Se mantiene igual: los estados de UI del panel de aprobación, las acciones disponibles, el
+contrato JSON del reviewer, las reglas de "nunca aprobar automático lo destructivo" / "baja
+confianza → humano" / "cambios de seguridad o infraestructura → humano".
 
-Este es un gate de **infraestructura** (un binario interpuesto en el `PATH`), no sólo una
-instrucción de prompt — mejor que confiar en que el LLM "decida obedecer" una regla de la
-constitution. Pero no es absoluto:
+Se elimina por completo: el socket Unix, el protocolo `open-session`/`handoff-approval-request`,
+el wrapper de `PATH` sobre `swarm_handoff.sh`, y toda la documentación de "límite honesto" sobre
+que un agente puede saltarse el gate por ruta absoluta — ese riesgo específico no existe en este
+diseño, porque no hay ningún script externo que un agente pueda invocar para saltarse el control.
 
-- Si el agente invoca el script real por **ruta absoluta** (por ejemplo porque la memoriza de una
-  sesión anterior, o porque un prompt malformado se la revela), se salta el wrapper.
-- Si el agente edita su propio `PATH` dentro de la sesión, también se lo salta.
+## Qué riesgo nuevo introduce este diseño (a diferencia del anterior)
 
-Mitigación parcial: la ruta real del script de SwarmForge no debería exponerse en ningún prompt
-ni output visible para el agente; el wrapper debe invocarla desde una ubicación que Agent Studio
-controla y que no está documentada en ningún artículo de constitution ni role prompt generado.
-Esto reduce la probabilidad pero no la elimina — **la UI de Agent Studio debe comunicar esto
-como una limitación conocida**, no venderlo como una garantía dura de seguridad. Para handoffs
-verdaderamente críticos (ej. antes de un merge a una rama protegida), la mitigación real no es
-este wrapper sino controles fuera del swarm (branch protection, revisión de PR humana
-obligatoria) — este mecanismo es para gobernar el *flujo de trabajo entre agentes*, no un
-sustituto de controles de seguridad a nivel de repositorio.
-
-## Qué falta diseñar (no cerrado en esta pasada)
-
-- Formato exacto del archivo de "resultado de aprobación" o si todo pasa por el socket sin
-  archivos intermedios.
-- Qué pasa si la extensión de VS Code está cerrada cuando un wrapper intenta pedir aprobación
-  humana (¿el wrapper reintenta con backoff? ¿hay un timeout que cae a `onTimeout` como proponía
-  la v1: `wait | reject | approve | fail`?). La v1 ya tenía esta idea (`timeoutSeconds`,
-  `onTimeout`) y sigue siendo válida, sólo falta conectarla al mecanismo real de este wrapper.
+El control de flujo vive enteramente en el proceso de la extensión de VS Code. Si ese proceso
+muere o VS Code se cierra a mitad de un `waiting_approval`, el estado pendiente sólo existe si se
+persistió explícitamente (Fase 7, sin cerrar todavía) — a diferencia del diseño con SwarmForge,
+donde el estado de handoffs vivía en archivos en disco (`outbox`/`inbox`) independientes del
+proceso de la extensión. Este es el motivo por el que la Fase 7 (estado y recuperación) pasa a
+ser más importante en el motor nativo de lo que era en el diseño anterior, no menos — hay que
+persistir cada `waiting_approval` y cada decisión de reviewer en disco (ej. dentro de
+`.agent-studio/runs/<run-id>/`) apenas ocurren, no sólo mantenerlos en memoria del proceso de la
+extensión.

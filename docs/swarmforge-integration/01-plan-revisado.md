@@ -1,180 +1,189 @@
-# Plan revisado — Agent Studio ↔ SwarmForge
+# Plan revisado — motor nativo de workflows con handoffs humano/IA
 
-Este es el plan v2. Cada fase indica qué cambió respecto a la v1 del usuario y por qué, con
-evidencia verificada contra el código real de ambos repos (no contra supuestos). Las fases con
-diseño técnico extenso viven en archivos separados y acá sólo se resumen.
+Este es el plan reescrito tras el pivot a motor nativo (ver `README.md` y `PROGRESS.md` para el
+razonamiento). El requisito de fondo: **cualquier workflow de Agent Studio**, sin importar su
+origen, debe poder tener handoffs marcados humano/IA/automático y correr cada agente en su propia
+terminal integrada de VS Code.
 
-## Fase 0 — Licencia y modalidad de distribución
+## Fase 0 — Alcance y distribución
 
-**Cambia respecto a la v1:** la v1 dejaba "bundled" como una modalidad futura condicionada a
-conseguir autorización del autor. Eso sigue siendo cierto, pero hay que tratarla como
-**bloqueada indefinidamente**, no como un ítem de roadmap con fecha implícita — el repo de
-SwarmForge no tiene `LICENSE` en ningún lado (`ls LICENSE*` sin resultados, confirmado sobre un
-clon real), y sin licencia explícita el default legal es "todos los derechos reservados": ni
-redistribuir el código tal cual ni un fork modificado son legales sin permiso.
-
-Decisiones que se mantienen de la v1:
-- Modalidad única para el MVP y probablemente indefinida: `external` — el usuario instala
-  SwarmForge por su cuenta siguiendo el `README.md` del propio proyecto.
-- Pin de versión/commit al construir el catálogo de templates dentro de Agent Studio, para no
-  depender de que `main`, `two-pack`, `four-pack` o `six-pack` cambien de forma incompatible sin
-  aviso.
-- Chequeo de compatibilidad de versión antes de ejecutar (`requiredVersion` estilo semver).
-
-Ajuste nuevo: como Agent Studio va a distribuir su **propio** adapter de terminal
-(`vscode.sh`, ver Fase 5+6) y sus **propios** helper scripts para HIL/AIL (ver Fase 7+8), hay que
-dejar constancia explícita de que esos archivos son 100% código de Agent Studio (MIT), no
-derivados de SwarmForge, y que el mecanismo de instalación es "el usuario/la extensión copia
-estos archivos propios dentro de su checkout local de SwarmForge", igual que se instalaría un
-plugin de cualquier herramienta de terceros. Esto evita cualquier ambigüedad de "estamos
-redistribuyendo SwarmForge modificado".
+Ya no hay bloqueo de licencia sobre el runtime, porque el motor de ejecución es 100% de Agent
+Studio — no se distribuye ni se modifica código de SwarmForge. Queda un matiz más chico y más
+fácil de resolver: si el catálogo de templates de Agent Studio incluye versiones inspiradas en
+`two-pack`/`four-pack`/`six-pack`, **el texto de los role prompts tiene que ser propio**, no
+copiado de las ramas de SwarmForge (que siguen sin `LICENSE`). La forma del workflow (qué rol
+hace qué, en qué orden) no es copiable como propiedad intelectual — la expresión concreta en un
+archivo `.prompt` sí. Ver Fase 3.
 
 ## Fase 1 — Modelo de datos extendido
 
-Se mantiene la propuesta de la v1 de extender `WorkflowDefinition`/`WorkflowNode`/`WorkflowEdge`
-en `src/domain/models.ts` de forma retrocompatible (`engine?: "native" | "swarmforge"`, etc.).
-Confirmado contra el código real que el modelo actual es minimalista (`WorkflowNode` sólo tiene
-`id, agentId, position, isEntry?`; `WorkflowEdge` sólo `id, source, target, label?`; los
-`handoffs` de `AgentDefinition` sólo tienen un booleano `send?`), así que no hay conflicto con
-nada existente.
+Sin cambios respecto a la v2: extender `WorkflowDefinition`/`WorkflowNode`/`WorkflowEdge` en
+`src/domain/models.ts` de forma retrocompatible. Confirmado contra el código real que hoy
+`WorkflowNode` sólo tiene `id, agentId, position, isEntry?` y `WorkflowEdge` sólo
+`id, source, target, label?`, así que no hay conflicto con nada existente.
 
-Ajuste: el campo `handoff.mode` en `WorkflowEdge` pasa a ser puramente un concepto de **Agent
-Studio / UI**, no algo que SwarmForge entienda de forma nativa — su traducción real a
-comportamiento ocurre en la Fase 7+8 (wrapper de PATH + topología de `swarmforge.conf`), no en
-un campo de configuración que SwarmForge vaya a leer directamente.
+```ts
+type HandoffMode = "automatic" | "human" | "ai-review" | "human-or-ai";
+
+interface WorkflowEdge {
+  id: string;
+  source: string;
+  target: string;
+  label?: string;
+  handoff?: {
+    mode: HandoffMode;
+    reviewerAgentId?: string;   // para "ai-review" / "human-or-ai"
+    timeoutSeconds?: number;
+    onTimeout?: "wait" | "reject" | "approve" | "fail";
+  };
+}
+
+interface WorkflowNode {
+  id: string;
+  agentId: string;
+  position: { x: number; y: number };
+  isEntry?: boolean;
+  terminal?: {
+    visible: boolean;
+    group?: string;   // para el layout de la Fase 5
+  };
+}
+```
+
+`WorkflowRunStep.status` (en `src/domain/messages.ts` y `webview/app/types.ts`) también se
+extiende, por el pedido del usuario de distinguir visualmente "corriendo ahora" de "es el
+próximo": de `"pending" | "running" | "completed" | "failed" | "skipped"` pasa a agregar
+`"queued"` (predecesores resueltos, todavía no recibió el prompt) y `"waiting_approval"` /
+`"waiting_ai_review"` (de la Fase 6). Detalle completo del mapeo a color/animación en
+[`04-panel-ejecucion.md`](./04-panel-ejecucion.md).
+
+Este modelo es igual sin importar si el workflow vino de un template inspirado en SwarmForge o
+fue armado a mano — es el punto central del pivot: `handoff.mode` es un campo del dominio de
+Agent Studio, no algo que dependa de ningún runtime externo.
 
 ## Fase 2 — Idioma de interacción separado del idioma de UI
 
-Se mantiene tal cual la v1. Confirmado contra `webview/app/i18n.tsx` que hoy `Language` sólo
-controla la UI de React vía `tx(english, spanish)` y no tiene ningún efecto sobre el idioma en
-que un agente responde — es un requisito nuevo genuino, no depende de nada de SwarmForge, y se
-resuelve igual que propone la v1: un artículo de constitution (`agent-studio-language.prompt`)
-generado por Agent Studio e instalado junto a los demás artículos del run.
+Sin cambios respecto a la v2. Confirmado que hoy `webview/app/i18n.tsx` sólo controla la UI de
+React (`tx(english, spanish)`) y no afecta el idioma en que responde un agente. Se resuelve
+agregando un bloque de instrucciones de idioma al `context`/`instructions` que Agent Studio ya le
+pasa a cada agente al armar su prompt, con override opcional por nodo — no depende de nada de
+esta carpeta específicamente, es un requisito de UX independiente.
 
-## Fase 3 — Importación de two-pack / four-pack / six-pack
+## Fase 3 — Catálogo de templates inspirados en two/four/six-pack
 
-Se mantiene la idea de la v1 de un catálogo de templates versionado dentro de Agent Studio, con
-un ajuste de mecánica: confirmado que los tres packs **no son carpetas dentro de `main`**, son
-ramas git separadas y documentales. El README de SwarmForge documenta el método soportado para
-bajarlos sin crear un remoto git:
+Se recrean como workflows nativos de Agent Studio (agentes + edges + `handoffMode`), no como
+algo que se "importa y ejecuta con SwarmForge":
 
-```sh
-BRANCH=four-pack
-curl -L "https://github.com/unclebob/swarm-forge/archive/refs/heads/${BRANCH}.tar.gz" | tar -xz --strip-components=1
+- **Two-pack**: `coder` ↔ `cleaner`, loop simple.
+- **Four-pack**: `specifier` → `coder` → `refactorer` → `architect` → `specifier`, con
+  `handoffMode: "human"` sugerido en el edge `specifier → coder` (aprobar la especificación antes
+  de codear).
+- **Six-pack**: `specifier` → `coder` → `cleaner` → `architect` → `hardener` → `QA`, con
+  `handoffMode: "human"` sugerido en el edge final de `QA` (aprobación de cierre).
+
+Los prompts de cada rol se escriben de cero, en base a la descripción pública que el propio
+README de SwarmForge da de qué hace cada rol (esa descripción de responsabilidades sí es una idea
+reusable; el archivo `.prompt` real de cada rama no se copia). El asistente de importación de la
+v2 ("Nuevo workflow" → Custom / Two-Pack / Four-Pack / Six-Pack, con selección de proveedor por
+rol, idioma, y aprobación de specifier/QA) se mantiene igual como flujo de UX.
+
+## Fase 4 — `WorkflowRunManager`
+
+Reemplaza al `src/services/swarmforge/*` de la v2 (que generaba `.agent-studio/runs/<run-id>/`
+con `swarmforge.conf` para el runtime externo). Ahora es un servicio propio de Agent Studio,
+separado de `extension.ts` (la v2 ya señalaba esto como necesario, sigue siendo cierto):
+
+```text
+src/services/workflowRun/
+  workflowRunManager.ts     // state machine del run completo
+  workflowTerminalService.ts // Fase 5: N terminales de VS Code
+  handoffGateService.ts      // Fase 6: gating humano/IA in-process
+  workflowRunStateService.ts // Fase 7: persistencia y recuperación
 ```
 
-El generador de Agent Studio debe replicar ese mismo mecanismo (tarball de una rama fija por
-commit, no `main`), y el catálogo de templates JSON (`two-pack.json`, `four-pack.json`,
-`six-pack.json`) debe versionar qué commit de cada rama fue el que se usó para construir el
-template, para poder re-sincronizar deliberadamente en vez de arrastrar drift silencioso.
+Sigue guardando estado en algo equivalente a `.agent-studio/runs/<run-id>/manifest.json`, pero ya
+no genera ningún archivo de configuración para un runtime externo — el manifest es sólo estado
+propio (qué nodo está en qué terminal, qué handoffs están pendientes, etc.).
 
-Se mantiene la corrección de nombre de la v1: es `six-pack`, no "sick-pack".
+## Fase 5 — N terminales de VS Code + detección de fin de turno
 
-## Fase 4 — Adaptador Agent Studio → SwarmForge
+**El punto de mayor incertidumbre técnica de todo el plan.** Diseño completo en
+[`02-arquitectura-motor-nativo.md`](./02-arquitectura-motor-nativo.md). Resumen: una
+`vscode.Terminal` por nodo ejecutable (creada con `vscode.window.createTerminal`, igual que ya
+hace el modo CLI actual pero en paralelo en vez de reusar una sola terminal), con detección de
+fin de turno vía la API de **Terminal Shell Integration** de VS Code (`onDidEndTerminalShellExecution`,
+expone el exit code de cada comando ejecutado en la terminal) combinada con invocación "one-shot"
+del backend (`claude -p "..."`, `codex exec "..."` o equivalente no interactivo) por cada turno,
+en vez de mantener una sesión REPL larga donde no hay una señal clara de "este turno terminó".
 
-Se mantiene la estructura de servicios de la v1 (`src/services/swarmforge/*`) y el layout de
-salida (`.agent-studio/runs/<run-id>/{manifest.json,swarmforge.conf,constitution.prompt,
-constitution/articles/,roles/*.prompt,runtime/}`). Este diseño encaja bien con los puntos de
-extensión reales de SwarmForge: los artículos de constitution y los prompts de rol viven en el
-working tree del **proyecto del usuario**, no dentro del propio SwarmForge, así que generarlos
-ahí no toca código de terceros.
+**Confirmado por el usuario:** esto implica cambiar `runWorkflow` en `src/extension.ts` para que
+`step.status = "completed"` se setee cuando llega el evento real de fin de ejecución (exit code),
+no en la línea ~777 actual donde se marca "completed" apenas se llama a
+`chatBridgeService.sendAgentToTerminal`. Esto es un prerequisito duro de la Fase 8 (estados
+visuales): sin esta corrección, cualquier animación de "corriendo" sería falsa (se vería
+"completado" antes de que el agente hubiera terminado de verdad).
 
-## Fase 5+6 — Terminal por agente (reemplaza el "modo headless" de la v1)
+## Fase 6 — Handoff control HIL/AIL in-process
 
-**Este es el cambio más grande respecto a la v1.** La v1 proponía pedirle a SwarmForge un modo
-nuevo `./swarm --headless --state-format json` que emitiera eventos `swarm.ready` con sockets y
-sesiones tmux. **Ese modo no existe hoy**, y construirlo implicaría modificar el core de
-SwarmForge — lo cual choca directamente con la Fase 0 (sin licencia, no se puede forkear ni
-redistribuir un core modificado).
+Diseño completo en [`03-arquitectura-handoff-control.md`](./03-arquitectura-handoff-control.md).
+Resumen: como `WorkflowRunManager` es quien decide cuándo enviarle el prompt al siguiente nodo,
+Human-in-the-Loop es simplemente no enviarlo hasta que el usuario aprueba desde un panel en la UI
+de Agent Studio, y AI-in-the-Loop es invocar al `reviewerAgentId` configurado (en su propia
+terminal o headless), esperar su decisión JSON, y actuar en consecuencia antes de continuar. No
+hace falta interceptar nada de ningún proceso externo — es control de flujo normal dentro de la
+extensión.
 
-En su lugar, SwarmForge ya expone —documentado en su propio README— un punto de extensión
-oficial para exactamente este problema: los **terminal backend adapters**
-(`swarmforge/scripts/terminal-adapters/*.sh`), con un contrato de seis funciones shell
-(`terminal_backend_label`, `terminal_backend_can_open_sessions`, `terminal_backend_tracks_windows`,
-`terminal_open_session`, `terminal_window_exists`, `terminal_close_window`). Hoy sólo existen
-adapters para macOS Terminal.app, iTerm2, Ghostty, Windows Terminal, y un fallback `none` que
-hace `tmux attach` en la shell actual — no hay ninguno para Linux de escritorio, así que en la
-máquina del usuario (Ubuntu) SwarmForge cae hoy al fallback `none`.
+## Fase 7 — Estado y recuperación
 
-El plan pasa a ser: escribir un adapter nuevo `vscode.sh` que implemente ese contrato hablando
-con la extensión de VS Code vía un socket Unix local. Diseño completo, con formato de mensajes y
-manejo de ids, en [`02-arquitectura-terminal-adapter.md`](./02-arquitectura-terminal-adapter.md).
+Sin revisar en detalle todavía (ver `PROGRESS.md`). Sigue siendo válida la idea de la v1/v2de
+persistir `RunStatus`/`StepStatus` y reconectar al reabrir VS Code, pero ahora es más simple en
+un sentido (no hay que verificar un socket tmux externo) y más difícil en otro (si VS Code se
+cierra a mitad de un turno "one-shot", hay que decidir si se reintenta el turno o se recupera su
+resultado desde el historial del shell integration).
 
-Se mantiene de la v1: el mapa `Map<runId, Map<agentId, vscode.Terminal>>` en la extensión, la
-regla de que cerrar una terminal de VS Code no debe matar la sesión tmux subyacente (la fuente
-de verdad del estado sigue siendo tmux, no VS Code), y la política de layout (split hasta 3
-agentes, tabs para más de 3).
+## Fase 8 — Panel de ejecución y estados visuales del grafo
 
-## Fase 7+8 — Human-in-the-Loop / AI-in-the-Loop (reemplaza el `pending_approval/` de la v1)
+Diseño técnico concreto en [`04-panel-ejecucion.md`](./04-panel-ejecucion.md), anclado al código
+real (`GraphCanvas.tsx`, `styles.css`): hoy los nodos del grafo (`.graph-node`) no tienen ningún
+color de estado de ejecución — sólo el panel lateral `graph-run-panel` lo tiene, y de forma
+incompleta (sin estado "próximo", sin animación). Se agrega un estado nuevo `queued` ("próximo en
+ejecución", color sólido distinto de `running`) y se anima únicamente el estado `running` (pulso
+de `box-shadow`, respetando `prefers-reduced-motion`) para que sólo lo que está pasando ahora
+mismo tenga movimiento — el resto de los estados (`completed`, `failed`, `waiting_approval`,
+`waiting_ai_review`, `skipped`) son colores estáticos usando los tokens `--vscode-charts-*` que
+VS Code ya expone, para heredar tema claro/oscuro sin trabajo extra.
 
-**Segundo cambio grande respecto a la v1.** La v1 asumía un directorio
-`inbox/pending_approval/` intermedio antes de `inbox/new/`. Ese directorio **no existe** en el
-protocolo real: `handoffd.bb` vigila el `outbox` de cada agente y copia directo al `inbox` del
-destinatario en cuanto el handoff está validado — no hay gate nativo.
+## Fase 9 — Preflight de seguridad
 
-Como modificar `handoffd.bb` está bloqueado por la Fase 0, HIL/AIL se implementan sin tocar el
-core, usando sólo lo que SwarmForge ya permite personalizar: artículos de constitution, prompts
-de rol, helper scripts propios en el `PATH` de cada agente, y topología libre en
-`swarmforge.conf`. Diseño completo en
-[`03-arquitectura-handoff-control.md`](./03-arquitectura-handoff-control.md).
+Se simplifica respecto a la v2 (ya no hace falta verificar `tmux`/`bb`/versión de SwarmForge).
+Queda: verificar que el workspace es un repo git, mostrar cambios sin commit antes de lanzar un
+run, confirmar que las CLIs de los proveedores elegidos están instaladas y soportan modo one-shot
+si el diseño de la Fase 5 lo requiere, no guardar secretos en el estado del run.
 
-Se mantiene de la v1: los estados de UI para el panel de aprobación, las acciones (aprobar,
-aprobar con instrucciones, editar prioridad, redirigir, rechazar, cancelar), el contrato JSON
-`{decision, confidence, summary, risks, instructions}` del reviewer de IA, y las reglas de
-"nunca aprobar automáticamente operaciones destructivas" / "baja confianza → humano" / "cambios
-de seguridad, infraestructura o migraciones → humano".
+## Fase 10 — Pruebas
 
-Corrección honesta que la v1 no hacía: el enforcement vía wrapper de `PATH` es infraestructura
-real (mejor que confiar sólo en que el LLM "obedezca" una instrucción de prompt), pero no es
-absoluto — si un agente conoce o hardcodea la ruta real del script de handoff (en vez de
-invocarlo por el nombre resuelto vía `PATH`), puede saltarse el gate. Esto debe quedar explícito
-en la UI y en la documentación, no presentado como una garantía dura.
-
-## Fase 9 — Estado y recuperación
-
-Sin revisión detallada todavía en esta pasada (queda para la siguiente sesión, ver
-`PROGRESS.md`). La propuesta de la v1 (`RunStatus`/`StepStatus` persistidos, reconciliación al
-reabrir VS Code contra el socket y las sesiones tmux) es razonable en principio porque tmux ya
-sobrevive al cierre de VS Code por diseño de SwarmForge, pero falta diseñar en detalle qué pasa
-si el proceso `handoffd.bb` murió mientras VS Code estaba cerrado.
-
-## Fase 10 — Panel de ejecución
-
-Sin cambios respecto a la v1, sin revisión detallada todavía.
-
-## Fase 11 — Preflight de seguridad
-
-Se mantiene la lista de la v1 (verificar `git`/`tmux`/`bb`/CLIs, workspace es repo git, cambios
-sin commit, espacio en disco, versión fijada del runtime, no guardar secretos, enmascarar
-variables sensibles). Ver [`04-riesgos.md`](./04-riesgos.md) para riesgos adicionales
-descubiertos en esta auditoría que deberían sumarse a esta checklist cuando se implemente.
-
-## Fase 12 — Pruebas
-
-Se mantiene la estructura de la v1 (unitarias, integración, E2E). Sin revisión detallada
-todavía — falta, en particular, un smoke test de contrato contra una instalación real de
-SwarmForge antes de cada entrega, no sólo tests contra mocks del protocolo asumido.
+Sin revisión detallada todavía. El punto nuevo más importante: un smoke test real (no mockeado)
+de que la API de Terminal Shell Integration entrega el exit code de forma confiable para al menos
+`claude` y `codex` en modo one-shot, antes de construir el resto del `WorkflowRunManager` sobre
+ese supuesto — ver Fase 5.
 
 ## Orden de entregas (MVP) — revisado
 
-La v1 proponía: (1) MVP con los tres packs ejecutables, (2) Human in the Loop, (3) AI in the
-Loop, (4) endurecimiento. Se ajusta el orden interno del MVP para priorizar lo de menor riesgo y
-más fácil de verificar de forma aislada primero:
+1. **Prototipo de detección de fin de turno** (Fase 5, sin UI, sin modelo de datos nuevo) — un
+   script/comando de desarrollo que abra una terminal, corra `claude -p "..."` o `codex exec
+   "..."`, y confirme que se puede leer el exit code de forma confiable vía Shell Integration.
+   Esto es lo que valida si el resto del plan es viable tal como está diseñado.
+2. **Modelo de datos extendido** (Fase 1) — en paralelo con el punto 1, no depende de él.
+3. **`WorkflowRunManager` con N terminales** (Fases 4+5) integrando el resultado del prototipo.
+4. **Gating in-process HIL/AIL** (Fase 6) sobre el run manager ya funcionando en modo automático.
+5. **Catálogo de templates** (Fase 3) con prompts propios.
+6. **Idioma de interacción** (Fase 2) — independiente, se puede intercalar en cualquier punto.
+7. **Endurecimiento**: estado/recuperación (Fase 7), panel (Fase 8), preflight (Fase 9), pruebas
+   (Fase 10).
 
-1. **Terminal adapter de VS Code** (Fase 5+6) contra un swarm nativo de SwarmForge, sin tocar
-   nada de Agent Studio todavía — se puede probar como script standalone.
-2. **Import de packs + generador de config** (Fases 1, 3, 4) — modelo de datos, catálogo de
-   templates, generador `.agent-studio/runs/<run-id>/`.
-3. **Idioma de interacción** (Fase 2) — independiente de todo lo anterior, se puede hacer en
-   paralelo.
-4. **Handoffs automáticos end-to-end** conectando 1+2+3 dentro de la extensión.
-5. **Human-in-the-Loop** (Fase 7) vía wrapper de PATH.
-6. **AI-in-the-Loop** (Fase 8) vía role reviewer + mismo wrapper.
-7. **Endurecimiento**: estado/recuperación (Fase 9), panel (Fase 10), preflight (Fase 11),
-   pruebas (Fase 12).
-
-El criterio para este reordenamiento: el terminal adapter es 100% verificable de forma aislada
-(¿se abre una terminal de VS Code o no?) y no depende de ninguna otra pieza del plan, mientras
-que la v1 lo ponía después de un "modo headless" que no existe. Empezar por ahí valida el punto
-de mayor incertidumbre técnica (¿se puede realmente hablar con SwarmForge desde fuera sin
-tocarlo?) antes de invertir en modelo de datos y UI.
+A diferencia de la v2 (que arrancaba por el terminal adapter de SwarmForge porque era la pieza
+más aislada de verificar), acá el punto de partida es el mismo tipo de validación temprana pero
+sin ninguna dependencia externa: confirmar que Agent Studio puede saber, de forma confiable,
+cuándo un agente terminó su turno dentro de una terminal de VS Code. Si esa señal no es confiable
+en la práctica, todo lo demás (paralelismo real, gating de handoffs, panel de estado) se apoya en
+un supuesto roto.
