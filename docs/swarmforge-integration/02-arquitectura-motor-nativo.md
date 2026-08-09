@@ -90,18 +90,26 @@ reviewer): cualquier prompt puede tener contenido problemático, incluso uno esc
 usuario o que cita un mensaje de error real, así que la mitigación tiene que ser general, no
 condicionada a "si el contenido viene de una IA".
 
-**Mitigación recomendada:** la API de Terminal Shell Integration de VS Code expone un segundo
-overload de `executeCommand` pensado exactamente para esto —
-`executeCommand(executable: string, args: string[])`, que recibe el ejecutable y sus argumentos
-como un array en vez de un string armado a mano — en lugar del overload de un solo `commandLine`
-usado en el snippet de arriba. Usando el overload de `args[]`, Agent Studio nunca arma un string
-de shell interpolando el prompt: el prompt viaja como un elemento del array, y es VS Code (no
-código propio de Agent Studio) quien se encarga de pasarlo al proceso de forma segura. Esto es
-preferible a escapar manualmente o a pasar el prompt por archivo temporal — es la vía soportada
-por la propia API para este caso. **A confirmar en el prototipo de Fase 5:** que este overload
-existe y se comporta como se espera contra shells reales (bash/zsh/pwsh) antes de depender de él
-para el diseño final; si no está disponible o no cubre todos los casos, la alternativa de archivo
-temporal/stdin sigue como plan B.
+**Corrección (confirmado leyendo `node_modules/@types/vscode/index.d.ts` línea ~7943, no
+asumido):** el overload `executeCommand(executable: string, args: string[])` existe en la versión
+de VS Code que usa este proyecto (`engines.vscode: ^1.110.0`), pero **su propio doc-comment
+advierte explícitamente que el escaping no está pensado como medida de seguridad**: "this escaping
+is not intended to be a security measure, be careful when passing untrusted data to this API as
+strings like `$(...)` can often be used in shells to execute code within a string". Esto invalida
+la mitigación que se había propuesto acá — usar `args[]` reduce roturas accidentales (comillas,
+espacios) pero **no es una barrera de seguridad** contra un prompt adversarial.
+
+**Mitigación real:** no pasar el contenido del prompt como argumento de shell en absoluto, ni por
+`commandLine` ni por `args[]`. En su lugar, escribir el prompt de cada turno a un archivo dentro de
+`.agent-studio/runs/<run-id>/` (ruta que arma Agent Studio, no contenido de agente — segura de
+interpolar) y pasarle al backend **una ruta de archivo o usar stdin**, si el CLI lo soporta (ej.
+`claude -p --file <ruta>` o `cat <ruta> | claude -p -`, a confirmar el flag real contra la CLI
+instalada). El único string que se interpola en el `commandLine`/`args[]` es esa ruta controlada
+por Agent Studio — el prompt en sí nunca pasa por la interpretación del shell. Si ningún backend
+soporta leer desde archivo/stdin en modo one-shot, la alternativa es invocar el proceso directo
+con `child_process.spawn(executable, args, { shell: false })` (sin shell de por medio en absoluto)
+y volcar su stdout/stderr a la terminal visible manualmente — más trabajo, pero sin ninguna
+interpretación de shell involucrada.
 
 ### Qué falta validar antes de construir nada más encima de esto
 
