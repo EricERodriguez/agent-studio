@@ -75,6 +75,19 @@ con un `FileSystemWatcher` de VS Code). Es más frágil que la señal de Shell I
 de que el agente efectivamente ejecute ese comando), pero da una vía de recuperación cuando la
 API no está disponible.
 
+### Riesgo de escaping/inyección al construir el `commandLine`
+
+El código real (`src/services/chatBridgeService.ts:20`) hoy aplana el prompt con
+`.replace(/\r?\n+/g, " ")` y lo tipea con `terminal.sendText` como input interactivo — no como
+argumento de shell, así que hoy no hay riesgo de inyección. En cuanto Fase 5 arme un
+`commandLine` tipo `claude -p "<prompt>"` para pasarlo a `terminal.shellIntegration.executeCommand()`,
+ese mismo texto sin escapar (que puede traer comillas, backticks, `$()`, y en el caso de
+`ai-review` viene de la salida de **otro agente**, contenido no controlado por el usuario) puede
+romper el comando o inyectar comandos de shell reales. Esto hay que resolverlo antes de que el
+diseño pase de prototipo a producción: escapar el prompt para el shell de destino (o, mejor,
+pasarlo por un archivo temporal / variable de entorno / stdin en vez de interpolarlo directo en
+el `commandLine`) — no interpolar texto de agente sin sanitizar en un comando de shell.
+
 ### Qué falta validar antes de construir nada más encima de esto
 
 Esto es diseño, no un hecho confirmado en la práctica:

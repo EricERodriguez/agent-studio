@@ -82,6 +82,23 @@ Sesión 3 (estados visuales de ejecución):
    `running` con soporte de `prefers-reduced-motion`, y cómo se calcula `queued` en
    `WorkflowRunManager`. `04-riesgos.md` se renumeró a `05-riesgos.md` para hacer lugar.
 
+Sesión 4 (verificación de cierre antes de implementar):
+10. Se corrió un subagente `Software Architect` para una revisión go/no-go de los 7 documentos
+    contra el código real, buscando específicamente inconsistencias introducidas por las
+    múltiples rondas de edición cruzada (numeración, referencias, enums duplicados entre
+    archivos). **Veredicto: LISTO CON CORRECCIONES MENORES.** Confirmó línea por línea las citas
+    de código del plan (`runWorkflow` en línea 607, `step.status = "completed"` en línea 777,
+    etc.) y que la numeración/referencias cruzadas cierran sin errores.
+11. Encontró un riesgo real no documentado: el diseño de invocación one-shot de Fase 5 no
+    contemplaba que el prompt (texto libre, puede incluir comillas/backticks/`$()`, y en
+    `ai-review` viene de la salida de otro agente, no controlada por el usuario) se use para
+    armar un `commandLine` de shell sin escapar — riesgo de inyección. Corregido: agregado a
+    `02-arquitectura-motor-nativo.md` (sección nueva "Riesgo de escaping/inyección") y a
+    `05-riesgos.md` (fila nueva). También se renombró
+    `_archive-motor-swarmforge-descartado/03-arquitectura-handoff-control.md` a
+    `...OLD.md` para no tener dos archivos con el mismo nombre en la carpeta (hallazgo menor,
+    cosmético).
+
 ## Qué falta (próximo paso sugerido)
 
 El punto de mayor incertidumbre técnica del plan nuevo es la **Fase 5 (detección de fin de
