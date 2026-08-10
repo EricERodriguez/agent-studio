@@ -76,6 +76,7 @@ export function GraphCanvas(): React.JSX.Element {
   const setUiPanelOpen = useStudioStore((s) => s.setUiPanelOpen);
   const addWorkflowEdge = useStudioStore((s) => s.addWorkflowEdge);
   const removeWorkflowEdge = useStudioStore((s) => s.removeWorkflowEdge);
+  const setEdgeHandoffMode = useStudioStore((s) => s.setEdgeHandoffMode);
   const addWorkflowStep = useStudioStore((s) => s.addWorkflowStep);
   const removeWorkflowStep = useStudioStore((s) => s.removeWorkflowStep);
   const setWorkflowEntryStep = useStudioStore((s) => s.setWorkflowEntryStep);
@@ -292,16 +293,21 @@ export function GraphCanvas(): React.JSX.Element {
             stroke = "var(--vscode-editor-foreground)";
             width = "2.2";
           }
+          const handoffMode = edge.handoff?.mode ?? "automatic";
+          if (handoffMode === "human") {
+            stroke = "var(--vscode-charts-yellow, #d7ba7d)";
+          }
           return {
             id: edge.id,
             d: bz.d,
             mx: bz.mx,
             my: bz.my,
-            label: edge.label,
+            label: handoffMode === "human" ? `👤 ${edge.label ?? ""}`.trim() : edge.label,
             stroke,
             marker,
             width,
             opacity: isEntryEdge || fromSelected || isSelected ? "1" : "0.85",
+            handoffMode,
           };
         })
         .filter((edge): edge is NonNullable<typeof edge> => Boolean(edge));
@@ -704,8 +710,16 @@ export function GraphCanvas(): React.JSX.Element {
                 .map((edge) => (
                   <div
                     key={`label-${edge.id}`}
-                    className="graph-edge-label"
+                    className="graph-edge-label graph-edge-label-clickable"
                     style={{ left: edge.mx - 16, top: edge.my - 9 }}
+                    title={tx(
+                      "Click to choose automatic or human approval for this handoff.",
+                      "Click para elegir aprobación automática o humana para este handoff.",
+                    )}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedEdgeId(edge.id);
+                    }}
                   >
                     {edge.label}
                   </div>
@@ -743,6 +757,43 @@ export function GraphCanvas(): React.JSX.Element {
                     }}
                   >
                     ✕
+                  </div>
+                );
+              })()}
+            {isWorkflow &&
+              selectedWorkflow &&
+              selectedEdgeId &&
+              (() => {
+                const edge = edges.find((candidate) => candidate.id === selectedEdgeId);
+                if (!edge) return null;
+                const mode = "handoffMode" in edge ? edge.handoffMode : "automatic";
+                return (
+                  <div
+                    className="graph-edge-handoff-toggle"
+                    style={{ left: edge.mx - 44, top: edge.my - 36 }}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <button
+                      className={mode === "automatic" ? "active" : ""}
+                      title={tx(
+                        "Dispatch this handoff automatically.",
+                        "Este handoff se despacha automáticamente.",
+                      )}
+                      onClick={() => setEdgeHandoffMode(selectedWorkflow.id, edge.id, "automatic")}
+                    >
+                      ⚡ {tx("Auto", "Auto")}
+                    </button>
+                    <button
+                      className={mode === "human" ? "active" : ""}
+                      title={tx(
+                        "Pause here until a human approves the handoff.",
+                        "Pausa acá hasta que un humano apruebe el handoff.",
+                      )}
+                      onClick={() => setEdgeHandoffMode(selectedWorkflow.id, edge.id, "human")}
+                    >
+                      👤 {tx("Human", "Humano")}
+                    </button>
                   </div>
                 );
               })()}

@@ -1317,6 +1317,15 @@ h4 {
   padding: 2px 7px;
 }
 
+.graph-edge-label-clickable {
+  cursor: pointer;
+}
+
+.graph-edge-label-clickable:hover {
+  border-color: var(--studio-accent);
+  color: var(--vscode-editor-foreground);
+}
+
 .graph-edge-delete {
   position: absolute;
   z-index: 6;
@@ -1332,6 +1341,35 @@ h4 {
   font-weight: 700;
   cursor: pointer;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+.graph-edge-handoff-toggle {
+  position: absolute;
+  z-index: 6;
+  display: flex;
+  gap: 2px;
+  background: var(--studio-surface-1);
+  border: 1px solid var(--studio-border);
+  border-radius: 7px;
+  padding: 3px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.graph-edge-handoff-toggle button {
+  font-size: 10.5px;
+  padding: 2px 7px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  color: var(--vscode-descriptionForeground);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.graph-edge-handoff-toggle button.active {
+  background: var(--studio-accent-soft);
+  border-color: var(--studio-accent);
+  color: var(--vscode-editor-foreground);
 }
 
 .graph-run-panel {

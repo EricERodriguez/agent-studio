@@ -57,6 +57,7 @@ lo soporte, con un mecanismo de marcador de finalización como fallback).
 | Archivo | Contenido |
 |---|---|
 | [`PROGRESS.md`](./PROGRESS.md) | **Leer primero siempre.** Checkpoint de en qué quedó el trabajo, incluido el historial de la decisión de pivot a motor nativo. |
+| [`BUGS.md`](./BUGS.md) | Índice rápido de bugs reales conocidos, sin resolver a propósito (agrupados para arreglar juntos más adelante). |
 | [`01-plan-revisado.md`](./01-plan-revisado.md) | El plan completo por fases, actualizado para motor nativo. |
 | [`02-arquitectura-motor-nativo.md`](./02-arquitectura-motor-nativo.md) | Diseño técnico: N terminales de VS Code por workflow, detección de fin de turno, `WorkflowRunManager`. |
 | [`03-arquitectura-handoff-control.md`](./03-arquitectura-handoff-control.md) | Diseño técnico de Human-in-the-Loop / AI-in-the-Loop **in-process**, sin dependencias externas. |

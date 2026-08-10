@@ -9,6 +9,10 @@ releer todo el hilo de conversación original.
 y la sección "Notas de handoff" con dónde quedaste, aunque sea a mitad de una fase. No dejes
 este archivo desactualizado al cortar la sesión.
 
+**Ver [`BUGS.md`](./BUGS.md) para el índice de bugs conocidos sin resolver** (split de terminales,
+Codex CLI sin correr nada) — dejados a propósito para resolver todos juntos más adelante, no
+frenan el resto del plan.
+
 ## Decisión de arquitectura vigente (leer esto primero)
 
 **2026-08-09 — pivot a motor nativo.** El plan original (v1 del usuario, luego v2 auditada)
@@ -731,6 +735,48 @@ Codex se ve sólo como progreso en el panel "Run status" + el output channel par
 `npm run check` y `build:extension` verificados limpios. **Nada de esto se corrió todavía en la
 práctica** — es la pieza de código más grande y más nueva de todo este plan (primer child_process
 spawneado directamente, primer protocolo JSON-RPC implementado a mano).
+
+## Bug: "run workflow" con Codex CLI no hace nada; se creó BUGS.md (2026-08-09)
+
+El usuario reportó que correr con Codex CLI no hace nada visible — ni error, ni progreso. Como el
+diseño de `codex app-server` es del mismo día y nunca se probó en la práctica, no se sabe todavía
+si el problema es de spawn, de handshake, o de reporte de errores a la UI. Se creó
+[`BUGS.md`](./BUGS.md) como índice rápido de bugs conocidos sin resolver (split de terminales +
+este), a pedido explícito del usuario: juntarlos y resolverlos todos en un bloque más adelante en
+vez de frenar el resto del plan por cada uno.
+
+## Editor de grafo: selector de `handoff.mode` por edge — implementado, sin probar (2026-08-09)
+
+Con los bugs anotados para después, se avanzó con lo próximo del roadmap: ya no hace falta editar
+el JSON a mano para marcar un edge como `human` — hay un toggle real en el grafo.
+
+- `webview/app/store/useStudioStore.ts`: acción nueva `setEdgeHandoffMode(workflowId, edgeId,
+  mode)` — guarda `{mode: "human"}` en el edge, o borra el campo `handoff` entero si se vuelve a
+  `"automatic"` (mismo criterio que el backend: sin `handoff` = automático).
+- `webview/app/components/GraphCanvas.tsx`: al seleccionar un edge de un workflow (clic en la
+  línea), aparece un toggle flotante "⚡ Auto / 👤 Human" cerca del botón de borrar existente. Los
+  edges marcados `human` además se ven con otro color (`--vscode-charts-yellow`) y un ícono 👤 en
+  la etiqueta, visibles sin tener que seleccionarlos — mismo lenguaje visual que ya proponía
+  `04-panel-ejecucion.md`.
+- Como con cualquier otro cambio del editor de grafo, hay que apretar "Save Workflow" para que se
+  escriba al JSON — no se guarda solo.
+
+`npm run check` y `build:webview` verificados limpios (CSS balanceado: 376/376). **Sin probar en
+la práctica** — falta confirmar que el toggle aparece, cambia de estado visualmente, y que el
+JSON guardado tiene el campo `handoff` correcto.
+
+## Fix de descubribilidad: el label "handoff" no era clickeable (2026-08-09)
+
+El usuario confirmó que el ícono 👤 en edges `human` se ve bien, pero no encontraba cómo abrir el
+toggle nuevo. Causa real: el texto "handoff" que se ve en el medio de cada edge
+(`.graph-edge-label`) es un `<div>` puramente decorativo, sin `onClick` — sólo la línea curva en
+sí (un `<path>` invisible de SVG, sin ningún indicio visual de que sea clickeable) dispara
+`setSelectedEdgeId`. El usuario, razonablemente, intentó clickear el texto que ve, no la línea.
+
+Arreglado: el label ahora también llama a `setSelectedEdgeId(edge.id)` al hacer clic, con
+`cursor: pointer` y un hover que lo resalta (`webview/app/components/GraphCanvas.tsx` +
+`styles.css`, clase nueva `.graph-edge-label-clickable`). `npm run check` y `build:webview`
+verificados limpios (CSS balanceado: 378/378).
 
 ## Qué falta (próximo paso sugerido)
 
