@@ -42,7 +42,8 @@ export type WebviewToExtensionMessage =
         decision: "approve" | "reject";
         instructions?: string;
       };
-    };
+    }
+  | { type: "cancelWorkflow"; payload: { runId: string } };
 
 /** A workflow node is paused waiting for the user to approve or reject the handoff into it. */
 export interface WorkflowApprovalRequest {
@@ -79,6 +80,8 @@ export interface WorkflowRunState {
   finishedAt?: number;
   planText?: string;
   error?: string;
+  /** Set for CLI-mode runs — lets the UI send a `cancelWorkflow` message back for this run. */
+  runId?: string;
 }
 
 export type ExtensionToWebviewMessage =

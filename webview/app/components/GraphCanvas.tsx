@@ -527,6 +527,23 @@ export function GraphCanvas(): React.JSX.Element {
               <span className="graph-run-state">
                 {selectedWorkflowRun?.status || tx("idle", "en espera")}
               </span>
+              {selectedWorkflowRun?.status === "running" && selectedWorkflowRun.runId && (
+                <button
+                  className="danger graph-run-stop-button"
+                  title={tx(
+                    "Stop this run. Steps already in progress finish naturally instead of being killed.",
+                    "Detiene esta corrida. Los pasos ya en curso terminan solos en vez de matarse.",
+                  )}
+                  onClick={() =>
+                    vscode?.postMessage({
+                      type: "cancelWorkflow",
+                      payload: { runId: selectedWorkflowRun.runId },
+                    })
+                  }
+                >
+                  ■ {tx("Stop", "Detener")}
+                </button>
+              )}
             </div>
             {orderedRunSteps.map((step, index) => (
               <div key={`${step.name}-${index}`} className="graph-run-step">

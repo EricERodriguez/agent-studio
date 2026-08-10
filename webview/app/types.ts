@@ -177,4 +177,5 @@ export interface WorkflowRunState {
   finishedAt?: number;
   planText?: string;
   error?: string;
+  runId?: string;
 }

@@ -79,6 +79,7 @@ export async function activate(
   let agents: AgentDefinition[] = [];
   let workflows: WorkflowDefinition[] = [];
   const pendingApprovals = new Map<string, (decision: ApprovalDecision) => void>();
+  const activeRuns = new Map<string, { cancel: () => void }>();
 
   const agentsTreeProvider = new AgentsTreeProvider();
   const workflowsTreeProvider = new WorkflowsTreeProvider();
@@ -227,6 +228,9 @@ export async function activate(
       }
       pendingApprovals.delete(requestId);
       resolve({ decision, instructions });
+    },
+    onCancelWorkflow: (runId) => {
+      activeRuns.get(runId)?.cancel();
     },
     onCreateAgent: async () => {
       await createAgent();
@@ -689,7 +693,8 @@ export async function activate(
 
       const cwd =
         vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || context.extensionPath;
-      const runDir = path.join(cwd, ".agent-studio", "runs", `${workflow.id}-${Date.now()}`);
+      const runId = `${workflow.id}-${Date.now()}`;
+      const runDir = path.join(cwd, ".agent-studio", "runs", runId);
 
       const baseState: WorkflowRunState = {
         workflowId,
@@ -697,8 +702,12 @@ export async function activate(
         status: "running",
         steps: [],
         startedAt: Date.now(),
+        runId,
       };
       dashboard.postWorkflowRunUpdate(baseState);
+
+      let cancelled = false;
+      activeRuns.set(runId, { cancel: () => (cancelled = true) });
 
       let lastSteps: WorkflowRunState["steps"] = [];
       const result = await runWorkflowGraph({
@@ -725,7 +734,9 @@ export async function activate(
               context: request.context,
             });
           }),
+        shouldCancel: () => cancelled,
       });
+      activeRuns.delete(runId);
 
       dashboard.postWorkflowRunUpdate({
         ...baseState,

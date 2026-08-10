@@ -241,6 +241,21 @@
                     "type": "boolean",
                     "default": true,
                     "description": "When true, Agent Studio also discovers globally installed Claude Code subagents from ~/.claude/agents/*.md and lists them as global agents."
+                },
+                "agentStudio.cli.claudeCommand": {
+                    "type": "string",
+                    "default": "claude --permission-mode acceptEdits",
+                    "description": "Command used to launch the Claude CLI interactively in each workflow node's terminal. Override this if you use a wrapper (e.g. a shell alias/function like 'claude-with-memory') or want different flags."
+                },
+                "agentStudio.cli.codexCommand": {
+                    "type": "string",
+                    "default": "codex --sandbox workspace-write",
+                    "description": "Command used to launch the Codex CLI interactively in each workflow node's terminal. Override this if you use a wrapper or want different flags."
+                },
+                "agentStudio.cli.startupDelayMs": {
+                    "type": "number",
+                    "default": 3000,
+                    "description": "Milliseconds to wait after launching a CLI in a terminal before typing the prompt into it. Increase this if your CLI (or a wrapper command) takes longer to finish starting up before it reliably accepts input."
                 }
             }
         }

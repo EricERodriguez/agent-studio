@@ -31,6 +31,7 @@ export interface DashboardPanelHandlers {
     workflowId: string,
     mode: "chat" | "plan" | "cli-claude" | "cli-codex",
   ) => Promise<void>;
+  onCancelWorkflow: (runId: string) => void;
   onCreateAgent: () => Promise<void>;
   onEditAgent: (agentId: string) => Promise<void>;
   onExportAgent: (agentId: string, providers: AgentProvider[]) => Promise<void>;
@@ -123,6 +124,9 @@ export class DashboardPanel {
               message.payload.decision,
               message.payload.instructions,
             );
+            break;
+          case "cancelWorkflow":
+            this.handlers.onCancelWorkflow(message.payload.runId);
             break;
           case "runWorkflow":
             await this.handlers.onRunWorkflow(

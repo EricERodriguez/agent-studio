@@ -553,6 +553,59 @@ Cosas concretas por confirmar:
 5. Con Codex: confirmar si `codex --sandbox workspace-write` abre una sesión interactiva utilizable
    o si hace falta un flag distinto (revisar `codex --help`, no `codex exec --help`).
 
+## Prueba real del modo interactivo — 5 hallazgos, todos corregidos (2026-08-09)
+
+El usuario probó el pivot a sesiones interactivas del mismo día y encontró varios problemas
+reales, todos corregidos ya en esta sesión:
+
+1. **Codex se rompió al arrancar** — `codex --sandbox workspace-write` tipeado muy pronto después
+   del lanzamiento quedó parcialmente "tragado" por la TUI todavía arrancando, y el resto del
+   prompt cayó directo en el shell crudo (`zsh: parse error near '>'`). Confirmado con `codex
+   --help` real (no `codex exec --help`) que `--sandbox` sí es válido a nivel raíz — no era el
+   flag, era timing.
+2. **Claude no confirmaba el prompt solo** — el usuario tenía que apretar Enter a mano, tanto en
+   el primer turno como después de aprobar un handoff humano. Mismo tipo de carrera contra el
+   arranque de la TUI.
+3. **No había forma de cancelar un run trabado** — si un nodo nunca escribe el archivo marcador
+   (como pasó con Codex roto), el paso queda en `"running"` para siempre sin ninguna salida.
+4. **Las terminales se abrían como tabs separados** — el usuario las quiere en split, una al lado
+   de la otra.
+5. **El comando de lanzamiento estaba hardcodeado** — el usuario usa un wrapper propio
+   (`claude-with-memory`) y necesita poder configurar el comando/flags por proveedor.
+
+Con Claude, aparte de estos dos problemas de timing, "se comportó genial: en cada paso fue dando
+como completado y se fue mostrando eso en el run status" — confirma que el mecanismo del archivo
+marcador funciona bien una vez que el prompt llega a destino.
+
+**Correcciones:**
+
+- `src/services/workflowRun/interactiveTurnRunner.ts`: el comando de lanzamiento y el delay de
+  arranque ya no están hardcodeados — se leen de configuración (`agentStudio.cli.claudeCommand`,
+  `agentStudio.cli.codexCommand`, `agentStudio.cli.startupDelayMs`, default 3000ms en vez de
+  1500ms), declaradas en `package.json` (`contributes.configuration`). El prompt ya no se tipea
+  con `sendText(text, true)` en una sola llamada — se separa en `sendText(text, false)` + una
+  pausa de 400ms + `sendText("", true)` para el Enter, como mitigación (no garantía — VS Code no
+  tiene forma de saber cuándo una TUI está lista para recibir input) de la carrera de timing.
+  También acepta un `shouldCancel` opcional que corta el polling del archivo marcador.
+- `src/services/workflowRun/workflowTerminalService.ts`: la primera terminal de un run queda como
+  "ancla"; las siguientes se crean con `location: { parentTerminal: anchorTerminal }` — abren en
+  split, no en tabs nuevos.
+- **Botón de Stop real**: `WorkflowRunState` suma `runId`; `workflowRunManager.ts` acepta
+  `shouldCancel: () => boolean` (corta el despacho de nodos nuevos y el polling de los que están
+  en curso, dejándolos terminar su propio ciclo en vez de matarlos a la fuerza); `extension.ts`
+  mantiene `activeRuns: Map<runId, {cancel}>`; mensajes nuevos `cancelWorkflow` (webview→extensión)
+  wireados en `dashboardPanel.ts`; botón "■ Stop" nuevo en el panel "Run status" de
+  `GraphCanvas.tsx`, visible sólo mientras el run está `"running"`.
+
+`npm run check`, `build:extension` y `build:webview` verificados limpios (CSS con balance de
+llaves confirmado: 373/373).
+
+**Todavía no se probó nada de esto en la práctica** — son mitigaciones y features nuevas sobre un
+problema de timing que, por naturaleza, no tiene garantía de infraestructura (no hay API de VS
+Code para saber cuándo una TUI externa terminó de arrancar). Si sigue fallando, la config nueva
+(`startupDelayMs` más alto, o un comando propio) es la primera palanca a mover antes de tocar
+código de nuevo.
+
 ## Qué falta (próximo paso sugerido)
 
 **Fase 5 (detección de fin de turno) queda cerrada de punta a punta** para `claude` y `codex`,

@@ -51,6 +51,9 @@ export interface RunWorkflowGraphParams {
   chatBridgeService: ChatBridgeService;
   onUpdate: (steps: WorkflowRunStep[]) => void;
   requestApproval: (request: ApprovalRequestInput) => Promise<ApprovalDecision>;
+  /** Polled between dispatch cycles and while a turn is running; once true, no new nodes are
+   * dispatched and in-flight turns stop waiting for their marker file — used by the Stop button. */
+  shouldCancel: () => boolean;
 }
 
 export interface RunWorkflowGraphResult {
@@ -115,6 +118,7 @@ export async function runWorkflowGraph(
     chatBridgeService,
     onUpdate,
     requestApproval,
+    shouldCancel,
   } = params;
 
   const nodeById = new Map(workflow.nodes.map((node) => [node.id, node]));
@@ -183,7 +187,7 @@ export async function runWorkflowGraph(
   };
 
   const computeReady = (): string[] => {
-    if (aborted) {
+    if (aborted || shouldCancel()) {
       return [];
     }
     return order.filter((nodeId) => {
@@ -256,13 +260,18 @@ export async function runWorkflowGraph(
       prompt: chatBridgeService.buildTurnPrompt(agent, objective, contextForPrompt),
       runDir,
       stepId: nodeId,
+      shouldCancel,
     });
 
     if (!turn.success) {
       node.status = "failed";
-      node.message = `${cliCommand} did not signal completion (no marker file) within the timeout`;
+      node.message = turn.cancelled
+        ? "Cancelled by user"
+        : `${cliCommand} did not signal completion (no marker file) within the timeout`;
       aborted = true;
-      abortError = `Step "${node.agentName}" failed: ${node.message}`;
+      abortError = turn.cancelled
+        ? "Workflow cancelled by user."
+        : `Step "${node.agentName}" failed: ${node.message}`;
       publish();
       return;
     }
