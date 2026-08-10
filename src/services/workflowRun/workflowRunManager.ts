@@ -2,7 +2,7 @@ import type { AgentDefinition, WorkflowDefinition } from "../../domain/models";
 import type { WorkflowRunStep } from "../../domain/messages";
 import type { ChatBridgeService } from "../chatBridgeService";
 import { WorkflowTerminalService } from "./workflowTerminalService";
-import { runAgentTurn } from "./oneShotTurnRunner";
+import { runAgentTurn } from "./interactiveTurnRunner";
 
 /**
  * Runs a workflow's reachable nodes as a real dependency graph, not a single linear DFS order in
@@ -23,6 +23,11 @@ import { runAgentTurn } from "./oneShotTurnRunner";
  *
  * On any node failure (or a rejected human approval), no *new* nodes are dispatched afterwards,
  * but nodes already in flight are left to finish naturally rather than being torn down mid-turn.
+ *
+ * Turn execution: `runAgentTurn` from `./interactiveTurnRunner` — a real interactive CLI session
+ * per node (like SwarmForge's attached sessions), not a one-shot invocation, so the user can give
+ * an agent feedback mid-task if needed. See that file's header for why and the trade-off against
+ * the one-shot design in `./oneShotTurnRunner` (kept, but no longer wired in here).
  */
 
 export interface ApprovalRequestInput {
@@ -229,7 +234,7 @@ export async function runWorkflowGraph(
     }
 
     node.status = "running";
-    node.message = `Sending to ${cliCommand} CLI`;
+    node.message = `Working in ${cliCommand} CLI`;
     publish();
 
     const terminalName = `Agent Studio: ${workflow.name} · ${node.agentName} (${cliCommand})`;
@@ -255,9 +260,7 @@ export async function runWorkflowGraph(
 
     if (!turn.success) {
       node.status = "failed";
-      node.message = turn.timedOut
-        ? `${cliCommand} CLI did not report completion in time`
-        : `${cliCommand} CLI exited with code ${turn.exitCode}`;
+      node.message = `${cliCommand} did not signal completion (no marker file) within the timeout`;
       aborted = true;
       abortError = `Step "${node.agentName}" failed: ${node.message}`;
       publish();
@@ -265,7 +268,7 @@ export async function runWorkflowGraph(
     }
 
     node.status = "completed";
-    node.message = `${cliCommand} CLI exited 0`;
+    node.message = `${cliCommand} signaled completion`;
     node.output = turn.output;
     publish();
   };

@@ -502,6 +502,57 @@ y `codex exec --help` reales (no adivinado):
 falta repetir el pedido de "ejecutá el plan" y confirmar que ahora sí toca archivos reales del
 repo (y que un comando Bash más riesgoso, si aparece, sigue pidiendo aprobación como antes).
 
+## Pivot a sesiones interactivas por nodo (reemplaza el one-shot) — implementado, sin probar (2026-08-09)
+
+El usuario, después de confirmar que el modo one-shot ya funcionaba, pidió volver a algo más
+parecido a SwarmForge: cada terminal de CLI corriendo **interactiva**, no one-shot, para poder
+darle feedback a un agente a mitad de tarea si hace falta.
+
+- `src/services/workflowRun/interactiveTurnRunner.ts` (nuevo, reemplaza a `oneShotTurnRunner.ts`
+  en el flujo real): lanza el CLI en modo interactivo una vez por nodo (`claude
+  --permission-mode acceptEdits`, sin `-p`; `codex --sandbox workspace-write`, sin `exec` — **esto
+  último no está confirmado contra `codex --help`, sólo se confirmó `codex exec --help` en una
+  sesión anterior**, hay que verificarlo), tipea el prompt como texto literal vía
+  `terminal.sendText` (no arma ningún comando de shell — esto además cierra de raíz la clase de
+  riesgo de inyección de Fase 5, ya no aplica: no hay `commandLine` que interpolar), con una
+  instrucción agregada pidiéndole al agente que escriba su respuesta final en un archivo marcador
+  cuando termine. La detección de fin de turno pasa a ser polling de ese archivo (cada 2s, timeout
+  de 10 min) en vez de un exit code real — es la misma filosofía que usa SwarmForge (el agente
+  avisa que terminó, la infraestructura no lo detecta por sí sola).
+- `src/services/workflowRun/workflowRunManager.ts`: sólo cambió el import (`runAgentTurn` ahora
+  viene de `interactiveTurnRunner.ts`) y los mensajes de estado (ya no tiene sentido hablar de
+  "exit code" cuando no hay uno real).
+- `oneShotTurnRunner.ts` **se mantiene intacto, sin usarse** en el flujo principal — sigue siendo
+  trabajo válido y documentado (Fase 5) por si en algún momento se quiere un modo totalmente
+  desatendido sin posibilidad de feedback (ej. corridas programadas/CI). No se borró.
+- La terminal de cada nodo queda **viva** después de que Agent Studio detecta el marcador — el
+  usuario puede seguir escribiéndole directamente a esa sesión si quiere seguir la conversación,
+  igual que con una sesión de SwarmForge.
+
+`npm run check` y `build:extension` verificados limpios. **Todavía no se corrió en la práctica.**
+Cosas concretas por confirmar:
+- Si `codex` (sin `exec`) realmente abre modo interactivo, y si `--sandbox workspace-write` es
+  válido en ese modo (sólo se confirmó para `codex exec`).
+- Si el delay fijo de 1.5s alcanza siempre para que el CLI termine de arrancar antes de tipearle
+  el prompt (mismo supuesto que ya usaba el código pre-Fase-5, no es nuevo, pero vale re-confirmar
+  ahora que corre una vez por nodo en paralelo, no una sola vez por workflow).
+- Si el agente efectivamente escribe el archivo marcador cuando se le pide dentro del prompt —
+  depende de que seguir esa instrucción específica, no hay garantía de infraestructura como con
+  un exit code real (trade-off ya documentado en el header de `interactiveTurnRunner.ts`).
+
+### Cómo probar
+
+1. F5 → correr el mismo workflow de antes en modo CLI.
+2. Confirmar que la terminal de cada nodo arranca el CLI en modo REPL normal (no `-p`/`exec`), le
+   tipea el prompt, y queda esperando.
+3. Cuando el agente termine y escriba el archivo `step-<nodeId>-done.txt`, el paso debería pasar a
+   `"completed"` solo, sin que el usuario tenga que hacer nada — pero la terminal sigue abierta e
+   interactiva.
+4. Probar escribirle algo más a mano en esa terminal después de que el paso ya se marcó
+   `"completed"`, para confirmar que la sesión sigue viva y responde.
+5. Con Codex: confirmar si `codex --sandbox workspace-write` abre una sesión interactiva utilizable
+   o si hace falta un flag distinto (revisar `codex --help`, no `codex exec --help`).
+
 ## Qué falta (próximo paso sugerido)
 
 **Fase 5 (detección de fin de turno) queda cerrada de punta a punta** para `claude` y `codex`,

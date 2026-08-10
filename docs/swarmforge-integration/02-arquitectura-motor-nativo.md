@@ -1,5 +1,16 @@
 # Arquitectura: motor nativo — N terminales de VS Code + detección de fin de turno
 
+> **Superado como mecanismo por defecto (2026-08-09).** Todo lo de este documento (Shell
+> Integration, invocación one-shot, `claude -p`/`codex exec`) está **validado empíricamente y
+> sigue siendo cierto**, pero el usuario pidió después volver a sesiones interactivas por nodo
+> (como hace SwarmForge: sesión persistente por rol, el propio agente avisa cuándo termina) para
+> poder darle feedback a un agente a mitad de tarea si hace falta. El mecanismo de detección de
+> fin de turno que se usa hoy es un archivo marcador que el agente escribe cuando termina,
+> implementado en `src/services/workflowRun/interactiveTurnRunner.ts`, no la detección por exit
+> code de este documento (`src/services/workflowRun/oneShotTurnRunner.ts`, que sigue existiendo,
+> compilando y sin usarse en el flujo principal — ver `PROGRESS.md` para el detalle de la
+> decisión). Este documento queda como referencia de lo ya validado, no como el diseño vigente.
+
 ## Estado actual (punto de partida real)
 
 `runWorkflow` en `src/extension.ts` (líneas ~607-818) hoy, en modo CLI:
