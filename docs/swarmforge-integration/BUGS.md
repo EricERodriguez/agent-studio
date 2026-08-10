@@ -37,6 +37,17 @@ compile.
 - Ver `src/services/workflowRun/codexAppServerRunner.ts` y `PROGRESS.md`, sección
   "`codex app-server` implementado" (2026-08-09).
 
+### 3. El toggle de handoff no muestra el ícono ⚡ al elegir "Auto"
+
+- **Síntoma**: al seleccionar un edge y tocar "⚡ Auto" en el toggle nuevo, el edge no muestra
+  ningún ícono en el grafo — sólo el texto "handoff" tal cual. El caso "👤 Human" sí funciona (se
+  ve el ícono en la etiqueta del edge).
+- **Causa (ya identificada, no arreglada todavía)**: en `GraphCanvas.tsx`, el cálculo del `label`
+  del edge sólo antepone un ícono cuando `handoffMode === "human"` — para `"automatic"` cae
+  directo a `edge.label` sin ningún prefijo. Es una asimetría simple de arreglar: agregar el
+  prefijo `⚡` también para el caso automático, igual que se hizo para `👤`.
+- Ver `PROGRESS.md`, sección "Editor de grafo: selector de `handoff.mode` por edge" (2026-08-09).
+
 ## Cómo agregar un bug nuevo
 
 Cada entrada: síntoma concreto (qué se hizo, qué se esperaba, qué pasó), qué se intentó si ya se

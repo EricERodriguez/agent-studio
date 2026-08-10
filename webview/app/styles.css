@@ -1210,6 +1210,71 @@ h4 {
   border: 2px solid var(--vscode-charts-green);
 }
 
+.graph-node.run-pending {
+  opacity: 0.6;
+}
+
+.graph-node.run-queued {
+  border: 2px solid var(--vscode-charts-orange, #d18616);
+}
+
+.graph-node.run-running {
+  border: 2px solid var(--studio-accent);
+  animation:
+    graph-node-pulse-ring 1.4s ease-out infinite,
+    graph-node-pulse-border 1.4s ease-in-out infinite;
+}
+
+.graph-node.run-waiting-approval {
+  border: 2px solid var(--vscode-charts-yellow, #d7ba7d);
+}
+
+.graph-node.run-completed {
+  border: 2px solid var(--vscode-charts-green);
+}
+
+.graph-node.run-failed {
+  border: 2px solid var(--vscode-charts-red, #f85149);
+}
+
+.graph-node.run-skipped {
+  opacity: 0.45;
+}
+
+@keyframes graph-node-pulse-ring {
+  0% {
+    box-shadow:
+      0 0 0 0 color-mix(in srgb, var(--studio-accent) 60%, transparent),
+      0 6px 20px rgba(0, 0, 0, 0.25);
+  }
+  70% {
+    box-shadow:
+      0 0 0 14px color-mix(in srgb, var(--studio-accent) 0%, transparent),
+      0 6px 20px rgba(0, 0, 0, 0.25);
+  }
+  100% {
+    box-shadow:
+      0 0 0 14px color-mix(in srgb, var(--studio-accent) 0%, transparent),
+      0 6px 20px rgba(0, 0, 0, 0.25);
+  }
+}
+
+@keyframes graph-node-pulse-border {
+  0%,
+  100% {
+    border-color: var(--studio-accent);
+  }
+  50% {
+    border-color: color-mix(in srgb, var(--studio-accent) 40%, white);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .graph-node.run-running {
+    animation: none;
+  }
+}
+
 .graph-node-head {
   display: flex;
   align-items: center;

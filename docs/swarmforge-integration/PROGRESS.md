@@ -778,6 +778,47 @@ Arreglado: el label ahora también llama a `setSelectedEdgeId(edge.id)` al hacer
 `styles.css`, clase nueva `.graph-edge-label-clickable`). `npm run check` y `build:webview`
 verificados limpios (CSS balanceado: 378/378).
 
+## Fase 8: colores/animación reales en los nodos del grafo (2026-08-09)
+
+Hasta ahora el estado de un run sólo se veía en el panel lateral (`orderedRunSteps`); el nodo del
+grafo (`.graph-node`) no cambiaba de aspecto durante la corrida. Implementado según el diseño ya
+escrito en `04-panel-ejecucion.md`:
+
+- `GraphCanvas.tsx`: nuevo `useMemo` `runStatusByNodeId` (mapa `nodeId → WorkflowRunStep.status`),
+  poblado sólo cuando hay un `selectedWorkflowRun` activo. Colocado después de la declaración de
+  `selectedWorkflowRun` (un primer intento de ubicarlo antes causaba un error de referencia por
+  temporal-dead-zone, corregido antes de compilar). El className de `.graph-node` ahora agrega
+  `` run-${status.replace(/_/g, "-")} `` cuando hay estado (`pending`, `queued`, `running`,
+  `waiting_approval` → `run-waiting-approval`, `completed`, `failed`, `skipped`).
+- `styles.css`: reglas nuevas `.graph-node.run-pending` (opacidad reducida),
+  `.graph-node.run-queued` (borde naranja), `.graph-node.run-running` (borde con
+  `--studio-accent` + animación `graph-node-pulse`, un pulso de `box-shadow` cada 1.6s),
+  `.graph-node.run-waiting-approval` (borde amarillo, mismo color que el ícono 👤 de los edges
+  humanos), `.graph-node.run-completed` (borde verde), `.graph-node.run-failed` (borde rojo),
+  `.graph-node.run-skipped` (opacidad reducida a 0.45). Se agregó
+  `@media (prefers-reduced-motion: reduce)` para desactivar la animación de pulso.
+
+`npm run check` falla por un error preexistente en `agentRegistryService.ts` (línea 257,
+`Property 'catch' does not exist on type 'PromiseLike<string>'`) — confirmado con `git stash` que
+ocurre igual sin estos cambios, no relacionado con esta sesión. `npm run build:webview` compila
+limpio. CSS balanceado: 390/390.
+
+**Confirmado por el usuario contra una corrida real** (2026-08-10): los colores por estado
+funcionan (naranja/azul/verde/rojo según corresponde), pero el pulso de `run-running` "apenas se
+ve el movimiento". Causa real: el `@keyframes graph-node-pulse` original iba de
+`spread 0 + opacidad 45%` a `spread 6px + opacidad 0%` — los dos extremos son casi invisibles
+porque spread grande y opacidad alta nunca coinciden a la vez, así que el anillo nunca llega a
+verse con fuerza. Arreglado con dos animaciones combinadas en `.graph-node.run-running`:
+- `graph-node-pulse-ring`: anillo tipo "ping" clásico, arranca pegado al borde con 60% de opacidad
+  y se expande hasta 14px de spread mientras se desvanece a 0%.
+- `graph-node-pulse-border`: el borde mismo alterna entre `--studio-accent` y una versión
+  aclarada (`color-mix` con blanco al 40%), para que el latido se note aunque el anillo quede
+  tapado por otro nodo encima.
+
+CSS balanceado: 394/394. `build:webview` limpio. Sin volver a confirmar visualmente todavía tras
+este segundo ajuste — el usuario reportó el problema y el fix se aplicó en la misma sesión, falta
+la confirmación de que ahora sí se nota el latido.
+
 ## Qué falta (próximo paso sugerido)
 
 **Fase 5 (detección de fin de turno) queda cerrada de punta a punta** para `claude` y `codex`,
@@ -796,8 +837,8 @@ de confirmar eso:
 - Catálogo de templates con prompts propios (Fase 3).
 - Idioma de interacción (Fase 2).
 - Estado/recuperación (persistir un run y reconectar terminales al reabrir VS Code, Fase 7),
-  colores/animación reales en los nodos del grafo — hoy sólo cambia el panel lateral, no
-  `.graph-node` (Fase 8, ya diseñada en `04-panel-ejecucion.md`), preflight, pruebas (Fases 9-10).
+  preflight, pruebas (Fases 9-10). Fase 8 (colores/animación en `.graph-node`) ya implementada,
+  ver sección de arriba — falta confirmarla contra una corrida real.
 
 ## Notas de handoff
 

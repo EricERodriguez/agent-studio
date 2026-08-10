@@ -403,6 +403,16 @@ export function GraphCanvas(): React.JSX.Element {
     });
   }, [agents, isWorkflow, selectedWorkflow, selectedWorkflowRun]);
 
+  const runStatusByNodeId = useMemo(() => {
+    const map = new Map<string, string>();
+    if (isWorkflow && selectedWorkflowRun) {
+      for (const step of selectedWorkflowRun.steps) {
+        map.set(step.nodeId, step.status);
+      }
+    }
+    return map;
+  }, [isWorkflow, selectedWorkflowRun]);
+
   const isEmptyAgentGraph = !isWorkflow && nodes.length === 0;
   const isEmptyWorkflowGraph = isWorkflow && (!selectedWorkflow || nodes.length === 0);
 
@@ -800,13 +810,15 @@ export function GraphCanvas(): React.JSX.Element {
 
             {nodes.map((node) => {
               const isSelected = node.id === selectedAgentId || node.agentId === selectedAgentId;
+              const runStatus = runStatusByNodeId.get(node.id);
               return (
                 <div
                   key={node.id}
                   className={
                     "graph-node" +
                     (isSelected ? " selected" : "") +
-                    (node.isEntry ? " entry" : "")
+                    (node.isEntry ? " entry" : "") +
+                    (runStatus ? ` run-${runStatus.replace(/_/g, "-")}` : "")
                   }
                   style={{
                     left: node.x,
