@@ -105,6 +105,9 @@ window.addEventListener(
     if (message.type === "objectiveRequest") {
       useStudioStore.getState().setPendingObjective(message.payload);
     }
+    if (message.type === "preflightWarningRequest") {
+      useStudioStore.getState().setPendingPreflightWarning(message.payload);
+    }
     if (message.type === "focusWorkflow") {
       const language = getStoredUiLanguage();
       useStudioStore.getState().selectWorkflow(message.payload.workflowId);

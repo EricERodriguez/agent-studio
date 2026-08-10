@@ -47,6 +47,10 @@ export type WebviewToExtensionMessage =
   | {
       type: "objectiveResponse";
       payload: { requestId: string; objective?: string };
+    }
+  | {
+      type: "preflightWarningResponse";
+      payload: { requestId: string; continue: boolean };
     };
 
 /** Asks the user, via a rich webview panel instead of vscode.window.showInputBox (too cramped
@@ -54,6 +58,13 @@ export type WebviewToExtensionMessage =
 export interface WorkflowObjectiveRequest {
   requestId: string;
   workflowName: string;
+}
+
+/** A non-blocking dashboard replacement for VS Code's native preflight modal. */
+export interface WorkflowPreflightWarningRequest {
+  requestId: string;
+  workflowName: string;
+  warnings: string[];
 }
 
 /** A workflow node is paused waiting for the user to approve or reject the handoff into it. */
@@ -165,4 +176,8 @@ export type ExtensionToWebviewMessage =
   | {
       type: "objectiveRequest";
       payload: WorkflowObjectiveRequest;
+    }
+  | {
+      type: "preflightWarningRequest";
+      payload: WorkflowPreflightWarningRequest;
     };

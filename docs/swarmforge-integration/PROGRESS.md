@@ -9,9 +9,7 @@ releer todo el hilo de conversación original.
 y la sección "Notas de handoff" con dónde quedaste, aunque sea a mitad de una fase. No dejes
 este archivo desactualizado al cortar la sesión.
 
-**Ver [`BUGS.md`](./BUGS.md) para el índice de bugs conocidos sin resolver** (split de terminales,
-Codex CLI sin correr nada) — dejados a propósito para resolver todos juntos más adelante, no
-frenan el resto del plan.
+**Ver [`BUGS.md`](./BUGS.md) para el historial de bugs resueltos y futuros hallazgos.**
 
 ## Decisión de arquitectura vigente (leer esto primero)
 
@@ -37,16 +35,16 @@ el diseño nuevo (motor nativo, sin tmux, sin socket externo, gating in-process)
 | Fase | Descripción | Estado | Última actualización |
 |---|---|---|---|
 | 0 | Distribución y alcance legal | Revisada para motor nativo — riesgo legal bajó de "bloqueante de runtime" a "no copiar texto literal de role prompts de SwarmForge" | 2026-08-09 |
-| 1 | Modelo de datos extendido (`WorkflowDefinition`/`Node`/`Edge`, `HandoffMode` por edge) | **Implementado y confirmado** — `HandoffMode`/`WorkflowEdge.handoff` en `src/domain/models.ts`; toggle "⚡ Auto / 👤 Human" en el editor de grafo (`GraphCanvas.tsx`), ya no hace falta editar el JSON a mano. Pendiente sólo el bug cosmético del ícono ⚡ (`BUGS.md` #2) | 2026-08-09 |
+| 1 | Modelo de datos extendido (`WorkflowDefinition`/`Node`/`Edge`, `HandoffMode` por edge) | **Implementado y confirmado** — `HandoffMode`/`WorkflowEdge.handoff` en `src/domain/models.ts`; toggle "⚡ Auto / 👤 Human" en el editor de grafo (`GraphCanvas.tsx`) con ambos íconos visibles | 2026-08-10 |
 | 2 | Separación `uiLanguage` / `interactionLanguage` / `languageOverride` | **Implementado y confirmado** — UI y override persistible verificados en EDH; el constructor común de Chat/workflows está cubierto por tests y Codex app-server completó un turno real en español con override del nodo | 2026-08-10 |
 | 3 | Catálogo de templates inspirados en two/four/six-pack | **Implementado y confirmado** — Two/Four/Six-Pack validados desde UI en Repository, reuso y colisión sin sobrescritura; Two-Pack Global quedó persistido/listado y un turno real de su Coder completó vía Codex. Son cadenas lineales de un pase (DAG estricto, sin loops) | 2026-08-10 |
 | 4 | `WorkflowRunManager` nativo (reemplaza el adaptador `src/services/swarmforge/*` de la v2) | **Implementado y confirmado** — `src/services/workflowRun/workflowRunManager.ts`, scheduler real basado en dependencias del grafo, corridas reales de varios pasos confirmadas por el usuario | 2026-08-09 |
-| 5 | N terminales de VS Code por workflow + detección de fin de turno | **Cerrado de punta a punta y confirmado.** Detección de fin de turno validada contra `claude`/`codex` reales. N terminales en paralelo (`WorkflowTerminalService`) confirmado corriendo simultáneo en una corrida real. Split de terminales sigue roto (`BUGS.md` #1, todos abren como tabs nuevos) | 2026-08-09 |
+| 5 | N terminales de VS Code por workflow + detección de fin de turno | **Cerrado de punta a punta y confirmado.** Detección de fin de turno validada contra `claude`/`codex` reales. Los hijos de Claude se crean con el comando nativo de split de VS Code; un Six-Pack real mostró el segundo como `split 2 of 2` junto al primero | 2026-08-10 |
 | 6 | Handoff control: Human-in-the-Loop + IA como nodo del grafo (`HandoffMode` = sólo `automatic`/`human`) | **Implementado y confirmado** — `workflowRunManager.ts` pausa el nodo en `waiting_approval`, panel de aprobación propio (no modal nativo) confirmado bloqueando correctamente en una corrida real, con el toggle del editor de grafo ya no hace falta editar JSON | 2026-08-09 |
 | 7 | Estado y recuperación (persistencia de un run, reconexión al reabrir VS Code) | **Implementado y confirmado en EDH** — cada update CLI persiste un manifest atómico; al recargar durante un step Claude realmente activo, el manifest y el dashboard pasaron a `interrupted` sólo para inspección, sin adoptar ni reintentar | 2026-08-10 |
 | 8 | Panel de ejecución y estados visuales del grafo (`queued`/`running` animado/`completed`) | **Implementado y confirmado** — colores por estado en `.graph-node` y animación de pulso en `running`, confirmados por el usuario contra una corrida real (dos rondas: colores, luego intensidad del pulso) | 2026-08-10 |
-| 9 | Preflight de seguridad | **Implementado y confirmado salvo `BUGS.md` #4** — CLI inexistente bloquea antes del objetivo/sin manifest; repo sucio llega al objetivo sin warning. El modal de workspace sin git no aparece en EDH y queda diferido como bug | 2026-08-10 |
-| 10 | Plan de pruebas | **Implementado y confirmado** — `npm test` ejecuta 10 tests Node para prompts, idioma, templates y recuperación; checklist EDH reproducible en `08-checklist-edh.md`; smokes de proveedor/recuperación registrados | 2026-08-10 |
+| 9 | Preflight de seguridad | **Implementado y confirmado** — CLI inexistente bloquea antes del objetivo/sin manifest; repo sucio llega al objetivo sin warning; workspace sin Git usa un overlay propio confirmado con Cancel y Continue | 2026-08-10 |
+| 10 | Plan de pruebas | **Implementado y confirmado** — `npm test` ejecuta 12 tests Node para prompts, idioma, templates, recuperación y labels de handoff; checklist EDH reproducible en `08-checklist-edh.md`; smokes de proveedor/recuperación registrados | 2026-08-10 |
 
 (La numeración de fases se comprimió de 0-12 a 0-10 al fusionar lo que antes eran fases separadas
 "5+6" y "7+8" de la integración con SwarmForge en fases únicas del motor nativo — ver
@@ -1165,10 +1163,29 @@ queda abierto es el modal de carpeta sin git, ahora `BUGS.md` #4.
 
 ## Qué falta (próximo paso sugerido)
 
-No quedan fases ni cobertura prevista sin validar. Quedan solamente los cuatro bugs diferidos de
-`BUGS.md`: split de terminales, ícono ⚡ del handoff automático, el error preexistente de
-`npm run check` y el modal de preflight para workspace sin git. Se mantienen pospuestos hasta que
-el usuario autorice abordarlos.
+No quedan fases, cobertura prevista ni bugs conocidos abiertos de esta integración.
+
+## Cierre de bugs diferidos (2026-08-10)
+
+Se siguió el orden pedido: relevamiento local, agente QA en sólo lectura y luego correcciones.
+
+- **Split de terminales**: `location.parentTerminal` seguía produciendo tabs en un Six-Pack real,
+  incluso después de esperar el ciclo de apertura. Los hijos usan ahora
+  `workbench.action.terminal.split`, después de activar el ancla y serializar las creaciones. Tras
+  recargar el EDH y avanzar el primer paso con su marcador de prueba, el árbol accesible mostró
+  `split 1 of 2` y `split 2 of 2`; captura `/tmp/agent-studio-split-command-fix.png`.
+- **Ícono automático**: `formatWorkflowHandoffLabel` centraliza `automatic → ⚡` y
+  `human → 👤`, incluidos labels vacíos. Test unitario nuevo y captura real:
+  `/tmp/agent-studio-auto-label.png`.
+- **Typecheck**: `AgentRegistryService` ahora lee el `Thenable` de VS Code mediante
+  `await`/`try-catch`, sin llamar `.catch()` sobre `PromiseLike`. `npm run check` terminó limpio.
+- **Preflight sin Git**: el modal nativo no apareció nuevamente en el workbench padre. Se lo
+  reemplazó por `PreflightWarningPanel`; en EDH, Cancel dejó `Workflow run cancelled.` y Continue
+  abrió el textarea de objetivo. Capturas: `/tmp/agent-studio-preflight-overlay-confirmed.png` y
+  `/tmp/agent-studio-preflight-continued.png`.
+
+Verificación final: `npm test` (12/12), `npm run check`, `npm run build` y `git diff --check`
+pasaron. No se creó ningún commit ni se hizo push.
 
 ## Notas de handoff
 

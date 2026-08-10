@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useStudioStore, selectors } from "../store/useStudioStore";
 import { useI18n } from "../i18n";
+import { formatWorkflowHandoffLabel } from "../graphHandoffLabel";
 import { vscode } from "../hooks/useVsCodeApi";
 import { roleColor } from "../utils/roleColor";
 import { layoutAgentGraph } from "../utils/graphLayout";
@@ -309,7 +310,7 @@ export function GraphCanvas(): React.JSX.Element {
             d: bz.d,
             mx: bz.mx,
             my: bz.my,
-            label: handoffMode === "human" ? `👤 ${edge.label ?? ""}`.trim() : edge.label,
+            label: formatWorkflowHandoffLabel(edge.label, handoffMode),
             stroke,
             marker,
             width,

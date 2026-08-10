@@ -251,10 +251,16 @@ export class AgentRegistryService {
     // absent in the incoming payload. If a field is present but empty, treat
     // it as an explicit user action (for example, clearing all handoffs).
     try {
-      const existing = await vscode.workspace.fs
-        .readFile(vscode.Uri.file(agentPath))
-        .then((b) => Buffer.from(b).toString("utf8"))
-        .catch(() => null);
+      let existing: string | null = null;
+      try {
+        const bytes = await vscode.workspace.fs.readFile(vscode.Uri.file(agentPath));
+        existing = Buffer.from(bytes).toString("utf8");
+      } catch {
+        // A new agent has no existing file to preserve metadata from. VS Code's
+        // FileSystem API intentionally exposes a Thenable, whose type does not
+        // guarantee Promise.catch(), so keep this on the await/try-catch path.
+        existing = null;
+      }
       if (existing) {
         try {
           const parsedExisting = this.markdownService.parse(existing);

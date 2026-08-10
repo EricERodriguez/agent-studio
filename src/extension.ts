@@ -87,6 +87,7 @@ export async function activate(
   let workflows: WorkflowDefinition[] = [];
   const pendingApprovals = new Map<string, (decision: ApprovalDecision) => void>();
   const pendingObjectives = new Map<string, (objective: string | undefined) => void>();
+  const pendingPreflightWarnings = new Map<string, (proceed: boolean) => void>();
   const activeRuns = new Map<string, { cancel: () => void }>();
   const runWorkspacePath =
     vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || context.extensionPath;
@@ -253,6 +254,14 @@ export async function activate(
       }
       pendingObjectives.delete(requestId);
       resolve(objective);
+    },
+    onPreflightWarningResponse: (requestId, proceed) => {
+      const resolve = pendingPreflightWarnings.get(requestId);
+      if (!resolve) {
+        return;
+      }
+      pendingPreflightWarnings.delete(requestId);
+      resolve(proceed);
     },
     onCreateAgent: async () => {
       await createAgent();
@@ -732,12 +741,16 @@ export async function activate(
         return;
       }
       if (preflight.warnings.length > 0) {
-        const confirmed = await vscode.window.showWarningMessage(
-          preflight.warnings.join(" "),
-          { modal: true },
-          "Continue anyway",
-        );
-        if (confirmed !== "Continue anyway") {
+        const proceed = await new Promise<boolean>((resolve) => {
+          const requestId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+          pendingPreflightWarnings.set(requestId, resolve);
+          dashboard.postPreflightWarningRequest({
+            requestId,
+            workflowName: workflow.name,
+            warnings: preflight.warnings,
+          });
+        });
+        if (!proceed) {
           dashboard.postInfo("Workflow run cancelled.");
           return;
         }

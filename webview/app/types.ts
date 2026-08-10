@@ -149,11 +149,21 @@ export type ExtensionToWebviewMessage =
   | {
       type: "objectiveRequest";
       payload: WorkflowObjectiveRequest;
+    }
+  | {
+      type: "preflightWarningRequest";
+      payload: WorkflowPreflightWarningRequest;
     };
 
 export interface WorkflowObjectiveRequest {
   requestId: string;
   workflowName: string;
+}
+
+export interface WorkflowPreflightWarningRequest {
+  requestId: string;
+  workflowName: string;
+  warnings: string[];
 }
 
 export interface WorkflowApprovalRequest {

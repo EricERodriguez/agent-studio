@@ -5,6 +5,7 @@ import type {
   WebviewToExtensionMessage,
   WorkflowApprovalRequest,
   WorkflowObjectiveRequest,
+  WorkflowPreflightWarningRequest,
 } from "../domain/messages";
 import type {
   AgentDefinition,
@@ -34,6 +35,7 @@ export interface DashboardPanelHandlers {
   ) => Promise<void>;
   onCancelWorkflow: (runId: string) => void;
   onObjectiveResponse: (requestId: string, objective?: string) => void;
+  onPreflightWarningResponse: (requestId: string, proceed: boolean) => void;
   onCreateAgent: () => Promise<void>;
   onEditAgent: (agentId: string) => Promise<void>;
   onExportAgent: (agentId: string, providers: AgentProvider[]) => Promise<void>;
@@ -136,6 +138,12 @@ export class DashboardPanel {
               message.payload.objective,
             );
             break;
+          case "preflightWarningResponse":
+            this.handlers.onPreflightWarningResponse(
+              message.payload.requestId,
+              message.payload.continue,
+            );
+            break;
           case "runWorkflow":
             await this.handlers.onRunWorkflow(
               message.payload.workflowId,
@@ -224,6 +232,10 @@ export class DashboardPanel {
 
   postObjectiveRequest(payload: WorkflowObjectiveRequest): void {
     this.postMessage({ type: "objectiveRequest", payload });
+  }
+
+  postPreflightWarningRequest(payload: WorkflowPreflightWarningRequest): void {
+    this.postMessage({ type: "preflightWarningRequest", payload });
   }
 
   focusAgentEditor(

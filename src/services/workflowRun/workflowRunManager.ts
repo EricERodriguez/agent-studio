@@ -279,7 +279,7 @@ export async function runWorkflowGraph(
       turn = await codexSessions.runTurn(nodeId, cwd, prompt, 10 * 60 * 1000, shouldCancel);
     } else {
       const claudeTurn = await runAgentTurn({
-        terminal: terminals.getOrCreateTerminal(
+        terminal: await terminals.getOrCreateTerminal(
           nodeId,
           `Agent Studio: ${workflow.name} · ${node.agentName} (${cliCommand})`,
           cwd,
