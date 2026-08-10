@@ -17,6 +17,7 @@ import { ChatBridgeService } from "./services/chatBridgeService";
 import { SampleDataService } from "./services/sampleDataService";
 import { WorkflowService } from "./services/workflowService";
 import { runShellIntegrationPrototype } from "./services/workflowRun/shellIntegrationPrototype";
+import { runPreflightChecks } from "./services/workflowRun/preflightCheck";
 import {
   runWorkflowGraph,
   type ApprovalDecision,
@@ -690,6 +691,26 @@ export async function activate(
 
     if (mode === "cli-claude" || mode === "cli-codex") {
       const cliCommand = mode === "cli-claude" ? "claude" : "codex";
+      const cwd =
+        vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || context.extensionPath;
+
+      const preflight = await runPreflightChecks(cwd, mode);
+      if (preflight.blockers.length > 0) {
+        dashboard.postError(preflight.blockers.join(" "));
+        return;
+      }
+      if (preflight.warnings.length > 0) {
+        const confirmed = await vscode.window.showWarningMessage(
+          preflight.warnings.join(" "),
+          { modal: true },
+          "Continue anyway",
+        );
+        if (confirmed !== "Continue anyway") {
+          dashboard.postInfo("Workflow run cancelled.");
+          return;
+        }
+      }
+
       const objective = await new Promise<string | undefined>((resolve) => {
         const requestId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
         pendingObjectives.set(requestId, resolve);
@@ -700,8 +721,6 @@ export async function activate(
         return;
       }
 
-      const cwd =
-        vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || context.extensionPath;
       const runId = `${workflow.id}-${Date.now()}`;
       const runDir = path.join(cwd, ".agent-studio", "runs", runId);
 

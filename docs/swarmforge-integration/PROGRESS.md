@@ -37,15 +37,15 @@ el diseño nuevo (motor nativo, sin tmux, sin socket externo, gating in-process)
 | Fase | Descripción | Estado | Última actualización |
 |---|---|---|---|
 | 0 | Distribución y alcance legal | Revisada para motor nativo — riesgo legal bajó de "bloqueante de runtime" a "no copiar texto literal de role prompts de SwarmForge" | 2026-08-09 |
-| 1 | Modelo de datos extendido (`WorkflowDefinition`/`Node`/`Edge`, `HandoffMode` por edge) | **Implementado** — `HandoffMode`/`WorkflowEdge.handoff` en `src/domain/models.ts`, estados `queued`/`waiting_approval` en `WorkflowRunStep` (`src/domain/messages.ts`, `webview/app/types.ts`). Sin UI todavía para setear `handoff.mode` desde el editor de grafo — sólo editando el JSON del workflow a mano | 2026-08-09 |
+| 1 | Modelo de datos extendido (`WorkflowDefinition`/`Node`/`Edge`, `HandoffMode` por edge) | **Implementado y confirmado** — `HandoffMode`/`WorkflowEdge.handoff` en `src/domain/models.ts`; toggle "⚡ Auto / 👤 Human" en el editor de grafo (`GraphCanvas.tsx`), ya no hace falta editar el JSON a mano. Pendiente sólo el bug cosmético del ícono ⚡ (`BUGS.md` #3) | 2026-08-09 |
 | 2 | Separación `uiLanguage` / `interactionLanguage` / `languageOverride` | Diseño cerrado, no implementado, sin cambios por el pivot | 2026-08-09 |
-| 3 | Catálogo de templates inspirados en two/four/six-pack | Revisada — prompts propios en vez de copiar los de SwarmForge, ver `01-plan-revisado.md` | 2026-08-09 |
-| 4 | `WorkflowRunManager` nativo (reemplaza el adaptador `src/services/swarmforge/*` de la v2) | **Implementado** — `src/services/workflowRun/workflowRunManager.ts`, scheduler real basado en dependencias del grafo (no DFS lineal), compila y buildea limpio, todavía no probado en la práctica | 2026-08-09 |
-| 5 | N terminales de VS Code por workflow + detección de fin de turno | **Cerrado (detección de fin de turno) e implementado (N terminales)**. Detección de fin de turno validada de punta a punta contra `claude`/`codex` reales. N terminales en paralelo (`WorkflowTerminalService`, un `vscode.Terminal` por nodo) implementado en `workflowRunManager.ts`, sin probar todavía en la práctica | 2026-08-09 |
-| 6 | Handoff control: Human-in-the-Loop + IA como nodo del grafo (`HandoffMode` = sólo `automatic`/`human`) | **Implementado** — `workflowRunManager.ts` pausa el nodo en `waiting_approval` y muestra `vscode.window.showWarningMessage` modal (Approve/Reject) cuando el edge entrante tiene `handoff.mode: "human"`; automático si no. Sin probar todavía en la práctica (no hay UI para setear `human` desde el editor, hay que editar el JSON) | 2026-08-09 |
+| 3 | Catálogo de templates inspirados en two/four/six-pack | Revisada — prompts propios en vez de copiar los de SwarmForge, ver `01-plan-revisado.md`. No implementado todavía | 2026-08-09 |
+| 4 | `WorkflowRunManager` nativo (reemplaza el adaptador `src/services/swarmforge/*` de la v2) | **Implementado y confirmado** — `src/services/workflowRun/workflowRunManager.ts`, scheduler real basado en dependencias del grafo, corridas reales de varios pasos confirmadas por el usuario | 2026-08-09 |
+| 5 | N terminales de VS Code por workflow + detección de fin de turno | **Cerrado de punta a punta y confirmado.** Detección de fin de turno validada contra `claude`/`codex` reales. N terminales en paralelo (`WorkflowTerminalService`) confirmado corriendo simultáneo en una corrida real. Split de terminales sigue roto (`BUGS.md` #1, todos abren como tabs nuevos) | 2026-08-09 |
+| 6 | Handoff control: Human-in-the-Loop + IA como nodo del grafo (`HandoffMode` = sólo `automatic`/`human`) | **Implementado y confirmado** — `workflowRunManager.ts` pausa el nodo en `waiting_approval`, panel de aprobación propio (no modal nativo) confirmado bloqueando correctamente en una corrida real, con el toggle del editor de grafo ya no hace falta editar JSON | 2026-08-09 |
 | 7 | Estado y recuperación (persistencia de un run, reconexión al reabrir VS Code) | Sin revisar en detalle todavía | No iniciado |
-| 8 | Panel de ejecución y estados visuales del grafo (`queued`/`running` animado/`completed`) | Diseño técnico concreto listo (`04-panel-ejecucion.md`), anclado a `GraphCanvas.tsx`/`styles.css` reales, no implementado | 2026-08-09 |
-| 9 | Preflight de seguridad | Parcialmente cubierto por `05-riesgos.md` | No iniciado |
+| 8 | Panel de ejecución y estados visuales del grafo (`queued`/`running` animado/`completed`) | **Implementado y confirmado** — colores por estado en `.graph-node` y animación de pulso en `running`, confirmados por el usuario contra una corrida real (dos rondas: colores, luego intensidad del pulso) | 2026-08-10 |
+| 9 | Preflight de seguridad | **Implementado, sin probar en la práctica todavía** — ver sección de abajo | 2026-08-10 |
 | 10 | Plan de pruebas | Sin revisar en detalle todavía | No iniciado |
 
 (La numeración de fases se comprimió de 0-12 a 0-10 al fusionar lo que antes eran fases separadas
@@ -815,30 +815,56 @@ verse con fuerza. Arreglado con dos animaciones combinadas en `.graph-node.run-r
   aclarada (`color-mix` con blanco al 40%), para que el latido se note aunque el anillo quede
   tapado por otro nodo encima.
 
-CSS balanceado: 394/394. `build:webview` limpio. Sin volver a confirmar visualmente todavía tras
-este segundo ajuste — el usuario reportó el problema y el fix se aplicó en la misma sesión, falta
-la confirmación de que ahora sí se nota el latido.
+CSS balanceado: 394/394. `build:webview` limpio. **Confirmado por el usuario en la práctica**
+("excelente ahora si se ve el latido", 2026-08-10) — Fase 8 queda cerrada de punta a punta:
+colores por estado y animación de `running` funcionando en corridas reales.
+
+## Fase 9: preflight de seguridad (2026-08-10)
+
+Antes de esto no había ninguna verificación previa a lanzar un run: si `claude`/`codex` no
+estaban en el PATH, o el usuario apuntó `agentStudio.cli.claudeCommand` a un ejecutable roto, el
+primer síntoma visible era un nodo colgado sin explicación (justamente el tipo de fallo silencioso
+que ya pasó una vez con Codex, `BUGS.md` #2). Implementado según lo previsto en `01-plan-revisado.md`
+(Fase 9): "verificar que el workspace es un repo git, mostrar cambios sin commit antes de lanzar
+un run, confirmar que las CLIs de los proveedores elegidos están instaladas".
+
+- Nuevo `src/services/workflowRun/preflightCheck.ts`, función `runPreflightChecks(cwd, mode)`:
+  - **Blocker** (corta el run antes de pedir el objetivo): el ejecutable de la CLI no arranca.
+    Se detecta corriendo `<executable> --version` (`spawn` sin `shell:true`, evita cualquier
+    riesgo de inyección) con un timeout de 5s por si el binario se queda esperando stdin en vez
+    de salir. Para `codex` el ejecutable es literal `"codex"` (así es como lo lanza
+    `codexAppServerRunner.ts` — no lee `agentStudio.cli.codexCommand`, esa config quedó muerta
+    para Codex desde el pivot a app-server). Para `claude` se toma el primer token de
+    `agentStudio.cli.claudeCommand` (por defecto `claude`).
+  - **Warning** (modal nativo de confirmación, no bloquea si el usuario elige seguir): el
+    workspace no es un repo git (`git rev-parse --is-inside-work-tree`), o hay cambios sin
+    commitear (`git status --porcelain`) — para poder distinguir después qué cambió el agente de
+    qué ya estaba sucio antes de arrancar.
+- `src/extension.ts`, `runWorkflow`: el `cwd` ahora se calcula antes de pedir el objetivo (antes
+  se calculaba después), se corre el preflight ahí mismo. Si hay blockers, `dashboard.postError`
+  y corta sin pedir objetivo. Si hay warnings, `vscode.window.showWarningMessage(..., {modal:
+  true}, "Continue anyway")` — mismo patrón ya usado para confirmar `deleteAgent`/`deleteWorkflow`
+  en este archivo, no se inventó un mecanismo nuevo.
+
+Probado manualmente contra este mismo repo (no vía extensión, corriendo los comandos crudos):
+`git rev-parse --is-inside-work-tree` → `true`, `git status --porcelain` devuelve 3 líneas (matchea
+el estado real del working tree en este momento), `claude --version`/`codex --version` devuelven
+exit 0 — confirma que el parsing y la detección de disponibilidad funcionan como se espera contra
+binarios reales, no sólo en teoría. `npm run check` (sin contar el error preexistente de
+`agentRegistryService.ts:257`) y `npm run build:extension` compilan limpio. **Sin probar todavía
+disparando un run real desde la extensión** — falta confirmar que el blocker corta antes del
+modal de objetivo cuando la CLI no existe, y que el warning de cambios sin commitear aparece y
+respeta la decisión del usuario (Continue/Cancel).
 
 ## Qué falta (próximo paso sugerido)
 
-**Fase 5 (detección de fin de turno) queda cerrada de punta a punta** para `claude` y `codex`,
-confirmada por el usuario contra corridas reales de 5 pasos: inyección resuelta, objetivo del run
-funcionando, encadenado real entre pasos, output limpio para encadenar (sin banner/traza), y
-ambos flags de invocación (`claude -p` / `codex exec -o`) confirmados. No queda nada pendiente de
-validación en esta fase salvo un turno de varios minutos (sólo se probó hasta ~11s) y el
-comportamiento si el usuario interactúa manualmente con la terminal durante un turno — ninguno de
-los dos bloquea seguir.
-
-**N terminales en paralelo + gating humano ya están implementados** (ver la sección de arriba) —
-falta correrlos en la práctica, que es el próximo paso concreto (ver "Cómo probar esto"). Después
-de confirmar eso:
-- Editor de grafo: agregar UI para setear `handoff.mode` por edge (hoy sólo se puede editando el
-  JSON a mano) — es la pieza que falta para que el gating humano sea usable sin editar archivos.
-- Catálogo de templates con prompts propios (Fase 3).
-- Idioma de interacción (Fase 2).
-- Estado/recuperación (persistir un run y reconectar terminales al reabrir VS Code, Fase 7),
-  preflight, pruebas (Fases 9-10). Fase 8 (colores/animación en `.graph-node`) ya implementada,
-  ver sección de arriba — falta confirmarla contra una corrida real.
+Quedan sin iniciar: Fase 2 (idioma de interacción), Fase 3 (catálogo de templates con prompts
+propios), Fase 7 (estado/recuperación — persistir un run y reconectar al reabrir VS Code; el
+diseño previo asumía invocación one-shot y quedó desactualizado por el pivot a sesiones
+interactivas, hay que rediseñarlo antes de implementarlo), Fase 10 (plan de pruebas). Fase 9
+(preflight) recién implementada arriba, falta confirmarla en la práctica. Aparte de eso, sólo
+quedan los tres bugs de `BUGS.md`, deliberadamente pospuestos para el final por pedido del
+usuario.
 
 ## Notas de handoff
 
