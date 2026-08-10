@@ -52,6 +52,8 @@ export interface AgentDefinition {
   };
 }
 
+export type HandoffMode = "automatic" | "human";
+
 export interface WorkflowDefinition {
   id: string;
   name: string;
@@ -62,7 +64,13 @@ export interface WorkflowDefinition {
     position: { x: number; y: number };
     isEntry?: boolean;
   }>;
-  edges: Array<{ id: string; source: string; target: string; label?: string }>;
+  edges: Array<{
+    id: string;
+    source: string;
+    target: string;
+    label?: string;
+    handoff?: { mode: HandoffMode };
+  }>;
   sourcePath?: string;
   sourceScope?: AgentScope;
   shadowedWorkflow?: {
@@ -130,7 +138,19 @@ export type ExtensionToWebviewMessage =
       payload: {
         workflowId: string;
       };
+    }
+  | {
+      type: "approvalRequest";
+      payload: WorkflowApprovalRequest;
     };
+
+export interface WorkflowApprovalRequest {
+  requestId: string;
+  workflowId: string;
+  nodeId: string;
+  agentName: string;
+  context: string;
+}
 
 export interface WorkflowRunStep {
   nodeId: string;

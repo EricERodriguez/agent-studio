@@ -1,4 +1,3 @@
-import * as vscode from "vscode";
 import type { AgentDefinition, WorkflowDefinition } from "../../domain/models";
 import type { WorkflowRunStep } from "../../domain/messages";
 import type { ChatBridgeService } from "../chatBridgeService";
@@ -13,14 +12,29 @@ import { runAgentTurn } from "./oneShotTurnRunner";
  * HandoffMode gating: an edge's `handoff.mode` (see src/domain/models.ts) controls the *target*
  * node's dispatch. `"automatic"` (or no `handoff` at all, for backward compatibility with
  * existing workflows) dispatches immediately once predecessors complete. `"human"` pauses the
- * node in `"waiting_approval"` and shows a modal approval prompt — there is no `"ai-review"` mode
- * here by design: an AI reviewer is just a regular node in the graph, not special engine logic
- * that trusts a structured decision an agent produced. See
- * docs/swarmforge-integration/03-arquitectura-handoff-control.md.
+ * node in `"waiting_approval"` and calls the injected `requestApproval` callback — the caller
+ * (extension.ts) implements that by posting an `approvalRequest` message to the Agent Studio
+ * webview and resolving once the user answers there, so the full predecessor output is reviewable
+ * in a real scrollable panel instead of a truncated native `vscode.window.showWarningMessage`
+ * modal (that was the first cut here and a real user tried it — the modal cut off content and
+ * gave no way to attach instructions). There is no `"ai-review"` mode here by design: an AI
+ * reviewer is just a regular node in the graph, not special engine logic that trusts a structured
+ * decision an agent produced. See docs/swarmforge-integration/03-arquitectura-handoff-control.md.
  *
  * On any node failure (or a rejected human approval), no *new* nodes are dispatched afterwards,
  * but nodes already in flight are left to finish naturally rather than being torn down mid-turn.
  */
+
+export interface ApprovalRequestInput {
+  nodeId: string;
+  agentName: string;
+  context: string;
+}
+
+export interface ApprovalDecision {
+  decision: "approve" | "reject";
+  instructions?: string;
+}
 
 export interface RunWorkflowGraphParams {
   workflow: WorkflowDefinition;
@@ -31,6 +45,7 @@ export interface RunWorkflowGraphParams {
   cwd: string;
   chatBridgeService: ChatBridgeService;
   onUpdate: (steps: WorkflowRunStep[]) => void;
+  requestApproval: (request: ApprovalRequestInput) => Promise<ApprovalDecision>;
 }
 
 export interface RunWorkflowGraphResult {
@@ -85,8 +100,17 @@ function joinPredecessorOutput(
 export async function runWorkflowGraph(
   params: RunWorkflowGraphParams,
 ): Promise<RunWorkflowGraphResult> {
-  const { workflow, agents, cliCommand, objective, runDir, cwd, chatBridgeService, onUpdate } =
-    params;
+  const {
+    workflow,
+    agents,
+    cliCommand,
+    objective,
+    runDir,
+    cwd,
+    chatBridgeService,
+    onUpdate,
+    requestApproval,
+  } = params;
 
   const nodeById = new Map(workflow.nodes.map((node) => [node.id, node]));
   const entry = workflow.nodes.find((node) => node.isEntry);
@@ -182,20 +206,18 @@ export async function runWorkflowGraph(
 
     const preds = predecessorsOf(nodeId);
     const requiresApproval = preds.some((edge) => edge.handoff?.mode === "human");
+    let approvalInstructions: string | undefined;
 
     if (requiresApproval) {
       node.status = "waiting_approval";
       publish();
-      const predecessorOutput = joinPredecessorOutput(preds, runtime) ?? "";
-      const preview = predecessorOutput.slice(0, 500);
-      const suffix = predecessorOutput.length > 500 ? "\n…" : "";
-      const choice = await vscode.window.showWarningMessage(
-        `Approve handoff to "${node.agentName}"?\n\n${preview}${suffix}`,
-        { modal: true },
-        "Approve",
-        "Reject",
-      );
-      if (choice !== "Approve") {
+      const context = joinPredecessorOutput(preds, runtime) ?? "";
+      const approval = await requestApproval({
+        nodeId,
+        agentName: node.agentName,
+        context,
+      });
+      if (approval.decision !== "approve") {
         node.status = "failed";
         node.message = "Handoff rejected by user";
         aborted = true;
@@ -203,6 +225,7 @@ export async function runWorkflowGraph(
         publish();
         return;
       }
+      approvalInstructions = approval.instructions?.trim() || undefined;
     }
 
     node.status = "running";
@@ -212,10 +235,20 @@ export async function runWorkflowGraph(
     const terminalName = `Agent Studio: ${workflow.name} · ${node.agentName} (${cliCommand})`;
     const terminal = terminals.getOrCreateTerminal(nodeId, terminalName, cwd);
 
+    const predecessorOutput = joinPredecessorOutput(preds, runtime);
+    const contextForPrompt = approvalInstructions
+      ? [
+          predecessorOutput,
+          `[Instrucciones del usuario al aprobar este handoff]:\n${approvalInstructions}`,
+        ]
+          .filter(Boolean)
+          .join("\n\n---\n\n")
+      : predecessorOutput;
+
     const turn = await runAgentTurn({
       terminal,
       executable: cliCommand,
-      prompt: chatBridgeService.buildTurnPrompt(agent, objective, joinPredecessorOutput(preds, runtime)),
+      prompt: chatBridgeService.buildTurnPrompt(agent, objective, contextForPrompt),
       runDir,
       stepId: nodeId,
     });

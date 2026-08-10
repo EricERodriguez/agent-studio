@@ -17,7 +17,10 @@ import { ChatBridgeService } from "./services/chatBridgeService";
 import { SampleDataService } from "./services/sampleDataService";
 import { WorkflowService } from "./services/workflowService";
 import { runShellIntegrationPrototype } from "./services/workflowRun/shellIntegrationPrototype";
-import { runWorkflowGraph } from "./services/workflowRun/workflowRunManager";
+import {
+  runWorkflowGraph,
+  type ApprovalDecision,
+} from "./services/workflowRun/workflowRunManager";
 import {
   AgentsTreeProvider,
   CapabilitiesTreeProvider,
@@ -75,6 +78,7 @@ export async function activate(
 
   let agents: AgentDefinition[] = [];
   let workflows: WorkflowDefinition[] = [];
+  const pendingApprovals = new Map<string, (decision: ApprovalDecision) => void>();
 
   const agentsTreeProvider = new AgentsTreeProvider();
   const workflowsTreeProvider = new WorkflowsTreeProvider();
@@ -215,6 +219,14 @@ export async function activate(
       }
       const doc = await vscode.workspace.openTextDocument(workflow.sourcePath);
       await vscode.window.showTextDocument(doc, { preview: false });
+    },
+    onApprovalResponse: (requestId, decision, instructions) => {
+      const resolve = pendingApprovals.get(requestId);
+      if (!resolve) {
+        return;
+      }
+      pendingApprovals.delete(requestId);
+      resolve({ decision, instructions });
     },
     onCreateAgent: async () => {
       await createAgent();
@@ -701,6 +713,18 @@ export async function activate(
           lastSteps = steps;
           dashboard.postWorkflowRunUpdate({ ...baseState, status: "running", steps });
         },
+        requestApproval: (request) =>
+          new Promise<ApprovalDecision>((resolve) => {
+            const requestId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+            pendingApprovals.set(requestId, resolve);
+            dashboard.postApprovalRequest({
+              requestId,
+              workflowId: workflow.id,
+              nodeId: request.nodeId,
+              agentName: request.agentName,
+              context: request.context,
+            });
+          }),
       });
 
       dashboard.postWorkflowRunUpdate({

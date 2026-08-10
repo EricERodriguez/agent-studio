@@ -99,6 +99,9 @@ window.addEventListener(
         2200,
       );
     }
+    if (message.type === "approvalRequest") {
+      useStudioStore.getState().addApprovalRequest(message.payload);
+    }
     if (message.type === "focusWorkflow") {
       const language = getStoredLanguage();
       useStudioStore.getState().selectWorkflow(message.payload.workflowId);

@@ -337,7 +337,7 @@ encadenar, y ambos flags de invocación confirmados contra corridas reales.
    el texto que aparece como "output del paso anterior" en `step-1-prompt.txt`, no el contenido
    completo de `step-0-output.txt`.
 
-## N terminales en paralelo + gating humano — implementado, sin probar todavía (2026-08-09)
+## N terminales en paralelo + gating humano — implementado y parcialmente confirmado (2026-08-09)
 
 Con Fase 5 (detección de fin de turno) cerrada, se construyó lo que originalmente pidió el
 usuario y todavía no existía: cada agente del workflow corre en su propia terminal integrada, en
@@ -355,17 +355,55 @@ paralelo cuando el grafo lo permite, en vez de secuencialmente en una sola termi
   `runWorkflow` para modo CLI): scheduler real basado en el grafo de dependencias, no en el orden
   DFS de antes. Un nodo se dispara apenas **todos** sus predecesores (dentro del subgrafo
   alcanzable) están `"completed"` — nodos sin dependencia entre sí corren en paralelo, cada uno en
-  su propia terminal vía `runAgentTurn` (el runner de Fase 5, sin cambios). Si el edge entrante
-  tiene `handoff.mode: "human"`, el nodo pasa a `"waiting_approval"` y se muestra un
-  `vscode.window.showWarningMessage` modal (Approve/Reject) con un preview del output del
-  predecesor antes de despachar el turno — si se rechaza, se aborta la programación de nodos
-  nuevos (los que ya estaban corriendo se dejan terminar, no se cancelan a mitad de turno). Si un
-  nodo falla, sus sucesores que dependen únicamente de él pasan a `"skipped"` (cálculo de punto
-  fijo simple, no maneja todos los casos de un DAG arbitrario con fan-in complejo, alcanza para
-  los workflows lineales/con ramas simples que existen hoy).
+  su propia terminal vía `runAgentTurn` (el runner de Fase 5, sin cambios). Si un nodo falla, sus
+  sucesores que dependen únicamente de él pasan a `"skipped"` (cálculo de punto fijo simple, no
+  maneja todos los casos de un DAG arbitrario con fan-in complejo, alcanza para los workflows
+  lineales/con ramas simples que existen hoy).
 - `src/extension.ts`: `runWorkflow` ahora bifurca temprano — si el modo es CLI, delega
   íntegramente a `runWorkflowGraph` (nuevo); si es chat/plan, sigue con la lógica secuencial de
   siempre (sin cambios de fondo, sólo se le sacó la rama CLI que ya no le pertenece).
+
+**Confirmado por el usuario, primera corrida real:** el paralelismo funciona — un workflow con dos
+edges automáticos saliendo del mismo nodo (`tdd-guide → software-architect` y `tdd-guide → entry`)
+disparó ambos destinos a la vez, cada uno en su propia terminal, terminando en momentos distintos.
+El gating humano también disparó (apareció el diálogo de aprobación en el edge marcado
+`"human"`), pero el primer diseño usaba `vscode.window.showWarningMessage` modal — el usuario
+reportó que **no veía todo el contexto** (recortado a 500 caracteres) y no había forma de agregar
+instrucciones antes de aprobar, sólo Approve/Reject a ciegas.
+
+## Panel de aprobación real (reemplaza el modal nativo) — implementado, sin probar (2026-08-09)
+
+Se reemplazó el modal nativo por un panel propio dentro del dashboard de Agent Studio:
+
+- `src/services/workflowRun/workflowRunManager.ts`: `requestApproval` pasa a ser un callback
+  inyectado (`ApprovalRequestInput → Promise<ApprovalDecision>`) en vez de llamar directo a
+  `vscode.window.showWarningMessage`. Si se aprueba con instrucciones, se agregan al prompt del
+  siguiente turno como un bloque `[Instrucciones del usuario al aprobar este handoff]`.
+- `src/domain/messages.ts` / `webview/app/types.ts`: mensajes nuevos `approvalRequest`
+  (extensión → webview, con `requestId`, `nodeId`, `agentName`, `context` completo sin recortar) y
+  `approvalResponse` (webview → extensión, con `decision` e `instructions` opcionales).
+- `src/extension.ts`: `pendingApprovals: Map<requestId, resolve>` — al pedir aprobación, genera un
+  `requestId`, guarda el `resolve` de la promesa, y postea `approvalRequest` al webview; al llegar
+  `approvalResponse` (`onApprovalResponse`), resuelve la promesa correspondiente y el scheduler
+  continúa.
+- `src/views/dashboardPanel.ts`: wiring de `onApprovalResponse` y `postApprovalRequest`, mismo
+  patrón que el resto de los mensajes.
+- `webview/app/store/useStudioStore.ts`: `pendingApprovals: WorkflowApprovalRequest[]`, con
+  `addApprovalRequest`/`removeApprovalRequest`.
+- `webview/app/components/ApprovalPanel.tsx` (nuevo): overlay a pantalla completa con una tarjeta
+  por aprobación pendiente — contexto completo en un bloque con scroll (`<pre>`, sin recortar),
+  un `<textarea>` opcional para instrucciones, y botones Approve/Reject. Se monta en
+  `DashboardPage.tsx`.
+- `webview/app/styles.css`: estilos nuevos (`.approval-overlay`, `.approval-card*`) usando los
+  mismos tokens de tema que el resto de la UI.
+
+`npm run check`, `build:extension` y `build:webview` verificados limpios (y se detectó y corrigió
+un bloque `@media` vacío que quedó mal armado en un edit anterior del CSS — verificado el balance
+de llaves de todo el archivo: 372/372).
+
+**Todavía no se probó el panel nuevo en la práctica** — hay que repetir la corrida con el mismo
+edge `"human"` y confirmar que aparece la tarjeta con el contexto completo (no recortado) y que
+Approve/Reject/instrucciones funcionan.
 
 `npm run check` (limpio, mismo error preexistente de siempre) y `npm run build:extension` +
 `npm run build:webview` (ambos limpios) verificados. **Nada de esto se corrió todavía en la
@@ -404,14 +442,65 @@ verificados limpios.
 3. Si el workflow tiene dos nodos sin dependencia entre sí (dos edges saliendo del mismo
    predecesor hacia nodos distintos), confirmar que ambas terminales arrancan **a la vez**, no
    una después de la otra.
-4. Para probar el gating humano: parar la extensión, editarle a mano un edge del JSON del
-   workflow agregando `"handoff": {"mode": "human"}`, volver a F5. Al llegar a ese edge, debería
-   aparecer un diálogo modal "Approve handoff to...?" con un preview del output del paso
-   anterior, y el nodo destino no debería arrancar su terminal hasta aprobar. Probar también
-   "Reject" y confirmar que el run se marca `"failed"` con el mensaje correspondiente, sin que
-   los nodos ya en curso (si hay otras ramas) se corten a mitad de turno.
+4. Para probar el gating humano: usá los botones "Rename"/"Edit JSON" para llegar al JSON del
+   workflow y agregarle `"handoff": {"mode": "human"}` a un edge, guardar, volver a correr. Al
+   llegar a ese edge debería aparecer el **panel de aprobación** (overlay a pantalla completa
+   sobre el dashboard de Agent Studio, no un diálogo nativo de VS Code) con: el nombre del agente
+   destino, el output completo del paso anterior en un bloque con scroll (sin recortar), una caja
+   de texto opcional para instrucciones, y botones Approve/Reject. El nodo destino no debería
+   arrancar su terminal hasta aprobar. Probar también "Reject" y confirmar que el run se marca
+   `"failed"` con el mensaje correspondiente, sin que los nodos ya en curso (si hay otras ramas)
+   se corten a mitad de turno. Probar "Approve" con algo escrito en instrucciones y confirmar que
+   aparece en el `step-N-prompt.txt` del siguiente nodo, dentro de un bloque
+   `[Instrucciones del usuario al aprobar este handoff]`.
 5. Revisar el panel "Run status": debería verse `queued` (naranja) brevemente antes de `running`
    en nodos que arrancan, y `waiting_approval` (amarillo) en el que está pausado.
+
+## Dos bugs de UI en "Run status" + hallazgo grave de permisos (2026-08-09)
+
+El usuario probó el panel de aprobación y reportó tres cosas en la misma sesión:
+
+**Bug 1 — "Run status" no mostraba todos los nodos antes de correr.** Confirmado en
+`GraphCanvas.tsx`: la lista de preview (antes de la primera corrida) tenía un `.slice(0, 3)`
+hardcodeado — sólo mostraba los primeros 3 nodos del grafo. Corregido: se saca el límite.
+
+**Bug 2 — agregar/editar un subagente y guardar no actualizaba "Run status".** Confirmado:
+cuando ya existía una corrida previa para ese workflow (`selectedWorkflowRun`), el código
+devolvía `selectedWorkflowRun.steps` tal cual, sin importar si el workflow actual tenía nodos
+nuevos que esa corrida vieja nunca vio. Corregido: ahora siempre se parte de los nodos **actuales**
+del workflow, y se les pega el estado de la última corrida por `nodeId` si existe (si no,
+`"pending"`) — un nodo nuevo aparece de inmediato, no hay que volver a correr para verlo.
+
+Ambos fixes en `webview/app/components/GraphCanvas.tsx` (`orderedRunSteps`). `npm run check` y
+`build:webview` verificados limpios.
+
+**Hallazgo grave — ningún backend podía escribir archivos.** El usuario pidió "ejecutá el plan
+que creaste antes" y el workflow no tocó el repo. Se leyeron los archivos reales de las dos
+corridas (`/home/eric44/Github/agents-fleet/.agent-studio/runs/new-workflow-1786316823219` y
+`.../new-workflow-1786317099284`) en vez de asumir — `step-entry-output.txt` de la segunda
+corrida decía literalmente: *"El diálogo de permisos para Write debería haber aparecido en tu
+cliente. ¿Podés aprobarlo...?"*. Diagnóstico confirmado: Claude bloquea en una aprobación
+interactiva de `Write`/`Edit`/`Bash` no trivial que nunca puede responderse en una invocación
+one-shot sin TTY; Codex corre con `sandbox: read-only` de fábrica (confirmado en su propio banner
+de arranque, visto en una sesión anterior). Ninguno de los dos podía modificar nada, sólo generar
+texto — los "archivos txt" que el usuario vio eran nuestros propios `step-N-*.txt` de bookkeeping,
+no algo que el agente hubiera creado a propósito.
+
+Se le presentó al usuario la decisión explícitamente (no se tomó en silencio, es sacarle una
+barrera de seguridad real a un agente desatendido): bypass total
+(`--dangerously-skip-permissions` / `--dangerously-bypass-approvals-and-sandbox`, marcados
+"EXTREMELY DANGEROUS" en los propios `--help`) vs. algo acotado. **Eligió lo acotado.**
+Implementado en `src/services/workflowRun/oneShotTurnRunner.ts`, confirmado contra `claude --help`
+y `codex exec --help` reales (no adivinado):
+
+- `claude -p --permission-mode acceptEdits` — auto-acepta sólo Write/Edit de archivos; un comando
+  Bash riesgoso sigue bloqueado exactamente igual que antes (trade-off intencional, no un bug).
+- `codex exec --sandbox workspace-write` — escritura permitida sólo dentro del workspace, no
+  `danger-full-access`.
+
+`npm run check` y `build:extension` verificados limpios. **Todavía no se probó en la práctica** —
+falta repetir el pedido de "ejecutá el plan" y confirmar que ahora sí toca archivos reales del
+repo (y que un comando Bash más riesgoso, si aparece, sigue pidiendo aprobación como antes).
 
 ## Qué falta (próximo paso sugerido)
 

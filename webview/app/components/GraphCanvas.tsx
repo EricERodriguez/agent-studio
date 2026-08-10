@@ -377,21 +377,22 @@ export function GraphCanvas(): React.JSX.Element {
 
   const orderedRunSteps = useMemo(() => {
     if (!isWorkflow || !selectedWorkflow) return [];
-    if (selectedWorkflowRun) {
-      return selectedWorkflowRun.steps.map((step) => ({
-        name: step.agentName,
-        state: step.status,
-      }));
-    }
     const entry = selectedWorkflow.nodes.find((node) => node.isEntry);
     const ordered = entry
       ? [entry, ...selectedWorkflow.nodes.filter((n) => n.id !== entry.id)]
       : selectedWorkflow.nodes;
-    return ordered.slice(0, 3).map((node, index) => {
+    // Always reflect every current node in the graph, not just the ones from the last run —
+    // editing/adding a node after a run finished used to leave it missing from this list until
+    // the workflow ran again. Merge by nodeId instead of trusting the stale run's step list.
+    const runStepByNodeId = new Map(
+      (selectedWorkflowRun?.steps ?? []).map((step) => [step.nodeId, step]),
+    );
+    return ordered.map((node, index) => {
       const agent = agents.find((a) => a.id === node.agentId);
+      const runStep = runStepByNodeId.get(node.id);
       return {
         name: agent?.name ?? node.agentId,
-        state: index === 0 ? "ready" : "pending",
+        state: runStep?.status ?? (selectedWorkflowRun ? "pending" : index === 0 ? "ready" : "pending"),
       };
     });
   }, [agents, isWorkflow, selectedWorkflow, selectedWorkflowRun]);

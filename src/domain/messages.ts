@@ -34,7 +34,25 @@ export type WebviewToExtensionMessage =
   | { type: "importAgents" }
   | { type: "createWorkflow" }
   | { type: "exportAllWorkflows" }
-  | { type: "importWorkflows" };
+  | { type: "importWorkflows" }
+  | {
+      type: "approvalResponse";
+      payload: {
+        requestId: string;
+        decision: "approve" | "reject";
+        instructions?: string;
+      };
+    };
+
+/** A workflow node is paused waiting for the user to approve or reject the handoff into it. */
+export interface WorkflowApprovalRequest {
+  requestId: string;
+  workflowId: string;
+  nodeId: string;
+  agentName: string;
+  /** Full, untruncated output of the predecessor(s) that led to this handoff. */
+  context: string;
+}
 
 export interface WorkflowRunStep {
   nodeId: string;
@@ -109,4 +127,8 @@ export type ExtensionToWebviewMessage =
       payload: {
         workflowId: string;
       };
+    }
+  | {
+      type: "approvalRequest";
+      payload: WorkflowApprovalRequest;
     };

@@ -31,6 +31,23 @@ import { waitForShellIntegration, waitForExecutionEnd } from "./shellIntegration
  * for this: `-o, --output-last-message <FILE>` — "the last message from the agent". Used here so
  * chaining reads only the final answer, not the full transcript. `claude -p`'s stdout already
  * looked clean in testing, so it has no equivalent flag wired up (its raw stdout is used as-is).
+ *
+ * Write access (confirmed 2026-08-09 against real runs, then confirmed by the user as an
+ * explicit, deliberate choice — not a default anyone should pick silently): by default, neither
+ * backend can actually modify the repository. Claude blocks on an interactive permission dialog
+ * for `Write`/`Edit`/non-trivial `Bash` that can never be answered in a piped, non-TTY one-shot
+ * invocation — a real run showed the agent explaining exactly this instead of editing anything.
+ * Codex's `exec` subcommand runs with `sandbox: read-only` by default (confirmed from its own
+ * startup banner), which structurally blocks writes regardless of approval settings. Fixed with
+ * the narrowest flags that unblock this without disabling all safety rails: `claude -p
+ * --permission-mode acceptEdits` (auto-accepts file Write/Edit specifically; other tool calls —
+ * e.g. a risky Bash command — still require interactive approval and will still block exactly
+ * like before, which is the intended, safer trade-off) and `codex exec --sandbox
+ * workspace-write` (write access scoped to the workspace, not `danger-full-access`). Confirmed
+ * against real `claude --help`/`codex exec --help` output, not guessed — see
+ * docs/swarmforge-integration/05-riesgos.md for the fuller trade-off against
+ * `--dangerously-skip-permissions` / `--dangerously-bypass-approvals-and-sandbox`, which were
+ * deliberately not chosen.
  */
 
 interface OneShotSpec {
@@ -41,8 +58,11 @@ interface OneShotSpec {
 }
 
 const ONE_SHOT_SPEC: Record<string, OneShotSpec> = {
-  claude: { command: "claude -p" },
-  codex: { command: "codex exec", cleanOutputFlag: (filePath) => `-o "${filePath}"` },
+  claude: { command: "claude -p --permission-mode acceptEdits" },
+  codex: {
+    command: "codex exec --sandbox workspace-write",
+    cleanOutputFlag: (filePath) => `-o "${filePath}"`,
+  },
 };
 
 export interface AgentTurnResult {

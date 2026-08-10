@@ -3,6 +3,7 @@ import type {
   ExtensionToWebviewMessage,
   WorkflowRunState,
   WebviewToExtensionMessage,
+  WorkflowApprovalRequest,
 } from "../domain/messages";
 import type {
   AgentDefinition,
@@ -21,6 +22,11 @@ export interface DashboardPanelHandlers {
   onSaveWorkflow: (workflow: WorkflowDefinition) => Promise<void>;
   onRenameWorkflow: (workflowId: string) => Promise<void>;
   onOpenRawWorkflow: (workflowId: string) => Promise<void>;
+  onApprovalResponse: (
+    requestId: string,
+    decision: "approve" | "reject",
+    instructions?: string,
+  ) => void;
   onRunWorkflow: (
     workflowId: string,
     mode: "chat" | "plan" | "cli-claude" | "cli-codex",
@@ -111,6 +117,13 @@ export class DashboardPanel {
           case "openRawWorkflow":
             await this.handlers.onOpenRawWorkflow(message.payload.workflowId);
             break;
+          case "approvalResponse":
+            this.handlers.onApprovalResponse(
+              message.payload.requestId,
+              message.payload.decision,
+              message.payload.instructions,
+            );
+            break;
           case "runWorkflow":
             await this.handlers.onRunWorkflow(
               message.payload.workflowId,
@@ -189,6 +202,10 @@ export class DashboardPanel {
 
   postWorkflowRunUpdate(payload: WorkflowRunState): void {
     this.postMessage({ type: "workflowRunUpdate", payload });
+  }
+
+  postApprovalRequest(payload: WorkflowApprovalRequest): void {
+    this.postMessage({ type: "approvalRequest", payload });
   }
 
   focusAgentEditor(

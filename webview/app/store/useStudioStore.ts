@@ -5,6 +5,7 @@ import type {
   CapabilityGraph,
   WorkflowRunState,
   WorkflowDefinition,
+  WorkflowApprovalRequest,
 } from "../types";
 
 interface Filters {
@@ -38,6 +39,7 @@ interface StudioState {
   infoMessage?: string;
   errorMessage?: string;
   workflowRun?: WorkflowRunState;
+  pendingApprovals: WorkflowApprovalRequest[];
   /** Mirrors the AgentBuilder draft's validity/dirty state so the steps bar
    * can show a live Save/Saved/Fix errors pill without owning the draft. */
   agentDraftStatus: { valid: boolean; dirty: boolean };
@@ -84,6 +86,8 @@ interface StudioState {
   setInfoMessage: (message?: string) => void;
   setErrorMessage: (message?: string) => void;
   setWorkflowRun: (run?: WorkflowRunState) => void;
+  addApprovalRequest: (request: WorkflowApprovalRequest) => void;
+  removeApprovalRequest: (requestId: string) => void;
   setAgentDraftStatus: (status: { valid: boolean; dirty: boolean }) => void;
   requestAgentSave: () => void;
 }
@@ -109,6 +113,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
   filters: {},
   agentDraftStatus: { valid: false, dirty: false },
   saveRequestId: 0,
+  pendingApprovals: [],
   setStateFromExtension: ({ agents, workflows, capabilityGraph }) =>
     set((state) => ({
       agents,
@@ -266,6 +271,16 @@ export const useStudioStore = create<StudioState>((set, get) => ({
   setInfoMessage: (infoMessage) => set({ infoMessage }),
   setErrorMessage: (errorMessage) => set({ errorMessage }),
   setWorkflowRun: (workflowRun) => set({ workflowRun }),
+  addApprovalRequest: (request) =>
+    set((state) => ({
+      pendingApprovals: state.pendingApprovals.some((r) => r.requestId === request.requestId)
+        ? state.pendingApprovals
+        : [...state.pendingApprovals, request],
+    })),
+  removeApprovalRequest: (requestId) =>
+    set((state) => ({
+      pendingApprovals: state.pendingApprovals.filter((r) => r.requestId !== requestId),
+    })),
   setAgentDraftStatus: (agentDraftStatus) => set({ agentDraftStatus }),
   requestAgentSave: () =>
     set((state) => ({ saveRequestId: state.saveRequestId + 1 })),
