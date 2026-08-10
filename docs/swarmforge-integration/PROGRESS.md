@@ -900,6 +900,32 @@ desde la UI real de la extensión** — falta correr "Create Workflow" en la pr�
 template, y confirmar que el dashboard abre con el grafo ya armado y los agentes visibles en el
 registry.
 
+### Instrucciones de rol enriquecidas contra el contenido real de SwarmForge (2026-08-10)
+
+El usuario probó el catálogo y encontró las instrucciones de cada rol muy pobres (una o dos
+oraciones genéricas basadas sólo en lo que el nombre del rol sugiere). Pidió explícitamente
+"copiar lo que hace cada agente del swarm" para que fueran más completas.
+
+En vez de copiar texto literal (seguiría violando la decisión legal ya tomada en Fase 0 de
+`01-plan-revisado.md`: no copiar el contenido real de los `.prompt` de SwarmForge), se leyeron
+los 7 archivos `swarmforge/roles/<role>.prompt` reales desde GitHub (`raw.githubusercontent.com`,
+ramas `two-pack`/`four-pack`/`six-pack` de `unclebob/swarm-forge`, más el `README.md` de `main`
+para la descripción de cada pack) para entender en profundidad el alcance real de cada rol —
+qué posee, qué reglas sigue, qué explícitamente NO hace, cómo hace el handoff — y se reescribieron
+las 7 instrucciones de `ROLES` en `src/services/workflowTemplates.ts` de cero, mucho más largas
+(500-750 caracteres cada una, contra ~120-150 antes) y concretas, capturando la sustancia real de
+cada rol pero sin mecánica específica de SwarmForge (tmux, git worktrees, el demonio de handoff
+por archivos, herramientas puntuales como `gherkin-parser`/`ir-dry-checker`), que no aplica al
+modelo de Agent Studio (un objetivo por run, handoff vía edges del grafo, aprobación humana ya
+integrada en el motor). El comentario de cabecera del archivo se actualizó para documentar
+exactamente de dónde salió el contenido y por qué el texto es original.
+
+Validado de nuevo con el mismo script standalone: las 7 instrucciones ahora son sustancialmente
+más largas y específicas (confirmado imprimiendo cada una completa). `npm run check` (sin el
+error preexistente) y `npm run build:extension` compilan limpio. **Sin probar todavía en la
+práctica** — falta confirmar en la UI que las instrucciones enriquecidas se ven bien en el editor
+de agentes y producen turnos de mejor calidad al correr un template real.
+
 ## Qué falta (próximo paso sugerido)
 
 Quedan sin iniciar: Fase 2 (idioma de interacción), Fase 7 (estado/recuperación — persistir un

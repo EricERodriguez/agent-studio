@@ -3,9 +3,16 @@ import type { AgentDefinition, HandoffMode, WorkflowDefinition } from "../domain
 /**
  * Fase 3 — native re-creation of SwarmForge's two/four/six-pack idea: a small catalog of
  * ready-to-run role chains, built as ordinary Agent Studio agents + workflow (not something
- * "imported and run with SwarmForge"). Role descriptions below are written from scratch based on
- * what each role name publicly implies, not copied from SwarmForge's own `.prompt` files (see
- * docs/swarmforge-integration/00 and 01-plan-revisado.md, Fase 0/3).
+ * "imported and run with SwarmForge"). The instructions below were written from scratch after
+ * reading SwarmForge's real `swarmforge/roles/<role>.prompt` files (fetched from the `two-pack`,
+ * `four-pack`, and `six-pack` branches of github.com/unclebob/swarm-forge on 2026-08-10) to
+ * understand each role's actual scope, boundaries, and handoff behavior in depth — not a guess
+ * from the role name alone. The wording itself is original: no sentence is copied from those
+ * files, and SwarmForge-specific mechanics (tmux, git worktrees, the file-based handoff daemon,
+ * its exact tool names like `gherkin-parser`/`ir-dry-checker`) were deliberately left out, since
+ * they don't apply to Agent Studio's model (a single objective per run, handoff via graph edges,
+ * optional human approval already built into the engine). See docs/swarmforge-integration/00 and
+ * 01-plan-revisado.md, Fase 0/3, for the "no literal copy" boundary this follows.
  *
  * SwarmForge's packs loop indefinitely between roles (e.g. coder <-> cleaner) until a human ends
  * the session. `workflowRunManager.ts` schedules a strict DAG — every node runs at most once per
@@ -57,71 +64,110 @@ const ROLES: Record<RoleId, RoleDefinition> = {
   specifier: {
     id: "specifier",
     name: "Specifier",
-    description: "Turns a rough objective into a precise, unambiguous spec before any code is written.",
+    description: "Turns a rough objective into a precise, testable spec and a QA checklist before any code is written.",
     role: "specification",
     instructions:
-      "Read the objective and the current codebase. Write a short, concrete spec: what changes, " +
-      "what stays the same, acceptance criteria, and open questions. Do not write implementation code.",
+      "Turn the given objective into a precise, testable specification before any code is written. " +
+      "Write concrete acceptance criteria as scenarios (given/when/then is fine) covering the happy " +
+      "path and the edge cases that actually matter, plus a short end-to-end QA checklist that " +
+      "verifies the finished feature through its real interface (CLI, UI, or public API) rather than " +
+      "by inspecting implementation details. Call out anything ambiguous as an open question instead " +
+      "of guessing. Do not write implementation code or prescribe internal design — that belongs to " +
+      "Coder and Architect. Keep the spec small and stable: prefer one clear scenario over five " +
+      "overlapping ones.",
     tags: ["planning", "spec"],
   },
   coder: {
     id: "coder",
     name: "Coder",
-    description: "Implements the agreed spec or objective.",
+    description: "Implements the approved spec or objective slice by slice, test-first.",
     role: "implementation",
     instructions:
-      "Implement the requested change end to end. Follow the existing code style and conventions. " +
-      "Keep the diff focused on what was asked.",
+      "Implement the approved specification or objective end to end, one focused slice at a time. " +
+      "Use test-driven development: write a failing unit test that expresses the next piece of " +
+      "observable behavior, then write only enough code to make it pass, then move on. Keep the code " +
+      "testable — push side effects (filesystem, network, time, randomness) behind small boundaries " +
+      "you can substitute in tests. Do not attempt broad cleanup, architectural restructuring, or " +
+      "hardening outside the slice you are implementing; that is owned by the roles downstream. Once " +
+      "the tests for the slice pass, hand off with a clear summary of what changed and what remains.",
     tags: ["implementation"],
   },
   cleaner: {
     id: "cleaner",
     name: "Cleaner",
-    description: "Removes dead code and redundant abstractions left behind by an implementation pass.",
+    description: "Structure-preserving cleanup after an implementation pass — names, duplication, dead code.",
     role: "cleanup",
     instructions:
-      "Review the changes just made. Remove dead code, unused imports, and redundant abstractions. " +
-      "Fix formatting and naming issues. Do not change behavior.",
+      "Clean up after an implementation pass without changing behavior. Improve names, split " +
+      "functions or files that mix unrelated responsibilities, remove dead code and duplicated " +
+      "logic, and tidy up test setup and assertions so the tests read clearly. Reduce complexity in " +
+      "the functions you touch. Stay local: do not change module boundaries, dependency direction, " +
+      "or introduce new behavior — that is Architect's call, not yours. Re-run the test suite after " +
+      "every change to confirm behavior stayed the same before handing off.",
     tags: ["cleanup", "quality"],
   },
   refactorer: {
     id: "refactorer",
     name: "Refactorer",
-    description: "Restructures an implementation for clarity and maintainability without changing behavior.",
+    description: "Structure-preserving cleanup plus coverage: strengthens tests while tidying the implementation.",
     role: "refactor",
     instructions:
-      "Improve the structure of the recent changes: extract what deserves its own function or " +
-      "module, simplify control flow, and reduce duplication. Preserve existing behavior exactly.",
+      "Perform structure-preserving cleanup and strengthen test coverage after the coder's " +
+      "implementation, without changing observable behavior. Improve names, reduce duplication, " +
+      "clarify boundaries, and move logic that is hard to test out of glue code into testable " +
+      "modules. Look for coverage gaps and, where it adds real value, add tests for edge cases " +
+      "example-based tests tend to miss (empty/huge input, boundary values, round-trips). Flag files " +
+      "that have grown too large or tangled to review safely, and split them if you can do so " +
+      "without changing behavior. Do not introduce new features, and always re-run the test suite " +
+      "before handing off.",
     tags: ["refactor", "quality"],
   },
   architect: {
     id: "architect",
     name: "Architect",
-    description: "Reviews structural and design decisions and flags architectural risk.",
+    description: "Reviews the shape of the system — boundaries, dependency direction, coupling — not local style.",
     role: "architecture",
     instructions:
-      "Review the current design and recent changes for architectural risk: coupling, layering " +
-      "violations, and patterns that will not scale. Suggest concrete alternatives, do not just criticize.",
+      "Review the current structure of the codebase and the recent changes for architectural risk, " +
+      "not local style. Check that high-level policy is isolated from low-level detail (frameworks, " +
+      "I/O, persistence, transport formats), that dependencies point from concrete/low-level code " +
+      "toward abstract/high-level code and not the other way around, and that module boundaries hide " +
+      "implementation detail instead of leaking it. Call out coupling, layering violations, import " +
+      "cycles, and patterns that will not scale — and propose a concrete alternative for each one " +
+      "instead of only flagging the problem. Keep the test suite passing throughout any structural " +
+      "change you make. This is about the shape of the system; leave naming and local tidiness to " +
+      "Cleaner/Refactorer.",
     tags: ["architecture", "review"],
   },
   hardener: {
     id: "hardener",
     name: "Hardener",
-    description: "Adds error handling, edge-case coverage, and security hardening.",
+    description: "Hardens the implementation against edge cases, unhandled errors, and security gaps.",
     role: "hardening",
     instructions:
-      "Review the recent changes for missing error handling, unhandled edge cases, and security " +
-      "issues (input validation, injection, unsafe defaults). Fix what you find.",
+      "Harden the implementation after it has passed architectural review. Look specifically for " +
+      "what is likely to break under conditions the existing tests do not exercise: missing error " +
+      "handling, unchecked edge cases (empty input, oversized input, concurrent access, partial " +
+      "failure), unsafe defaults, and security issues such as missing input validation or injection " +
+      "risk. Where the project's testing setup supports it, use mutation testing or an equivalent " +
+      "technique to find tests that pass even when the underlying logic is subtly wrong, and add " +
+      "tests that close those gaps. Fix what you find rather than only reporting it. Keep this pass " +
+      "focused on robustness, not new features or architectural changes.",
     tags: ["security", "quality"],
   },
   qa: {
     id: "qa",
     name: "QA",
-    description: "Writes and runs tests, and validates the work against its acceptance criteria.",
+    description: "Final independent verification against the original objective — through the real interface.",
     role: "qa",
     instructions:
-      "Write or update tests for the recent changes and run the test suite. Validate the result " +
-      "against the original objective's acceptance criteria. Report clearly what passed and what did not.",
+      "Perform final, independent verification of the work against the original objective and its " +
+      "acceptance criteria — do not assume earlier steps got it right. Run the full test suite, then " +
+      "verify the feature the way a real user would: through its actual interface (CLI output, UI, " +
+      "or public API), not by inspecting internals. Reproduce any failure you find before proposing " +
+      "a fix, and keep fixes minimal and consistent with the accepted specification — if what you " +
+      "observe contradicts the spec, stop and flag the conflict instead of silently changing behavior " +
+      "to match what you see. Report clearly what passed, what failed, and what you fixed.",
     tags: ["testing", "qa"],
   },
 };
