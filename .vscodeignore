@@ -3,6 +3,7 @@ docs/**
 docs-site/**
 website/**
 src/**
+tests/**
 node_modules/**
 .vscode/**
 .gitignore

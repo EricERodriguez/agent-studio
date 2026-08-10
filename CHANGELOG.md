@@ -2,6 +2,33 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.1.0] - 2026-08-10
+
+### Terminal split for parallel workflow nodes now works
+
+- Fixed the workflow terminal service to open sibling nodes with VS Code's native `workbench.action.terminal.split` command instead of the unreliable `location: { parentTerminal }` option, which never actually produced a split in practice. A real Six-Pack run now opens parallel agents side by side, confirmed as `split 1 of 2` / `split 2 of 2` in the terminal tree.
+
+### Automatic handoff edges now show their icon too
+
+- Edges set to automatic handoff were missing the `⚡` icon that human edges already had. Label formatting is now centralized in one place (`⚡` for automatic, `👤` for human, including empty labels), covered by a new unit test.
+
+### Safety preflight warning now reliably shows up
+
+- The native VS Code modal used to warn about a non-git workspace wasn't reliably appearing in real usage. Replaced with an in-dashboard **Preflight warning** panel — confirmed working on both the Cancel and Continue paths in a real run.
+
+### Fixed a preexisting type-check error
+
+- `agentRegistryService.ts` no longer calls `.catch()` on a `PromiseLike`, which `tsc` correctly rejected; rewritten with `await`/`try-catch`. `npm run check` is clean for the first time since this was introduced.
+
+### New automated test suite
+
+- Added `npm test` (`scripts/run-tests.mjs`, esbuild + `node --test`, no new runtime dependencies), covering interaction-language resolution, the prompt builder shared by Chat and workflow runs, all three workflow templates (including human gates, agent reuse, and id-collision handling), and workflow-run manifest persistence/recovery (including corrupt-file handling). 12/12 tests pass.
+- Extracted `agentPromptBuilder.ts` so Chat and CLI workflow runs share one prompt-construction path instead of two — closes a gap where Chat prompts had no test coverage at all.
+
+### End-to-end validation in a real Extension Development Host
+
+- Interaction-language overrides, all three workflow templates (including Global scope), run recovery while a Claude session was genuinely active when VS Code reloaded, and the missing-CLI preflight blocker were all re-verified against a live extension host rather than by reading code — including a real round-trip through both Claude and Codex `app-server` with an exact, verified response.
+
 ## [2.0.0] - 2026-08-10
 
 ### Native workflow execution engine

@@ -65,14 +65,10 @@ Choosing **Claude CLI** or **Codex CLI** hands the run over to Agent Studio's na
 
 1. **Preflight check**: before anything else, Agent Studio confirms the chosen CLI is installed and starts correctly (`<cli> --version`). If it isn't, the run is blocked with an error before you're even asked for an objective. If the current workspace isn't a git repository, you get a warning with the option to continue anyway — Agent Studio deliberately does **not** check for uncommitted changes.
 2. **Objective panel**: a panel asks what this run should do (e.g. "Review the repo and propose 3 small improvements, then implement them"). This objective is folded into every agent's prompt, along with the output of whatever step ran before it.
-3. **Parallel terminals per agent**: each node in the workflow graph runs in its own session — a real integrated VS Code terminal for Claude, or a `codex app-server` JSON-RPC session (no terminal, progress shown only in the Run status panel) for Codex. Nodes with no dependency on each other in the graph are dispatched at the same time, not one after another.
+3. **Parallel terminals per agent**: each node in the workflow graph runs in its own session — a real integrated VS Code terminal for Claude, or a `codex app-server` JSON-RPC session (no terminal, progress shown only in the Run status panel) for Codex. Nodes with no dependency on each other in the graph are dispatched at the same time, not one after another. Claude terminals for sibling nodes open side-by-side as real VS Code splits (using VS Code's native `workbench.action.terminal.split` command), not as separate tabs.
 4. **Human approval gates**: when the run reaches a `human` edge, it pauses and opens an approval panel inside the dashboard — not a native VS Code dialog — showing the full, unclipped output of the previous step, an optional instructions field, and Approve/Reject buttons. Approving with instructions folds them into the next step's prompt; rejecting marks the whole run as failed.
 5. **Live graph status**: nodes change color and animation as the run progresses — dimmed for `pending`, orange border for `queued`, an animated pulsing border for `running`, yellow for `waiting_approval`, green for `completed`, red for `failed`, and dimmed for `skipped`. The pulse animation respects `prefers-reduced-motion`.
 6. **Stop**: a **■ Stop** button in the Run status panel cancels a run in progress. Nodes already running are allowed to finish their current turn rather than being killed outright; no new nodes are dispatched after cancelling.
-
-::: tip Known limitation
-Terminals for parallel agents are meant to open side-by-side as a split, but currently open as separate tabs instead — this is a known, unresolved issue, not a supported layout choice.
-:::
 
 ## Run History and Recovery
 

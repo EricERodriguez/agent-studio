@@ -44,7 +44,7 @@ Agent Studio gives you a visual dashboard to design agents, inspect relationship
 ### ⚙️ Native Workflow Execution Engine
 
 - **Run Workflow** drives real CLI sessions — Claude CLI or Codex CLI — instead of pasting into VS Code's chat, chaining each step's output into the next.
-- Independent nodes run **in parallel**, each in its own terminal (Claude) or `codex app-server` session (Codex), following the graph's real dependencies.
+- Independent nodes run **in parallel**, each in its own terminal (Claude) or `codex app-server` session (Codex), following the graph's real dependencies — parallel terminals now open **side by side in a real split**, not as separate tabs.
 - **Human-in-the-loop handoffs**: mark any edge as `human` and approve, reject, or add instructions from a dedicated in-dashboard panel with full, unclipped context.
 - **Live graph status**: nodes color and animate in real time — queued, running (pulsing), waiting on approval, completed, failed, skipped.
 - A **safety preflight** blocks a run early if the selected CLI isn't installed, and warns if the workspace isn't a git repo.
@@ -227,9 +227,10 @@ Thank you for your generosity—you're making a difference both for this project
 
 Shipped in 2.0.0: real CLI-driven workflow execution, parallel per-agent terminals/sessions, human-in-the-loop handoffs, live graph run status, safety preflight, Two/Four/Six-Pack templates, and run state persistence/recovery across VS Code restarts.
 
+Shipped in 2.1.0: real side-by-side terminal splitting for parallel nodes, the `⚡` icon on automatic handoff edges, a reliable in-dashboard preflight warning for non-git workspaces, and an automated test suite (`npm test`). No open bugs from the workflow engine remain as of this release.
+
 Planned improvements include:
 
-- Side-by-side terminal split for parallel workflow nodes (currently opens as separate tabs — see [`docs/swarmforge-integration/BUGS.md`](docs/swarmforge-integration/BUGS.md)).
 - Richer validation and diagnostics for agent setups.
 - Expanded templates for common agent architectures.
 - Enhanced observability for multi-agent execution.

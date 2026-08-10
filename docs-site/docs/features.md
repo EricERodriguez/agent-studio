@@ -65,7 +65,7 @@ Beyond pasting prompts into chat, **Run Workflow** runs each agent in its own re
 **What you get:**
 
 - **Real CLI sessions per agent**: each workflow step runs in an actual `claude` or `codex` session — not text handed to VS Code chat. Claude runs in an integrated terminal; Codex runs headless via `codex app-server` (JSON-RPC), with progress shown in the Run status panel instead of a terminal.
-- **Real parallelism**: nodes with no dependency on each other in the workflow graph run at the same time, each in its own session, instead of one after another. (Splitting these terminals side-by-side is a known open bug — today they open as separate tabs.)
+- **Real parallelism**: nodes with no dependency on each other in the workflow graph run at the same time, each in its own session, instead of one after another. Claude terminals for sibling nodes open side-by-side as real VS Code splits, not as separate tabs.
 - **Automatic or human handoffs per edge**: toggle any connection between "⚡ Auto" (runs immediately) and "👤 Human" (pauses for approval) right from the graph editor.
 - **Approval panel**: when a run hits a human edge, a panel inside the dashboard shows the previous step's full, unclipped output, an optional instructions box, and Approve/Reject buttons. Approved instructions get added to the next step's prompt; rejecting fails the run.
 - **Live status on the graph**: nodes change color and animate as they move through `pending → queued → running → waiting_approval → completed` (or `failed`/`skipped`), with a reduced-motion-friendly pulse on running nodes.

@@ -145,12 +145,20 @@ npm run typecheck
 ### Testing
 
 ```bash
-# Run tests (if we have them in future)
+# Run the automated test suite
 npm test
 
 # Lint code
 npm run lint
 ```
+
+`npm test` compiles the TypeScript entry points under `tests/` with esbuild and runs them via
+Node's built-in test runner (`node --test`) — no extra runtime dependencies. Coverage includes
+interaction-language normalization, the shared prompt builder used by both Chat and workflow runs,
+the Two/Four/Six-Pack workflow templates (including human gates, agent reuse, and id-collision
+resolution), and workflow run manifest persistence/recovery (valid and corrupted manifests). For
+UI-level and CLI-provider checks that need a real Extension Development Host, see the manual
+checklist in `docs/swarmforge-integration/08-checklist-edh.md` in the repo.
 
 ## Code Style & Standards
 
