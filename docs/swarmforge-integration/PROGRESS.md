@@ -634,6 +634,104 @@ no en el uso de la API en sí — habría que investigar más a fondo, posibleme
 
 `npm run check` y `build:extension` verificados limpios.
 
+## Tercera ronda: modal de objetivo agregado; hallazgo grande sobre Codex vía su propia respuesta (2026-08-09)
+
+El usuario pidió (dos veces, la primera vez se me pasó) reemplazar el `vscode.window.showInputBox`
+del objetivo del run por un panel propio como el de aprobación — el input nativo es de una sola
+línea, demasiado chico para escribir una tarea real. Implementado con el mismo patrón que el panel
+de aprobación:
+
+- Mensajes nuevos `objectiveRequest` (extensión→webview) / `objectiveResponse` (webview→extensión)
+  en `messages.ts`/`types.ts`.
+- `extension.ts`: `pendingObjectives: Map<requestId, resolve>`, mismo patrón que
+  `pendingApprovals` — ya no usa `showInputBox`.
+- `webview/app/components/ObjectivePanel.tsx` (nuevo): overlay con un `<textarea>` de 6 filas,
+  botones Cancel/Start run. Montado en `DashboardPage.tsx` junto a `ApprovalPanel`.
+
+**Hallazgo grande sobre Codex — el usuario le preguntó directamente al CLI de Codex (con acceso a
+su propia documentación oficial) cómo integrarse mejor, y la respuesta invalida la hipótesis del
+`--no-alt-screen` de esta misma sesión:**
+
+> "`--no-alt-screen` sólo cambia render/scrollback, no a qué proceso llega el teclado. [...] Si
+> zsh parsea tu prompt, Codex aún no tomó control, salió/falló durante el inicio, o el envío fue a
+> otra terminal. [...] No hay flag ni variable de entorno de la TUI que emita un 'ready to receive
+> input' contractual. Por tanto, `sendText()` + timeout fijo no puede hacerse robusto."
+
+La recomendación de Codex (validada contra `https://developers.openai.com/codex/app-server`, la
+misma interfaz que usa la extensión oficial de VS Code de OpenAI): **`codex app-server`** — un
+protocolo JSON-RPC por stdio (JSONL), sin pasar por una terminal ni por `sendText`:
+
+```
+initialize → initialized → thread/start (threadId) → turn/start (prompt como JSON)
+                                                     → turn/steer (feedback humano DURANTE el turno)
+                                                     → turn/completed (fin de turno confiable)
+```
+
+Esto es estrictamente mejor que el diseño actual para Codex en los dos ejes que más importan: fin
+de turno confiable (evento explícito, no polling de un archivo que el agente puede o no escribir)
+y feedback humano real (`turn/steer` es exactamente lo que el usuario pidió al principio de este
+pivot — "que se pueda establecer un feedback con cada agente de ser necesario" — mejor resuelto
+así que con una terminal que el usuario tipea a mano). El costo: es una arquitectura distinta
+(spawn de un proceso hijo con JSON-RPC, no una `vscode.Terminal`), y cambia la UX de "escribirle
+directo a una terminal visible" a "el panel de Agent Studio es la entrada humana" para los nodos
+de Codex — no está implementado todavía, se le preguntó al usuario cómo quiere proceder antes de
+construirlo (es la pieza de trabajo más grande pendiente de todo este plan).
+
+`npm run check`, `build:extension` y `build:webview` verificados limpios.
+
+**Sin resolver, sin nueva información:** split de terminales — sigue fallando, sin poder
+diagnosticar más sin una corrida real (ver ronda anterior).
+
+## `codex app-server` implementado — el usuario confirmó construirlo (2026-08-09)
+
+El usuario eligió la opción recomendada: reemplazar terminal+`sendText` por `codex app-server`
+para los nodos de Codex, dejando Claude tal cual (terminal interactiva, ya funciona bien).
+
+**Antes de escribir código**, se generó el schema real del protocolo en vez de confiar sólo en lo
+que había contado Codex por chat: `codex app-server generate-json-schema --out <dir>
+--experimental` (comando real, confirmado con `codex app-server --help`). De ahí se confirmaron
+las formas exactas de mensajes:
+
+- Sobre JSON-RPC: `{id, method, params}` (request) / `{method, params}` (notification, sin `id`)
+  / `{id, result}` (response) — JSONL, un objeto por línea, no framing tipo LSP con
+  `Content-Length`.
+- Handshake: `{id, method:"initialize", params:{clientInfo:{name,version}}}` → esperar respuesta
+  → notificación `{method:"initialized"}` (la única notificación que el cliente puede mandar,
+  confirmado en `ClientNotification.json` del schema).
+- `thread/start` acepta `sandbox: "read-only"|"workspace-write"|"danger-full-access"` y
+  `approvalPolicy: "untrusted"|"on-request"|"never"` — se usó `workspace-write` + `never`
+  (coincide con la decisión ya tomada para Claude, `--permission-mode acceptEdits`) para no tener
+  que implementar el protocolo de respuesta a aprobaciones (`ExecCommandApprovalResponse`,
+  `ApplyPatchApprovalResponse`, etc., cada uno con su propia forma) en esta primera versión —
+  `"never"` hace que Codex reciba el fallo de sandbox directo y decida solo, sin pedirnos nada.
+- El `threadId` llega por la notificación `thread/started` (`{thread:{id,...}}}`), y el fin de
+  turno por `turn/completed` (`{threadId, turn:{id, status, items, error}}`) — no
+  necesariamente por el `result` de la request que lo dispara, así que el código espera ambas
+  cosas y usa lo que llegue primero.
+- La respuesta final del agente es el último item de `turn.items` con `type: "agentMessage"`
+  (campo `.text`).
+
+**Implementado:**
+- `src/services/workflowRun/codexAppServerRunner.ts` (nuevo): `AppServerClient` (cliente JSON-RPC
+  de bajo nivel sobre `child_process.spawn("codex", ["app-server", "--stdio"])`, framing JSONL
+  manual) y `CodexAppServerService` (una sesión — proceso + thread — por nodo, reusada si el nodo
+  tuviera más de un turno más adelante). Vuelca todo el tráfico JSON-RPC crudo a un
+  `OutputChannel` ("Agent Studio: Codex app-server") para poder ver qué está pasando sin una
+  terminal interactiva.
+- `workflowRunManager.ts`: `runNode` ahora bifurca por `cliCommand` — `codex` usa
+  `codexSessions.runTurn(...)` (sin crear terminal), `claude` sigue con
+  `terminals.getOrCreateTerminal(...)` + `runAgentTurn` de siempre. `codexSessions.disposeAll()`
+  se llama al final del run para matar los procesos hijos.
+
+**Cambio de UX explícito para Codex:** ya no hay una terminal visible para escribirle a mano —
+`turn/steer` (el equivalente a tipearle a Claude) **no está implementado todavía**, queda como
+próximo paso real si se quiere feedback interactivo con Codex también. Por ahora, un nodo de
+Codex se ve sólo como progreso en el panel "Run status" + el output channel para debug.
+
+`npm run check` y `build:extension` verificados limpios. **Nada de esto se corrió todavía en la
+práctica** — es la pieza de código más grande y más nueva de todo este plan (primer child_process
+spawneado directamente, primer protocolo JSON-RPC implementado a mano).
+
 ## Qué falta (próximo paso sugerido)
 
 **Fase 5 (detección de fin de turno) queda cerrada de punta a punta** para `claude` y `codex`,

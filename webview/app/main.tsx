@@ -102,6 +102,9 @@ window.addEventListener(
     if (message.type === "approvalRequest") {
       useStudioStore.getState().addApprovalRequest(message.payload);
     }
+    if (message.type === "objectiveRequest") {
+      useStudioStore.getState().setPendingObjective(message.payload);
+    }
     if (message.type === "focusWorkflow") {
       const language = getStoredLanguage();
       useStudioStore.getState().selectWorkflow(message.payload.workflowId);

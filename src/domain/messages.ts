@@ -43,7 +43,18 @@ export type WebviewToExtensionMessage =
         instructions?: string;
       };
     }
-  | { type: "cancelWorkflow"; payload: { runId: string } };
+  | { type: "cancelWorkflow"; payload: { runId: string } }
+  | {
+      type: "objectiveResponse";
+      payload: { requestId: string; objective?: string };
+    };
+
+/** Asks the user, via a rich webview panel instead of vscode.window.showInputBox (too cramped
+ * for a real task description — a real user hit this), what a CLI-mode run should do. */
+export interface WorkflowObjectiveRequest {
+  requestId: string;
+  workflowName: string;
+}
 
 /** A workflow node is paused waiting for the user to approve or reject the handoff into it. */
 export interface WorkflowApprovalRequest {
@@ -134,4 +145,8 @@ export type ExtensionToWebviewMessage =
   | {
       type: "approvalRequest";
       payload: WorkflowApprovalRequest;
+    }
+  | {
+      type: "objectiveRequest";
+      payload: WorkflowObjectiveRequest;
     };

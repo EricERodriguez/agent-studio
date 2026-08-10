@@ -142,7 +142,16 @@ export type ExtensionToWebviewMessage =
   | {
       type: "approvalRequest";
       payload: WorkflowApprovalRequest;
+    }
+  | {
+      type: "objectiveRequest";
+      payload: WorkflowObjectiveRequest;
     };
+
+export interface WorkflowObjectiveRequest {
+  requestId: string;
+  workflowName: string;
+}
 
 export interface WorkflowApprovalRequest {
   requestId: string;

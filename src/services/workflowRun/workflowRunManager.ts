@@ -3,6 +3,7 @@ import type { WorkflowRunStep } from "../../domain/messages";
 import type { ChatBridgeService } from "../chatBridgeService";
 import { WorkflowTerminalService } from "./workflowTerminalService";
 import { runAgentTurn } from "./interactiveTurnRunner";
+import { CodexAppServerService } from "./codexAppServerRunner";
 
 /**
  * Runs a workflow's reachable nodes as a real dependency graph, not a single linear DFS order in
@@ -24,10 +25,15 @@ import { runAgentTurn } from "./interactiveTurnRunner";
  * On any node failure (or a rejected human approval), no *new* nodes are dispatched afterwards,
  * but nodes already in flight are left to finish naturally rather than being torn down mid-turn.
  *
- * Turn execution: `runAgentTurn` from `./interactiveTurnRunner` — a real interactive CLI session
- * per node (like SwarmForge's attached sessions), not a one-shot invocation, so the user can give
- * an agent feedback mid-task if needed. See that file's header for why and the trade-off against
- * the one-shot design in `./oneShotTurnRunner` (kept, but no longer wired in here).
+ * Turn execution is per-provider: `claude` uses `runAgentTurn` from `./interactiveTurnRunner` — a
+ * real interactive CLI session per node (like SwarmForge's attached sessions), so the user can
+ * give it feedback mid-task by typing into its terminal. `codex` uses
+ * `CodexAppServerService`/`./codexAppServerRunner` instead — real testing (2026-08-09) showed the
+ * terminal+sendText approach could not be made reliable for Codex specifically (confirmed by
+ * Codex itself: no "ready for input" signal exists for its TUI), so Codex nodes talk to `codex
+ * app-server` over JSON-RPC/stdio instead of a visible terminal — no terminal is created for
+ * them. `turn/steer` (mid-task human feedback for Codex, the equivalent of typing into Claude's
+ * terminal) is not wired up yet — see docs/swarmforge-integration/PROGRESS.md.
  */
 
 export interface ApprovalRequestInput {
@@ -164,6 +170,7 @@ export async function runWorkflowGraph(
   publish();
 
   const terminals = new WorkflowTerminalService();
+  const codexSessions = new CodexAppServerService();
   const inFlight = new Map<string, Promise<void>>();
   let aborted = false;
   let abortError: string | undefined;
@@ -238,11 +245,9 @@ export async function runWorkflowGraph(
     }
 
     node.status = "running";
-    node.message = `Working in ${cliCommand} CLI`;
+    node.message =
+      cliCommand === "codex" ? "Working via codex app-server" : `Working in ${cliCommand} CLI`;
     publish();
-
-    const terminalName = `Agent Studio: ${workflow.name} · ${node.agentName} (${cliCommand})`;
-    const terminal = terminals.getOrCreateTerminal(nodeId, terminalName, cwd);
 
     const predecessorOutput = joinPredecessorOutput(preds, runtime);
     const contextForPrompt = approvalInstructions
@@ -253,21 +258,31 @@ export async function runWorkflowGraph(
           .filter(Boolean)
           .join("\n\n---\n\n")
       : predecessorOutput;
+    const prompt = chatBridgeService.buildTurnPrompt(agent, objective, contextForPrompt);
 
-    const turn = await runAgentTurn({
-      terminal,
-      executable: cliCommand,
-      prompt: chatBridgeService.buildTurnPrompt(agent, objective, contextForPrompt),
-      runDir,
-      stepId: nodeId,
-      shouldCancel,
-    });
+    const turn =
+      cliCommand === "codex"
+        ? await codexSessions.runTurn(nodeId, cwd, prompt, 10 * 60 * 1000, shouldCancel)
+        : await runAgentTurn({
+            terminal: terminals.getOrCreateTerminal(
+              nodeId,
+              `Agent Studio: ${workflow.name} · ${node.agentName} (${cliCommand})`,
+              cwd,
+            ),
+            executable: cliCommand,
+            prompt,
+            runDir,
+            stepId: nodeId,
+            shouldCancel,
+          });
 
     if (!turn.success) {
       node.status = "failed";
       node.message = turn.cancelled
         ? "Cancelled by user"
-        : `${cliCommand} did not signal completion (no marker file) within the timeout`;
+        : turn.timedOut
+          ? `${cliCommand} did not signal completion within the timeout`
+          : `${cliCommand} failed${turn.output ? `: ${turn.output}` : ""}`;
       aborted = true;
       abortError = turn.cancelled
         ? "Workflow cancelled by user."
@@ -304,6 +319,7 @@ export async function runWorkflowGraph(
 
   markSkippedIfStuck();
   publish();
+  codexSessions.disposeAll();
 
   const anyFailed = order.some((nodeId) => runtime.get(nodeId)!.status === "failed");
   return anyFailed

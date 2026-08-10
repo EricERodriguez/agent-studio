@@ -6,6 +6,7 @@ import type {
   WorkflowRunState,
   WorkflowDefinition,
   WorkflowApprovalRequest,
+  WorkflowObjectiveRequest,
 } from "../types";
 
 interface Filters {
@@ -40,6 +41,7 @@ interface StudioState {
   errorMessage?: string;
   workflowRun?: WorkflowRunState;
   pendingApprovals: WorkflowApprovalRequest[];
+  pendingObjective?: WorkflowObjectiveRequest;
   /** Mirrors the AgentBuilder draft's validity/dirty state so the steps bar
    * can show a live Save/Saved/Fix errors pill without owning the draft. */
   agentDraftStatus: { valid: boolean; dirty: boolean };
@@ -88,6 +90,7 @@ interface StudioState {
   setWorkflowRun: (run?: WorkflowRunState) => void;
   addApprovalRequest: (request: WorkflowApprovalRequest) => void;
   removeApprovalRequest: (requestId: string) => void;
+  setPendingObjective: (request?: WorkflowObjectiveRequest) => void;
   setAgentDraftStatus: (status: { valid: boolean; dirty: boolean }) => void;
   requestAgentSave: () => void;
 }
@@ -281,6 +284,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
     set((state) => ({
       pendingApprovals: state.pendingApprovals.filter((r) => r.requestId !== requestId),
     })),
+  setPendingObjective: (pendingObjective) => set({ pendingObjective }),
   setAgentDraftStatus: (agentDraftStatus) => set({ agentDraftStatus }),
   requestAgentSave: () =>
     set((state) => ({ saveRequestId: state.saveRequestId + 1 })),

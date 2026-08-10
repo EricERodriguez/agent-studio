@@ -7,6 +7,7 @@ import { InspectorPanel } from "../components/InspectorPanel";
 import { AgentRail } from "../components/AgentRail";
 import { GuidedStepsBar } from "../components/GuidedStepsBar";
 import { ApprovalPanel } from "../components/ApprovalPanel";
+import { ObjectivePanel } from "../components/ObjectivePanel";
 import { useStudioStore } from "../store/useStudioStore";
 import { vscode } from "../hooks/useVsCodeApi";
 import { useI18n } from "../i18n";
@@ -123,6 +124,7 @@ export function DashboardPage(): React.JSX.Element {
       </main>
 
       <ApprovalPanel />
+      <ObjectivePanel />
     </div>
   );
 }

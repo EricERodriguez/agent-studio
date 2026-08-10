@@ -4,6 +4,7 @@ import type {
   WorkflowRunState,
   WebviewToExtensionMessage,
   WorkflowApprovalRequest,
+  WorkflowObjectiveRequest,
 } from "../domain/messages";
 import type {
   AgentDefinition,
@@ -32,6 +33,7 @@ export interface DashboardPanelHandlers {
     mode: "chat" | "plan" | "cli-claude" | "cli-codex",
   ) => Promise<void>;
   onCancelWorkflow: (runId: string) => void;
+  onObjectiveResponse: (requestId: string, objective?: string) => void;
   onCreateAgent: () => Promise<void>;
   onEditAgent: (agentId: string) => Promise<void>;
   onExportAgent: (agentId: string, providers: AgentProvider[]) => Promise<void>;
@@ -128,6 +130,12 @@ export class DashboardPanel {
           case "cancelWorkflow":
             this.handlers.onCancelWorkflow(message.payload.runId);
             break;
+          case "objectiveResponse":
+            this.handlers.onObjectiveResponse(
+              message.payload.requestId,
+              message.payload.objective,
+            );
+            break;
           case "runWorkflow":
             await this.handlers.onRunWorkflow(
               message.payload.workflowId,
@@ -210,6 +218,10 @@ export class DashboardPanel {
 
   postApprovalRequest(payload: WorkflowApprovalRequest): void {
     this.postMessage({ type: "approvalRequest", payload });
+  }
+
+  postObjectiveRequest(payload: WorkflowObjectiveRequest): void {
+    this.postMessage({ type: "objectiveRequest", payload });
   }
 
   focusAgentEditor(

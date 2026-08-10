@@ -79,6 +79,7 @@ export async function activate(
   let agents: AgentDefinition[] = [];
   let workflows: WorkflowDefinition[] = [];
   const pendingApprovals = new Map<string, (decision: ApprovalDecision) => void>();
+  const pendingObjectives = new Map<string, (objective: string | undefined) => void>();
   const activeRuns = new Map<string, { cancel: () => void }>();
 
   const agentsTreeProvider = new AgentsTreeProvider();
@@ -231,6 +232,14 @@ export async function activate(
     },
     onCancelWorkflow: (runId) => {
       activeRuns.get(runId)?.cancel();
+    },
+    onObjectiveResponse: (requestId, objective) => {
+      const resolve = pendingObjectives.get(requestId);
+      if (!resolve) {
+        return;
+      }
+      pendingObjectives.delete(requestId);
+      resolve(objective);
     },
     onCreateAgent: async () => {
       await createAgent();
@@ -681,10 +690,10 @@ export async function activate(
 
     if (mode === "cli-claude" || mode === "cli-codex") {
       const cliCommand = mode === "cli-claude" ? "claude" : "codex";
-      const objective = await vscode.window.showInputBox({
-        prompt: `What should the "${workflow.name}" workflow do?`,
-        placeHolder: "Describe the task or user story for this run",
-        ignoreFocusOut: true,
+      const objective = await new Promise<string | undefined>((resolve) => {
+        const requestId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        pendingObjectives.set(requestId, resolve);
+        dashboard.postObjectiveRequest({ requestId, workflowName: workflow.name });
       });
       if (!objective) {
         dashboard.postInfo("Workflow run cancelled.");
