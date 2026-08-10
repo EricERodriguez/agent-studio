@@ -13,7 +13,7 @@ import { vscode } from "../hooks/useVsCodeApi";
 import { useI18n } from "../i18n";
 
 export function DashboardPage(): React.JSX.Element {
-  const { language, setLanguage, tx } = useI18n();
+  const { uiLanguage, setUiLanguage, tx } = useI18n();
   const agents = useStudioStore((s) => s.agents);
   const workflows = useStudioStore((s) => s.workflows);
   const graph = useStudioStore((s) => s.capabilityGraph);
@@ -46,16 +46,16 @@ export function DashboardPage(): React.JSX.Element {
         <div className="header-actions">
           <div className="lang-toggle">
             <button
-              className={language === "en" ? "active" : ""}
+              className={uiLanguage === "en" ? "active" : ""}
               title={tx("Switch the dashboard to English.", "Cambia el dashboard a inglés.")}
-              onClick={() => setLanguage("en")}
+              onClick={() => setUiLanguage("en")}
             >
               EN
             </button>
             <button
-              className={language === "es" ? "active" : ""}
+              className={uiLanguage === "es" ? "active" : ""}
               title={tx("Switch the dashboard to Spanish.", "Cambia el dashboard a español.")}
-              onClick={() => setLanguage("es")}
+              onClick={() => setUiLanguage("es")}
             >
               ES
             </button>

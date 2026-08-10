@@ -80,6 +80,9 @@ export function GraphCanvas(): React.JSX.Element {
   const addWorkflowStep = useStudioStore((s) => s.addWorkflowStep);
   const removeWorkflowStep = useStudioStore((s) => s.removeWorkflowStep);
   const setWorkflowEntryStep = useStudioStore((s) => s.setWorkflowEntryStep);
+  const setWorkflowNodeLanguageOverride = useStudioStore(
+    (s) => s.setWorkflowNodeLanguageOverride,
+  );
   const autoLayoutWorkflow = useStudioStore((s) => s.autoLayoutWorkflow);
   const moveWorkflowNode = useStudioStore((s) => s.moveWorkflowNode);
   const workflowRun = useStudioStore((s) => s.workflowRun);
@@ -239,6 +242,7 @@ export function GraphCanvas(): React.JSX.Element {
           x: node.position.x,
           y: node.position.y,
           isEntry: Boolean(node.isEntry),
+          languageOverride: node.languageOverride,
           showHandles: true,
         };
       });
@@ -255,6 +259,7 @@ export function GraphCanvas(): React.JSX.Element {
         x: position.x,
         y: position.y,
         isEntry: false,
+        languageOverride: undefined,
         showHandles: false,
       };
     });
@@ -885,6 +890,35 @@ export function GraphCanvas(): React.JSX.Element {
                           >
                             {tx("Remove", "Quitar")}
                           </span>
+                          <select
+                            className="graph-node-language-override"
+                            aria-label={tx(
+                              "Response language for this workflow step",
+                              "Idioma de respuesta para este paso del workflow",
+                            )}
+                            title={tx(
+                              "Overrides the workspace interaction language for this step only.",
+                              "Sobrescribe el idioma de interacción del workspace sólo para este paso.",
+                            )}
+                            value={node.languageOverride || ""}
+                            onMouseDown={(e) => e.stopPropagation()}
+                            onClick={(e) => e.stopPropagation()}
+                            onChange={(e) => {
+                              if (!selectedWorkflow) return;
+                              const value = e.target.value;
+                              setWorkflowNodeLanguageOverride(
+                                selectedWorkflow.id,
+                                node.id,
+                                value === "en" || value === "es" ? value : undefined,
+                              );
+                            }}
+                          >
+                            <option value="">
+                              {tx("Language: workspace", "Idioma: workspace")}
+                            </option>
+                            <option value="en">{tx("Language: English", "Idioma: inglés")}</option>
+                            <option value="es">{tx("Language: Spanish", "Idioma: español")}</option>
+                          </select>
                         </div>
                       )}
                     </>

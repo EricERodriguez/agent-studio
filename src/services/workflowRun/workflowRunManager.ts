@@ -4,6 +4,7 @@ import type { ChatBridgeService } from "../chatBridgeService";
 import { WorkflowTerminalService } from "./workflowTerminalService";
 import { runAgentTurn } from "./interactiveTurnRunner";
 import { CodexAppServerService } from "./codexAppServerRunner";
+import { resolveInteractionLanguage } from "../interactionLanguageService";
 
 /**
  * Runs a workflow's reachable nodes as a real dependency graph, not a single linear DFS order in
@@ -258,7 +259,12 @@ export async function runWorkflowGraph(
           .filter(Boolean)
           .join("\n\n---\n\n")
       : predecessorOutput;
-    const prompt = chatBridgeService.buildTurnPrompt(agent, objective, contextForPrompt);
+    const prompt = chatBridgeService.buildTurnPrompt(
+      agent,
+      objective,
+      contextForPrompt,
+      resolveInteractionLanguage(nodeById.get(nodeId)?.languageOverride),
+    );
 
     const turn =
       cliCommand === "codex"

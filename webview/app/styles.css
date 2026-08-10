@@ -1351,6 +1351,12 @@ h4 {
   justify-content: center;
 }
 
+.graph-node-language-override {
+  max-width: 136px;
+  padding: 2px 4px;
+  font-size: 10px;
+}
+
 .graph-node-action {
   font-size: 10.5px;
   color: var(--vscode-descriptionForeground);

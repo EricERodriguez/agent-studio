@@ -75,6 +75,11 @@ interface StudioState {
   addWorkflowStep: (workflowId: string, agentId: string) => void;
   removeWorkflowStep: (workflowId: string, nodeId: string) => void;
   setWorkflowEntryStep: (workflowId: string, nodeId: string) => void;
+  setWorkflowNodeLanguageOverride: (
+    workflowId: string,
+    nodeId: string,
+    languageOverride?: "en" | "es",
+  ) => void;
   updateWorkflowMeta: (
     workflowId: string,
     meta: {
@@ -250,6 +255,20 @@ export const useStudioStore = create<StudioState>((set, get) => ({
             ...n,
             isEntry: n.id === nodeId,
           })),
+        };
+      }),
+    })),
+  setWorkflowNodeLanguageOverride: (workflowId, nodeId, languageOverride) =>
+    set((state) => ({
+      workflows: state.workflows.map((workflow) => {
+        if (workflow.id !== workflowId) return workflow;
+        return {
+          ...workflow,
+          nodes: workflow.nodes.map((node) =>
+            node.id === nodeId
+              ? { ...node, languageOverride }
+              : node,
+          ),
         };
       }),
     })),

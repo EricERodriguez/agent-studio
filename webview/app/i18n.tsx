@@ -4,8 +4,9 @@ import { vscode } from "./hooks/useVsCodeApi";
 export type Language = "en" | "es";
 
 interface LanguageContextValue {
-  language: Language;
-  setLanguage: (language: Language) => void;
+  /** Dashboard locale only; it must not decide what language agents use. */
+  uiLanguage: Language;
+  setUiLanguage: (language: Language) => void;
   tx: (english: string, spanish: string) => string;
 }
 
@@ -17,10 +18,11 @@ function normalizeLanguage(value: unknown): Language {
   return value === "es" ? "es" : "en";
 }
 
-export function getStoredLanguage(): Language {
+export function getStoredUiLanguage(): Language {
   const state =
-    (vscode?.getState() as { language?: unknown } | undefined) || {};
-  return normalizeLanguage(state.language);
+    (vscode?.getState() as { uiLanguage?: unknown; language?: unknown } | undefined) || {};
+  // `language` was the pre-Fase-2 key. Preserve it as a one-time backwards-compatible read.
+  return normalizeLanguage(state.uiLanguage ?? state.language);
 }
 
 export function translateForLanguage(
@@ -36,28 +38,28 @@ export function LanguageProvider({
 }: {
   children: React.ReactNode;
 }): React.JSX.Element {
-  const [language, setLanguageState] = React.useState<Language>(() =>
-    getStoredLanguage(),
+  const [uiLanguage, setUiLanguageState] = React.useState<Language>(() =>
+    getStoredUiLanguage(),
   );
 
-  const setLanguage = React.useCallback((nextLanguage: Language) => {
-    setLanguageState(nextLanguage);
+  const setUiLanguage = React.useCallback((nextLanguage: Language) => {
+    setUiLanguageState(nextLanguage);
     const currentState =
       (vscode?.getState() as Record<string, unknown> | undefined) || {};
     vscode?.setState({
       ...currentState,
-      language: nextLanguage,
+      uiLanguage: nextLanguage,
     });
   }, []);
 
   const value = React.useMemo<LanguageContextValue>(
     () => ({
-      language,
-      setLanguage,
+      uiLanguage,
+      setUiLanguage,
       tx: (english: string, spanish: string) =>
-        translateForLanguage(language, english, spanish),
+        translateForLanguage(uiLanguage, english, spanish),
     }),
-    [language, setLanguage],
+    [uiLanguage, setUiLanguage],
   );
 
   return (

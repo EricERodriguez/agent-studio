@@ -5,7 +5,7 @@ import "./styles.css";
 import { useStudioStore } from "./store/useStudioStore";
 import type { ExtensionToWebviewMessage } from "./types";
 import { vscode } from "./hooks/useVsCodeApi";
-import { getStoredLanguage, translateForLanguage } from "./i18n";
+import { getStoredUiLanguage, translateForLanguage } from "./i18n";
 
 if (!window.acquireVsCodeApi) {
   // Dev-only escape hatch so visual QA can inject mock state in a plain
@@ -40,7 +40,7 @@ window.addEventListener(
       useStudioStore.getState().setWorkflowRun(message.payload);
     }
     if (message.type === "focusAgentEditor") {
-      const language = getStoredLanguage();
+      const language = getStoredUiLanguage();
       useStudioStore.getState().selectAgent(message.payload.agentId);
       useStudioStore.getState().setTab(message.payload.tab || "Identity");
       useStudioStore.getState().setCenterView("editor");
@@ -60,7 +60,7 @@ window.addEventListener(
       );
     }
     if (message.type === "focusCapability") {
-      const language = getStoredLanguage();
+      const language = getStoredUiLanguage();
       useStudioStore.getState().setSelectedCapability(message.payload.id);
       useStudioStore.getState().setCenterView("editor");
       useStudioStore.getState().setUiPanelOpen("inspector", true);
@@ -106,7 +106,7 @@ window.addEventListener(
       useStudioStore.getState().setPendingObjective(message.payload);
     }
     if (message.type === "focusWorkflow") {
-      const language = getStoredLanguage();
+      const language = getStoredUiLanguage();
       useStudioStore.getState().selectWorkflow(message.payload.workflowId);
       useStudioStore.getState().setGraphMode("workflow");
       useStudioStore.getState().setCenterView("graph");

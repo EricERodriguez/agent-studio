@@ -38,14 +38,14 @@ el diseño nuevo (motor nativo, sin tmux, sin socket externo, gating in-process)
 |---|---|---|---|
 | 0 | Distribución y alcance legal | Revisada para motor nativo — riesgo legal bajó de "bloqueante de runtime" a "no copiar texto literal de role prompts de SwarmForge" | 2026-08-09 |
 | 1 | Modelo de datos extendido (`WorkflowDefinition`/`Node`/`Edge`, `HandoffMode` por edge) | **Implementado y confirmado** — `HandoffMode`/`WorkflowEdge.handoff` en `src/domain/models.ts`; toggle "⚡ Auto / 👤 Human" en el editor de grafo (`GraphCanvas.tsx`), ya no hace falta editar el JSON a mano. Pendiente sólo el bug cosmético del ícono ⚡ (`BUGS.md` #3) | 2026-08-09 |
-| 2 | Separación `uiLanguage` / `interactionLanguage` / `languageOverride` | Diseño cerrado, no implementado, sin cambios por el pivot | 2026-08-09 |
-| 3 | Catálogo de templates inspirados en two/four/six-pack | **Implementado, sin probar en la práctica todavía** — `src/services/workflowTemplates.ts` + QuickPick en `createWorkflow`, ver sección de abajo. Templates son cadenas lineales de un solo pase (el motor DAG no soporta los loops indefinidos de SwarmForge, decisión explícita) | 2026-08-10 |
+| 2 | Separación `uiLanguage` / `interactionLanguage` / `languageOverride` | **Implementado, pendiente de QA UI real** — locale del dashboard persistido como `uiLanguage`, preferencia de workspace `agentStudio.interactionLanguage` y override opcional por nodo que se inyectan al prompt sin alterar la UI | 2026-08-10 |
+| 3 | Catálogo de templates inspirados en two/four/six-pack | **Implementado y validado parcialmente en la UI real** — el flujo Repository → Four-Pack creó los cuatro agents, persistió el workflow y abrió el dashboard con el grafo y el handoff humano inicial. Aún no se recorrieron desde UI Two-Pack, Six-Pack ni los casos de reuso/colisión. Templates son cadenas lineales de un solo pase (el motor DAG no soporta los loops indefinidos de SwarmForge, decisión explícita) | 2026-08-10 |
 | 4 | `WorkflowRunManager` nativo (reemplaza el adaptador `src/services/swarmforge/*` de la v2) | **Implementado y confirmado** — `src/services/workflowRun/workflowRunManager.ts`, scheduler real basado en dependencias del grafo, corridas reales de varios pasos confirmadas por el usuario | 2026-08-09 |
 | 5 | N terminales de VS Code por workflow + detección de fin de turno | **Cerrado de punta a punta y confirmado.** Detección de fin de turno validada contra `claude`/`codex` reales. N terminales en paralelo (`WorkflowTerminalService`) confirmado corriendo simultáneo en una corrida real. Split de terminales sigue roto (`BUGS.md` #1, todos abren como tabs nuevos) | 2026-08-09 |
 | 6 | Handoff control: Human-in-the-Loop + IA como nodo del grafo (`HandoffMode` = sólo `automatic`/`human`) | **Implementado y confirmado** — `workflowRunManager.ts` pausa el nodo en `waiting_approval`, panel de aprobación propio (no modal nativo) confirmado bloqueando correctamente en una corrida real, con el toggle del editor de grafo ya no hace falta editar JSON | 2026-08-09 |
 | 7 | Estado y recuperación (persistencia de un run, reconexión al reabrir VS Code) | Sin revisar en detalle todavía | No iniciado |
 | 8 | Panel de ejecución y estados visuales del grafo (`queued`/`running` animado/`completed`) | **Implementado y confirmado** — colores por estado en `.graph-node` y animación de pulso en `running`, confirmados por el usuario contra una corrida real (dos rondas: colores, luego intensidad del pulso) | 2026-08-10 |
-| 9 | Preflight de seguridad | **Implementado, sin probar en la práctica todavía** — ver sección de abajo | 2026-08-10 |
+| 9 | Preflight de seguridad | **Implementado; validación UI inconclusa** — se abrió un Development Host real y se preparó un repo git sucio, pero no se pudo observar el warning/modal ni completar los casos CLI inexistente/Continue/Cancel. Ver sección de QA del 2026-08-10 antes de considerarla confirmada | 2026-08-10 |
 | 10 | Plan de pruebas | Sin revisar en detalle todavía | No iniciado |
 
 (La numeración de fases se comprimió de 0-12 a 0-10 al fusionar lo que antes eran fases separadas
@@ -926,14 +926,87 @@ error preexistente) y `npm run build:extension` compilan limpio. **Sin probar to
 práctica** — falta confirmar en la UI que las instrucciones enriquecidas se ven bien en el editor
 de agentes y producen turnos de mejor calidad al correr un template real.
 
+## Fase 2: idioma de interacción separado de UI (2026-08-10)
+
+Implementación del diseño ya cerrado: no se reutiliza el locale del dashboard para inferir el
+idioma de las respuestas de los agents.
+
+- `webview/app/i18n.tsx`: el estado persistido del webview ahora se llama `uiLanguage`; se lee
+  también la clave histórica `language` para no perder la preferencia existente y se migra al
+  guardar. El provider expone `uiLanguage`/`setUiLanguage`, dejando claro que `tx()` sólo traduce
+  la UI React.
+- `package.json` + nuevo `src/services/interactionLanguageService.ts`: setting de workspace
+  `agentStudio.interactionLanguage` (`en`/`es`, default `en`) y helpers que producen una
+  instrucción de idioma de respuesta. Esa instrucción preserva deliberadamente código, comandos,
+  paths, API names y texto literal, salvo pedido explícito de traducción.
+- `WorkflowNode.languageOverride?: "en" | "es"`: override persistible por nodo. En el grafo, al
+  seleccionar un nodo de workflow aparece un select `Language: workspace / English / Spanish`.
+  Es un cambio de borrador del workflow y usa el Save Workflow existente para persistirse.
+- `ChatBridgeService` agrega la instrucción al prompt normal y al prompt de turno; el
+  `WorkflowRunManager` resuelve primero el override del nodo y, si no existe, la preferencia de
+  workspace. Por lo tanto vale igual para Claude interactivo, Codex app-server y abrir un agent
+  en Chat; no depende del idioma elegido para los labels de UI.
+
+`npm run build` pasó. `npm run check` sigue fallando únicamente con el error preexistente de
+`src/services/agentRegistryService.ts:257` (`PromiseLike<string>` no tiene `.catch`); no introdujo
+errores adicionales de Fase 2. Falta reiniciar el Development Host y confirmar visualmente el
+select de override y el texto final del prompt, antes de marcarla como confirmada.
+
+## QA de Development Host: templates y preflight (2026-08-10)
+
+Se ejecutó una instancia aislada real de VS Code 1.129.1 como **Extension Development Host**,
+con el build que dispara F5 (`npm run build`) y un repositorio temporal vacío inicializado con
+git. La primera invocación por F5 abrió el host sin carpeta y `Agent Studio: Create Workflow`
+mostró literalmente `Error: Agent Studio needs an opened folder to create or save files.`; para
+no confundir ese problema de launch/workspace con las fases bajo prueba, se abrió un segundo
+Development Host aislado con ese repositorio temporal como folder y se confirmó Workspace Trust.
+No se modificó `launch.json` en esta ronda.
+
+### Fase 3 — resultado real
+
+Se usó el Command Palette de la extensión: `Agent Studio: Create Workflow` → `Repository` →
+`Four-Pack` → nombre `QA Four Pack`. Resultado observado en la UI real:
+
+- El sidebar pasó a mostrar `QA Four Pack`, scope repository, `4 nodes · 3 edges`; Source
+  Control mostró 5 cambios nuevos.
+- Se crearon los cuatro archivos de agent de repositorio (`specifier`, `coder`, `refactorer`,
+  `architect`) y `.vscode/agent-studio/workflows/qa-four-pack.json`.
+- El dashboard se abrió directamente en el workflow. El grafo visible contenía los cuatro nodos
+  y sus tres edges; el JSON escrito por la extensión confirma `handoff.mode: "human"` en
+  `specifier → coder`, y las otras dos transiciones automáticas.
+
+Evidencia visual temporal de esta ronda: `/tmp/agent-studio-template-dashboard-qa.png`. No se
+recorrieron los otros dos packs ni las variantes de colisión/reuso desde UI, por lo que ésta es
+una validación parcial, no exhaustiva.
+
+### Fase 9 — resultado real, todavía no concluyente
+
+El mismo repo temporal quedó deliberadamente sucio con los cinco archivos que creó Four-Pack.
+Se verificó en el host que `codex --version` y `claude --version` existen y salen con código 0.
+También se seleccionó `CLI de Codex` en el panel de ejecución; la inspección del estado React
+del webview confirmó que `runMode` quedó en `cli-codex`, no sólo el texto visual del select.
+
+Sin embargo, al solicitar `Ejecutar Workflow` no apareció el warning modal esperado por los
+cambios sin commitear, tampoco el panel de objetivo ni un error de dashboard. La automatización
+de webviews de Electron tuvo una limitación importante: sus primeros eventos mutaron el DOM del
+select sin actualizar el estado React y lanzaron por error una corrida en modo Chat; se detuvo
+inmediatamente y terminó como `Workflow failed. Workflow cancelled by user.`. Después se repitió
+con estado React confirmado `cli-codex`, pero la observación del warning siguió sin materializarse.
+
+Por honestidad de verificación, **no marcar Fase 9 como confirmada**: faltan dos reproducciones
+manuales directas en el panel real, una con `agentStudio.cli.claudeCommand` apuntando a un binario
+inexistente (debe bloquear antes del objetivo) y otra con el repo sucio (debe mostrar
+Continue/Cancel y respetar ambos caminos). No se cambió código de producción ni se tocó ninguno
+de los tres bugs deliberadamente diferidos de `BUGS.md`.
+
 ## Qué falta (próximo paso sugerido)
 
 Quedan sin iniciar: Fase 2 (idioma de interacción), Fase 7 (estado/recuperación — persistir un
 run y reconectar al reabrir VS Code; el diseño previo asumía invocación one-shot y quedó
 desactualizado por el pivot a sesiones interactivas, hay que rediseñarlo antes de implementarlo),
-Fase 10 (plan de pruebas). Fase 3 (templates) y Fase 9 (preflight) recién implementadas arriba,
-falta confirmar ambas en la práctica. Aparte de eso, sólo quedan los tres bugs de `BUGS.md`,
-deliberadamente pospuestos para el final por pedido del usuario.
+Fase 10 (plan de pruebas). Fase 3 tiene una validación UI parcial; Fase 9 sigue sin confirmación
+UI y debe repetirse como se detalla arriba. Aparte de eso, sólo quedan los tres bugs de
+`BUGS.md`, deliberadamente pospuestos para el final por pedido del usuario.
 
 ## Notas de handoff
 

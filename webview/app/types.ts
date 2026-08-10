@@ -53,6 +53,7 @@ export interface AgentDefinition {
 }
 
 export type HandoffMode = "automatic" | "human";
+export type InteractionLanguage = "en" | "es";
 
 export interface WorkflowDefinition {
   id: string;
@@ -63,6 +64,7 @@ export interface WorkflowDefinition {
     agentId: string;
     position: { x: number; y: number };
     isEntry?: boolean;
+    languageOverride?: InteractionLanguage;
   }>;
   edges: Array<{
     id: string;

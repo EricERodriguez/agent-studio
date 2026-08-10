@@ -1,8 +1,15 @@
 import * as vscode from "vscode";
-import type { AgentDefinition } from "../domain/models";
+import type { AgentDefinition, InteractionLanguage } from "../domain/models";
+import {
+  getInteractionLanguage,
+  interactionLanguageInstruction,
+} from "./interactionLanguageService";
 
 export class ChatBridgeService {
-  buildPrompt(agent: AgentDefinition): string {
+  buildPrompt(
+    agent: AgentDefinition,
+    interactionLanguage = getInteractionLanguage(),
+  ): string {
     return [
       `Agent: ${agent.name}`,
       agent.description ? `Description: ${agent.description}` : "",
@@ -10,6 +17,8 @@ export class ChatBridgeService {
       "",
       "Instructions:",
       agent.instructions,
+      "",
+      interactionLanguageInstruction(interactionLanguage),
     ]
       .filter(Boolean)
       .join("\n");
@@ -22,9 +31,10 @@ export class ChatBridgeService {
     agent: AgentDefinition,
     objective: string,
     previousStepOutput?: string,
+    interactionLanguage?: InteractionLanguage,
   ): string {
     return [
-      this.buildPrompt(agent),
+      this.buildPrompt(agent, interactionLanguage),
       "",
       "Task:",
       objective,

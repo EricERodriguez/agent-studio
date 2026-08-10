@@ -242,6 +242,15 @@
                     "default": true,
                     "description": "When true, Agent Studio also discovers globally installed Claude Code subagents from ~/.claude/agents/*.md and lists them as global agents."
                 },
+                "agentStudio.interactionLanguage": {
+                    "type": "string",
+                    "enum": [
+                        "en",
+                        "es"
+                    ],
+                    "default": "en",
+                    "description": "Default language for user-facing agent responses. This is independent of the Agent Studio dashboard language; individual workflow nodes can override it."
+                },
                 "agentStudio.cli.claudeCommand": {
                     "type": "string",
                     "default": "claude --permission-mode acceptEdits",

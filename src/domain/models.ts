@@ -67,7 +67,13 @@ export interface WorkflowNode {
     y: number;
   };
   isEntry?: boolean;
+  /** Optional response-language override for this turn. When absent, the workspace-level
+   * agentStudio.interactionLanguage setting applies; it never changes the dashboard language. */
+  languageOverride?: InteractionLanguage;
 }
+
+/** The language agents use for their user-facing answers, deliberately independent of UI locale. */
+export type InteractionLanguage = "en" | "es";
 
 export type HandoffMode = "automatic" | "human";
 
