@@ -48,6 +48,20 @@ compile.
   prefijo `⚡` también para el caso automático, igual que se hizo para `👤`.
 - Ver `PROGRESS.md`, sección "Editor de grafo: selector de `handoff.mode` por edge" (2026-08-09).
 
+### 4. `npm run check` falla en `agentRegistryService.ts:257`
+
+- **Síntoma**: `npm run check` (`tsc --noEmit`) termina con `TS2339: Property 'catch' does not
+  exist on type 'PromiseLike<string>'` en `src/services/agentRegistryService.ts:257`.
+- **Impacto observado**: bloquea la verificación de tipos completa. `npm run build` sí completa
+  (esbuild para la extensión y Vite para el webview), por lo que no impide generar los bundles.
+- **Contexto**: el error ya existía antes de los cambios de Fase 2, Fase 7, Fase 9 y Fase 10 de
+  esta ronda; se confirmó nuevamente el 2026-08-10. No se investigó ni corrigió por pedido del
+  usuario de dejar los bugs para el final.
+- **Próximo paso sugerido**: revisar la API tipada que devuelve `PromiseLike<string>` en ese
+  método y reemplazar el uso de `.catch(...)` por una ruta compatible (por ejemplo `await` dentro
+  de `try/catch`) sin alterar el manejo funcional del registro de agentes.
+- Ver `PROGRESS.md`, actualización del 2026-08-10 sobre Fases 7/9/10.
+
 ## Cómo agregar un bug nuevo
 
 Cada entrada: síntoma concreto (qué se hizo, qué se esperaba, qué pasó), qué se intentó si ya se

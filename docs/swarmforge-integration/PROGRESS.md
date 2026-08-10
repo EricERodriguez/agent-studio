@@ -43,10 +43,10 @@ el diseño nuevo (motor nativo, sin tmux, sin socket externo, gating in-process)
 | 4 | `WorkflowRunManager` nativo (reemplaza el adaptador `src/services/swarmforge/*` de la v2) | **Implementado y confirmado** — `src/services/workflowRun/workflowRunManager.ts`, scheduler real basado en dependencias del grafo, corridas reales de varios pasos confirmadas por el usuario | 2026-08-09 |
 | 5 | N terminales de VS Code por workflow + detección de fin de turno | **Cerrado de punta a punta y confirmado.** Detección de fin de turno validada contra `claude`/`codex` reales. N terminales en paralelo (`WorkflowTerminalService`) confirmado corriendo simultáneo en una corrida real. Split de terminales sigue roto (`BUGS.md` #1, todos abren como tabs nuevos) | 2026-08-09 |
 | 6 | Handoff control: Human-in-the-Loop + IA como nodo del grafo (`HandoffMode` = sólo `automatic`/`human`) | **Implementado y confirmado** — `workflowRunManager.ts` pausa el nodo en `waiting_approval`, panel de aprobación propio (no modal nativo) confirmado bloqueando correctamente en una corrida real, con el toggle del editor de grafo ya no hace falta editar JSON | 2026-08-09 |
-| 7 | Estado y recuperación (persistencia de un run, reconexión al reabrir VS Code) | Sin revisar en detalle todavía | No iniciado |
+| 7 | Estado y recuperación (persistencia de un run, reconexión al reabrir VS Code) | **Rediseñado; pendiente de implementación** — un cierre marca la corrida como `interrupted` y la conserva sólo para inspección, sin adoptar procesos ni reintentar nodos automáticamente; ver `06-estado-recuperacion.md` | 2026-08-10 |
 | 8 | Panel de ejecución y estados visuales del grafo (`queued`/`running` animado/`completed`) | **Implementado y confirmado** — colores por estado en `.graph-node` y animación de pulso en `running`, confirmados por el usuario contra una corrida real (dos rondas: colores, luego intensidad del pulso) | 2026-08-10 |
-| 9 | Preflight de seguridad | **Implementado; validación UI inconclusa** — se abrió un Development Host real y se preparó un repo git sucio, pero no se pudo observar el warning/modal ni completar los casos CLI inexistente/Continue/Cancel. Ver sección de QA del 2026-08-10 antes de considerarla confirmada | 2026-08-10 |
-| 10 | Plan de pruebas | Sin revisar en detalle todavía | No iniciado |
+| 9 | Preflight de seguridad | **Implementado; validación UI inconclusa** — se retiró el warning de working tree sucio por pedido del usuario. Aún falta observar en EDH el blocker de CLI inexistente y el warning Continue/Cancel para un workspace sin git | 2026-08-10 |
+| 10 | Plan de pruebas | **Diseñado; pendiente de ejecutar y automatizar** — matriz de tests unitarios, integración y EDH real en `07-plan-pruebas.md` | 2026-08-10 |
 
 (La numeración de fases se comprimió de 0-12 a 0-10 al fusionar lo que antes eran fases separadas
 "5+6" y "7+8" de la integración con SwarmForge en fases únicas del motor nativo — ver
@@ -825,8 +825,9 @@ Antes de esto no había ninguna verificación previa a lanzar un run: si `claude
 estaban en el PATH, o el usuario apuntó `agentStudio.cli.claudeCommand` a un ejecutable roto, el
 primer síntoma visible era un nodo colgado sin explicación (justamente el tipo de fallo silencioso
 que ya pasó una vez con Codex, `BUGS.md` #2). Implementado según lo previsto en `01-plan-revisado.md`
-(Fase 9): "verificar que el workspace es un repo git, mostrar cambios sin commit antes de lanzar
-un run, confirmar que las CLIs de los proveedores elegidos están instaladas".
+(Fase 9): "verificar que el workspace es un repo git y confirmar que las CLIs de los proveedores
+elegidos están instaladas". Por decisión posterior del usuario, una corrida puede empezar sobre
+un working tree sucio sin advertencia.
 
 - Nuevo `src/services/workflowRun/preflightCheck.ts`, función `runPreflightChecks(cwd, mode)`:
   - **Blocker** (corta el run antes de pedir el objetivo): el ejecutable de la CLI no arranca.
@@ -837,9 +838,8 @@ un run, confirmar que las CLIs de los proveedores elegidos están instaladas".
     para Codex desde el pivot a app-server). Para `claude` se toma el primer token de
     `agentStudio.cli.claudeCommand` (por defecto `claude`).
   - **Warning** (modal nativo de confirmación, no bloquea si el usuario elige seguir): el
-    workspace no es un repo git (`git rev-parse --is-inside-work-tree`), o hay cambios sin
-    commitear (`git status --porcelain`) — para poder distinguir después qué cambió el agente de
-    qué ya estaba sucio antes de arrancar.
+    workspace no es un repo git (`git rev-parse --is-inside-work-tree`). Ya no ejecuta
+    `git status --porcelain` ni cuenta cambios sin commitear.
 - `src/extension.ts`, `runWorkflow`: el `cwd` ahora se calcula antes de pedir el objetivo (antes
   se calculaba después), se corre el preflight ahí mismo. Si hay blockers, `dashboard.postError`
   y corta sin pedir objetivo. Si hay warnings, `vscode.window.showWarningMessage(..., {modal:
@@ -847,13 +847,12 @@ un run, confirmar que las CLIs de los proveedores elegidos están instaladas".
   en este archivo, no se inventó un mecanismo nuevo.
 
 Probado manualmente contra este mismo repo (no vía extensión, corriendo los comandos crudos):
-`git rev-parse --is-inside-work-tree` → `true`, `git status --porcelain` devuelve 3 líneas (matchea
-el estado real del working tree en este momento), `claude --version`/`codex --version` devuelven
+`git rev-parse --is-inside-work-tree` → `true`, `claude --version`/`codex --version` devuelven
 exit 0 — confirma que el parsing y la detección de disponibilidad funcionan como se espera contra
 binarios reales, no sólo en teoría. `npm run check` (sin contar el error preexistente de
 `agentRegistryService.ts:257`) y `npm run build:extension` compilan limpio. **Sin probar todavía
 disparando un run real desde la extensión** — falta confirmar que el blocker corta antes del
-modal de objetivo cuando la CLI no existe, y que el warning de cambios sin commitear aparece y
+modal de objetivo cuando la CLI no existe, y que el warning de workspace sin git aparece y
 respeta la decisión del usuario (Continue/Cancel).
 
 ## Fase 3: catálogo de templates (Two/Four/Six-Pack) (2026-08-10)
@@ -997,15 +996,36 @@ Por honestidad de verificación, **no marcar Fase 9 como confirmada**: faltan do
 manuales directas en el panel real, una con `agentStudio.cli.claudeCommand` apuntando a un binario
 inexistente (debe bloquear antes del objetivo) y otra con el repo sucio (debe mostrar
 Continue/Cancel y respetar ambos caminos). No se cambió código de producción ni se tocó ninguno
-de los tres bugs deliberadamente diferidos de `BUGS.md`.
+de los cuatro bugs deliberadamente diferidos de `BUGS.md`.
+
+**Actualización posterior (2026-08-10):** el usuario pidió retirar el chequeo de cambios sin
+commitear. `preflightCheck.ts` ya no corre `git status --porcelain` ni muestra el contador de
+archivos sucios. Por lo tanto el segundo caso de QA deja de aplicar: queda validar el blocker de
+CLI inexistente y el warning de workspace sin git.
+
+## Fase 7 rediseñada y Fase 10 planificada (2026-08-10)
+
+El usuario confirmó la alternativa recomendada para Fase 7: una corrida activa al cerrarse VS
+Code se conserva para inspección y pasa a `interrupted`; no se intenta adoptar terminales o
+procesos `codex app-server`, ni se redispatchan o reintentan nodos. El diseño durable, las reglas
+de transición y los criterios de aceptación están en [`06-estado-recuperacion.md`](./06-estado-recuperacion.md).
+La implementación sigue pendiente.
+
+También se documentó la matriz de evidencia de Fase 10 en [`07-plan-pruebas.md`](./07-plan-pruebas.md):
+unitarios para lógica pura, integración para servicios y manifests, y smoke/QA real en EDH para
+UI, CLIs, handoffs y recuperación. Incluye el caso nuevo: un repositorio sucio debe seguir sin
+advertencia, mientras que CLI inexistente y workspace sin git mantienen sus protecciones.
+
+**Bug registrado (2026-08-10):** `npm run check` continúa fallando por el error preexistente
+`TS2339` de `src/services/agentRegistryService.ts:257` (`PromiseLike<string>` no expone
+`.catch`). Se añadió como `BUGS.md` #4 por indicación del usuario; `npm run build` sigue pasando.
 
 ## Qué falta (próximo paso sugerido)
 
-Quedan sin iniciar: Fase 2 (idioma de interacción), Fase 7 (estado/recuperación — persistir un
-run y reconectar al reabrir VS Code; el diseño previo asumía invocación one-shot y quedó
-desactualizado por el pivot a sesiones interactivas, hay que rediseñarlo antes de implementarlo),
-Fase 10 (plan de pruebas). Fase 3 tiene una validación UI parcial; Fase 9 sigue sin confirmación
-UI y debe repetirse como se detalla arriba. Aparte de eso, sólo quedan los tres bugs de
+Quedan por validar Fase 2 (idioma de interacción) y Fase 3 (templates, validación UI parcial).
+Fase 7 quedó rediseñada y debe implementarse. Fase 9 sigue sin confirmación UI del blocker de CLI
+inexistente y del aviso de workspace sin git; ya no tiene validación de working tree sucio. Fase
+10 tiene plan, pero falta ejecutar y automatizar su matriz. Aparte de eso, sólo quedan los cuatro bugs de
 `BUGS.md`, deliberadamente pospuestos para el final por pedido del usuario.
 
 ## Notas de handoff

@@ -144,11 +144,12 @@ sobre, una estructura de decisión que un agente generó.
 
 ## Fase 7 — Estado y recuperación
 
-Sin revisar en detalle todavía (ver `PROGRESS.md`). Sigue siendo válida la idea de la v1/v2de
-persistir `RunStatus`/`StepStatus` y reconectar al reabrir VS Code, pero ahora es más simple en
-un sentido (no hay que verificar un socket tmux externo) y más difícil en otro (si VS Code se
-cierra a mitad de un turno "one-shot", hay que decidir si se reintenta el turno o se recupera su
-resultado desde el historial del shell integration).
+Diseño actualizado en [`06-estado-recuperacion.md`](./06-estado-recuperacion.md). Tras el pivot
+a sesiones interactivas no se puede asumir que un terminal Claude o un `codex app-server` admite
+reconexión segura. Decisión confirmada por el usuario: persistir la corrida para inspección y
+marcarla `interrupted` al reabrir VS Code, sin reintento automático ni redispatch de nodos. Para
+continuar, el usuario inicia explícitamente una corrida nueva; el DAG sigue ejecutando cada nodo
+una sola vez por corrida.
 
 ## Fase 8 — Panel de ejecución y estados visuales del grafo
 
@@ -167,16 +168,16 @@ motor es un nodo más.
 ## Fase 9 — Preflight de seguridad
 
 Se simplifica respecto a la v2 (ya no hace falta verificar `tmux`/`bb`/versión de SwarmForge).
-Queda: verificar que el workspace es un repo git, mostrar cambios sin commit antes de lanzar un
-run, confirmar que las CLIs de los proveedores elegidos están instaladas y soportan modo one-shot
-si el diseño de la Fase 5 lo requiere, no guardar secretos en el estado del run.
+Queda: verificar que el workspace es un repo git y confirmar que las CLIs de los proveedores
+elegidos están instaladas y soportan el modo que use el runner. Por decisión explícita del
+usuario, un working tree con cambios sin commit no genera warning ni bloquea la corrida. No guardar
+secretos en el estado del run.
 
 ## Fase 10 — Pruebas
 
-Sin revisión detallada todavía. El punto nuevo más importante: un smoke test real (no mockeado)
-de que la API de Terminal Shell Integration entrega el exit code de forma confiable para al menos
-`claude` y `codex` en modo one-shot, antes de construir el resto del `WorkflowRunManager` sobre
-ese supuesto — ver Fase 5.
+Plan detallado en [`07-plan-pruebas.md`](./07-plan-pruebas.md). Prioriza evidencia ejecutable y
+QA real en un Extension Development Host: tests unitarios para las piezas puras, integración para
+servicios VS Code y smoke tests manuales para terminales, app-server, handoffs y recuperación.
 
 ## Orden de entregas (MVP) — revisado
 

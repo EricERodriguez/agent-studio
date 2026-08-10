@@ -3,8 +3,8 @@ import { spawn } from "child_process";
 
 /**
  * Fase 9 — checks run once, right before launching a workflow, to catch problems that would
- * otherwise surface confusingly mid-run (a CLI that silently never starts, or agent edits mixed
- * in with pre-existing uncommitted changes with no way to tell them apart afterwards).
+ * otherwise surface confusingly mid-run (for example, a CLI that silently never starts, or a
+ * workspace where edits cannot be tracked by git at all).
  */
 export interface PreflightResult {
   blockers: string[];
@@ -75,14 +75,6 @@ export async function runPreflightChecks(
     warnings.push(
       "This workspace is not a git repository — changes agents make won't be tracked or easy to undo.",
     );
-  } else {
-    const statusCheck = await runGit(["status", "--porcelain"], cwd);
-    const changedFiles = statusCheck.stdout.split("\n").filter((line) => line.trim().length > 0);
-    if (changedFiles.length > 0) {
-      warnings.push(
-        `${changedFiles.length} uncommitted change(s) already in the workspace before this run starts.`,
-      );
-    }
   }
 
   return { blockers, warnings };
