@@ -19,6 +19,11 @@ import { WorkflowService } from "./services/workflowService";
 import { runShellIntegrationPrototype } from "./services/workflowRun/shellIntegrationPrototype";
 import { runPreflightChecks } from "./services/workflowRun/preflightCheck";
 import {
+  WORKFLOW_TEMPLATE_OPTIONS,
+  buildWorkflowFromTemplate,
+  defaultTemplateName,
+} from "./services/workflowTemplates";
+import {
   runWorkflowGraph,
   type ApprovalDecision,
 } from "./services/workflowRun/workflowRunManager";
@@ -1276,15 +1281,66 @@ export async function activate(
       return;
     }
 
-    const skeleton = await createWorkflowSkeleton(agents);
-    if (!skeleton) {
+    const templatePick = await vscode.window.showQuickPick(
+      [
+        {
+          label: "Custom",
+          description: "Start from a single empty node",
+          value: "custom" as const,
+        },
+        ...WORKFLOW_TEMPLATE_OPTIONS.map((option) => ({
+          label: option.label,
+          description: option.description,
+          value: option.id,
+        })),
+      ],
+      {
+        placeHolder: "Start from a template?",
+        ignoreFocusOut: true,
+      },
+    );
+
+    if (!templatePick) {
       return;
     }
-    skeleton.sourceScope = scopePick.value;
-    await workflowService.saveWorkflow(skeleton);
+
+    if (templatePick.value === "custom") {
+      const skeleton = await createWorkflowSkeleton(agents);
+      if (!skeleton) {
+        return;
+      }
+      skeleton.sourceScope = scopePick.value;
+      await workflowService.saveWorkflow(skeleton);
+      await refreshState();
+      dashboard.show();
+      dashboard.focusWorkflow(skeleton.id);
+      return;
+    }
+
+    const templateId = templatePick.value;
+    const name = await vscode.window.showInputBox({
+      prompt: "Workflow name",
+      value: defaultTemplateName(templateId),
+      ignoreFocusOut: true,
+    });
+    if (!name) {
+      return;
+    }
+
+    const built = buildWorkflowFromTemplate(templateId, name, agents, (id) =>
+      workflows.some((workflow) => workflow.id === id),
+    );
+
+    for (const agent of built.agentsToCreate) {
+      agent.sourceScope = scopePick.value;
+      await agentRegistryService.saveAgent(agent);
+    }
+
+    built.workflow.sourceScope = scopePick.value;
+    await workflowService.saveWorkflow(built.workflow);
     await refreshState();
     dashboard.show();
-    dashboard.focusWorkflow(skeleton.id);
+    dashboard.focusWorkflow(built.workflow.id);
   };
 
   const startMcpServer = async (mcpId?: string): Promise<void> => {

@@ -39,7 +39,7 @@ el diseño nuevo (motor nativo, sin tmux, sin socket externo, gating in-process)
 | 0 | Distribución y alcance legal | Revisada para motor nativo — riesgo legal bajó de "bloqueante de runtime" a "no copiar texto literal de role prompts de SwarmForge" | 2026-08-09 |
 | 1 | Modelo de datos extendido (`WorkflowDefinition`/`Node`/`Edge`, `HandoffMode` por edge) | **Implementado y confirmado** — `HandoffMode`/`WorkflowEdge.handoff` en `src/domain/models.ts`; toggle "⚡ Auto / 👤 Human" en el editor de grafo (`GraphCanvas.tsx`), ya no hace falta editar el JSON a mano. Pendiente sólo el bug cosmético del ícono ⚡ (`BUGS.md` #3) | 2026-08-09 |
 | 2 | Separación `uiLanguage` / `interactionLanguage` / `languageOverride` | Diseño cerrado, no implementado, sin cambios por el pivot | 2026-08-09 |
-| 3 | Catálogo de templates inspirados en two/four/six-pack | Revisada — prompts propios en vez de copiar los de SwarmForge, ver `01-plan-revisado.md`. No implementado todavía | 2026-08-09 |
+| 3 | Catálogo de templates inspirados en two/four/six-pack | **Implementado, sin probar en la práctica todavía** — `src/services/workflowTemplates.ts` + QuickPick en `createWorkflow`, ver sección de abajo. Templates son cadenas lineales de un solo pase (el motor DAG no soporta los loops indefinidos de SwarmForge, decisión explícita) | 2026-08-10 |
 | 4 | `WorkflowRunManager` nativo (reemplaza el adaptador `src/services/swarmforge/*` de la v2) | **Implementado y confirmado** — `src/services/workflowRun/workflowRunManager.ts`, scheduler real basado en dependencias del grafo, corridas reales de varios pasos confirmadas por el usuario | 2026-08-09 |
 | 5 | N terminales de VS Code por workflow + detección de fin de turno | **Cerrado de punta a punta y confirmado.** Detección de fin de turno validada contra `claude`/`codex` reales. N terminales en paralelo (`WorkflowTerminalService`) confirmado corriendo simultáneo en una corrida real. Split de terminales sigue roto (`BUGS.md` #1, todos abren como tabs nuevos) | 2026-08-09 |
 | 6 | Handoff control: Human-in-the-Loop + IA como nodo del grafo (`HandoffMode` = sólo `automatic`/`human`) | **Implementado y confirmado** — `workflowRunManager.ts` pausa el nodo en `waiting_approval`, panel de aprobación propio (no modal nativo) confirmado bloqueando correctamente en una corrida real, con el toggle del editor de grafo ya no hace falta editar JSON | 2026-08-09 |
@@ -856,15 +856,58 @@ disparando un run real desde la extensión** — falta confirmar que el blocker 
 modal de objetivo cuando la CLI no existe, y que el warning de cambios sin commitear aparece y
 respeta la decisión del usuario (Continue/Cancel).
 
+## Fase 3: catálogo de templates (Two/Four/Six-Pack) (2026-08-10)
+
+Recreación nativa de la idea de two/four/six-pack de SwarmForge, como pidió el plan revisado:
+workflows normales de Agent Studio (agentes + edges + `handoff.mode`), no algo que se "importa y
+corre con SwarmForge". Los prompts de cada rol se escribieron de cero a partir de lo que el
+nombre del rol implica públicamente — no se copió texto de los `.prompt` reales de SwarmForge
+(Fase 0/3 de `01-plan-revisado.md`).
+
+- Nuevo `src/services/workflowTemplates.ts`: catálogo de 7 roles (`specifier`, `coder`,
+  `cleaner`, `refactorer`, `architect`, `hardener`, `qa`) con instrucciones propias, y
+  `buildWorkflowFromTemplate(templateId, name, existingAgents, isWorkflowIdTaken)` que arma los
+  nodos/edges de cada template y **sólo** devuelve para crear los agentes cuyo id no exista ya en
+  el registro del usuario — un agente existente con el mismo id (por ejemplo si ya corrió otro
+  template antes, o si el usuario ya tenía un agente `coder` propio) se reutiliza tal cual, nunca
+  se sobreescribe.
+  - **Two-Pack**: `coder → cleaner`, automático.
+  - **Four-Pack**: `specifier → coder → refactorer → architect`, `handoff: human` en
+    `specifier → coder` (aprobar la spec antes de codear).
+  - **Six-Pack**: `specifier → coder → cleaner → architect → hardener → qa`, `handoff: human` en
+    `hardener → qa` (gate de cierre antes de la revisión final).
+  - **Decisión explícita, no un descuido**: SwarmForge hace loopear indefinidamente algunos packs
+    (ej. coder↔cleaner hasta que un humano corta la sesión). `workflowRunManager.ts` es un
+    scheduler de grafo estrictamente DAG — cada nodo corre una sola vez por run, no hay forma de
+    re-disparar un nodo ya `completed` — así que los tres templates quedaron como cadenas lineales
+    de un solo pase, no loops. Es una simplificación deliberada para encajar con el motor ya
+    construido en esta sesión, no algo pendiente de arreglar.
+- `src/extension.ts`, `createWorkflow`: después de elegir el scope (Repository/Global, sin
+  cambios), un nuevo `QuickPick` "Start from a template?" con "Custom" (el flujo de siempre, nodo
+  único vacío) + los tres templates. Si se elige un template: pide nombre (default sugerido según
+  el template), llama a `buildWorkflowFromTemplate`, guarda con `agentRegistryService.saveAgent`
+  sólo los agentes nuevos (con el mismo scope elegido para el workflow), guarda el workflow con
+  `workflowService.saveWorkflow`, refresca estado y abre el dashboard enfocado en el workflow
+  nuevo — mismo patrón de cierre que ya usaba el flujo "Custom".
+
+Validado con un script standalone (`esbuild` del módulo solo, sin VS Code) corriendo la lógica
+pura contra casos reales: los tres templates generan los nodos/edges/`handoff.mode` esperados;
+correr Six-Pack y después Four-Pack con los agentes ya creados sólo pide crear `refactorer` (el
+único rol nuevo, el resto se reutiliza); colisión de id de workflow (`two-pack-workflow` ya
+tomado) resuelve a `two-pack-workflow-2`. `npm run check` (sin contar el error preexistente de
+`agentRegistryService.ts:257`) y `npm run build:extension` compilan limpio. **Sin probar todavía
+desde la UI real de la extensión** — falta correr "Create Workflow" en la práctica, elegir un
+template, y confirmar que el dashboard abre con el grafo ya armado y los agentes visibles en el
+registry.
+
 ## Qué falta (próximo paso sugerido)
 
-Quedan sin iniciar: Fase 2 (idioma de interacción), Fase 3 (catálogo de templates con prompts
-propios), Fase 7 (estado/recuperación — persistir un run y reconectar al reabrir VS Code; el
-diseño previo asumía invocación one-shot y quedó desactualizado por el pivot a sesiones
-interactivas, hay que rediseñarlo antes de implementarlo), Fase 10 (plan de pruebas). Fase 9
-(preflight) recién implementada arriba, falta confirmarla en la práctica. Aparte de eso, sólo
-quedan los tres bugs de `BUGS.md`, deliberadamente pospuestos para el final por pedido del
-usuario.
+Quedan sin iniciar: Fase 2 (idioma de interacción), Fase 7 (estado/recuperación — persistir un
+run y reconectar al reabrir VS Code; el diseño previo asumía invocación one-shot y quedó
+desactualizado por el pivot a sesiones interactivas, hay que rediseñarlo antes de implementarlo),
+Fase 10 (plan de pruebas). Fase 3 (templates) y Fase 9 (preflight) recién implementadas arriba,
+falta confirmar ambas en la práctica. Aparte de eso, sólo quedan los tres bugs de `BUGS.md`,
+deliberadamente pospuestos para el final por pedido del usuario.
 
 ## Notas de handoff
 
