@@ -107,6 +107,7 @@ export type ExtensionToWebviewMessage =
         agents: AgentDefinition[];
         workflows: WorkflowDefinition[];
         capabilityGraph: CapabilityGraph;
+        workflowRuns: WorkflowRunState[];
       };
     }
   | {
@@ -174,19 +175,27 @@ export interface WorkflowRunStep {
     | "waiting_approval"
     | "completed"
     | "failed"
-    | "skipped";
+    | "skipped"
+    | "interrupted";
   message?: string;
+  output?: string;
+  evidence?: {
+    promptFilePath?: string;
+    markerFilePath?: string;
+  };
 }
 
 export interface WorkflowRunState {
   workflowId: string;
   mode: "chat" | "plan" | "cli-claude" | "cli-codex";
-  status: "running" | "completed" | "failed";
+  status: "running" | "completed" | "failed" | "interrupted";
   currentStepIndex?: number;
   steps: WorkflowRunStep[];
   startedAt: number;
   finishedAt?: number;
+  objective?: string;
   planText?: string;
   error?: string;
   runId?: string;
+  recovered?: boolean;
 }

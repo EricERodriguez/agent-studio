@@ -116,6 +116,19 @@ For secured MCP servers, use `"auth": "api-key"` and store credentials in VS Cod
 }
 ```
 
+### Workflow Execution Settings
+
+These settings control **Run Workflow**'s native execution engine (Claude CLI / Codex CLI modes — see [Workflows](./workflows.md)):
+
+| Setting | Default | Description |
+| --- | --- | --- |
+| `agentStudio.cli.claudeCommand` | `claude --permission-mode acceptEdits` | Command used to launch the Claude CLI interactively in each workflow node's terminal. Override this if you use a wrapper (e.g. a shell alias/function) or want different flags. |
+| `agentStudio.cli.codexCommand` | `codex --sandbox workspace-write --no-alt-screen` | Command used to launch the Codex CLI interactively. Note: this setting only applies to Codex's interactive-terminal fallback — `codex app-server` sessions launch `codex` directly and don't read this setting. |
+| `agentStudio.cli.startupDelayMs` | `3000` | Milliseconds to wait after launching a CLI in a terminal before typing the prompt into it. Increase this if your CLI (or a wrapper command) takes longer to finish starting up before it reliably accepts input. |
+| `agentStudio.interactionLanguage` | `en` | Default language (`en`/`es`) for user-facing agent responses, independent of the Agent Studio dashboard language. Individual workflow nodes can override it. |
+
+Set these under **Settings** (Cmd/Ctrl+,) → search **Agent Studio**, or edit `.vscode/settings.json` directly.
+
 ## Uninstall
 
 If you ever need to uninstall:

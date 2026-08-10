@@ -2,6 +2,55 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.0.0] - 2026-08-10
+
+### Native workflow execution engine
+
+- **Run Workflow** now drives real CLI sessions end to end instead of pasting into VS Code's chat. Each node runs its own turn in an actual `claude` or `codex` process, chained with the previous step's output and the run's objective (collected through a dedicated **Objective** panel instead of a native input box).
+- Nodes with no dependency on each other now run **in parallel**, each in its own VS Code terminal (Claude) or its own `codex app-server` JSON-RPC session (Codex, no visible terminal — progress shown via the Run status panel). The scheduler follows the workflow graph's real dependencies instead of a fixed left-to-right order.
+- Added a **Stop** button on the Run status panel to cancel an in-progress run: no new nodes are dispatched and running nodes are left to finish their current turn instead of being killed.
+- New CLI launch settings: `agentStudio.cli.claudeCommand`, `agentStudio.cli.codexCommand`, and `agentStudio.cli.startupDelayMs`, so a custom wrapper (alias, different flags, slower-starting shell) can be configured per provider.
+
+### Human-in-the-loop handoffs
+
+- Workflow edges now carry a `handoff.mode` of `automatic` (default) or `human`, toggled with an "⚡ Auto / 👤 Human" control that appears when selecting an edge in the graph editor — human edges are shown with their own color and a 👤 icon.
+- Approving a human handoff now opens a dedicated **Approval** panel inside the dashboard (replacing VS Code's native confirmation dialog): full, unclipped context of the previous step, an optional instructions field appended to the next step's prompt, and Approve/Reject actions. Rejecting marks the run as failed without cutting off other branches still in progress.
+
+### Live run status on the graph
+
+- Graph nodes now change color and animate in real time as a run progresses: dimmed for pending/skipped, orange border for queued, an animated pulsing border for running, yellow for waiting on human approval, green for completed, red for failed. Respects `prefers-reduced-motion`.
+- The Run status panel now lists every node in the workflow (previously capped at 3) and stays in sync when agents are added, edited, or removed, without requiring a fresh run to pick up the change.
+
+### Safety preflight
+
+- Before a run starts, Agent Studio now verifies the selected CLI (`claude`/`codex`) is installed and starts correctly, blocking the run with a clear error before it asks for an objective if not. If the workspace isn't a git repository, it warns with the option to continue anyway.
+
+### Two/Four/Six-Pack workflow templates
+
+- **Create Workflow** now offers starting from a template, alongside the existing blank "Custom" option: **Two-Pack** (`coder → cleaner`), **Four-Pack** (`specifier → coder → refactorer → architect`, human handoff before coding starts), and **Six-Pack** (`specifier → coder → cleaner → architect → hardener → qa`, human handoff before the final review). Each template only creates the agents that don't already exist in your registry — existing agents with the same id are reused as-is, never overwritten.
+- Templates are single-pass linear chains (Agent Studio's scheduler is a strict DAG, unlike the indefinite review loops some inspirations use elsewhere).
+
+### Interaction language, independent of the dashboard UI language
+
+- New workspace setting `agentStudio.interactionLanguage` (`en`/`es`, default `en`) controls the language agents are asked to respond in, fully independent of the dashboard's own display language.
+- Individual workflow nodes can override it from a `workspace / English / Spanish` selector in the graph editor. The language instruction is written to preserve code, commands, paths, and API names as-is unless translation is explicitly requested.
+
+### Run state persistence and recovery
+
+- CLI workflow runs (`Claude CLI` / `Codex CLI`) are now written to a durable manifest under `.agent-studio/runs/<runId>/manifest.json` as they progress, including the run's objective and each step's final output.
+- If VS Code closes while a run is still active, the run is marked `interrupted` the next time Agent Studio starts — its in-flight steps become `interrupted` and any steps that hadn't started yet become `skipped`. Recovery is **inspection-only**: Agent Studio never reattaches to a terminal or `codex app-server` process, and never auto-resumes or retries a node.
+- The Run status panel gained a **history selector** for workflows with more than one saved run, an expandable **Objective** section, and an expandable **Output** section per step — including for recovered runs, which are labeled "Recovered for inspection only."
+
+### Workflow editor improvements
+
+- Added **Rename** and **Edit JSON** buttons to the workflow graph toolbar, matching the controls that already existed for agents — no more digging through the filesystem to rename a workflow or hand-edit its JSON.
+- Edge labels ("handoff") are now clickable themselves, not just the underlying connector line, to open the handoff mode toggle.
+
+### Known issues
+
+- Workflow terminals for parallel nodes currently open as separate tabs instead of a side-by-side split.
+- See [`docs/swarmforge-integration/BUGS.md`](docs/swarmforge-integration/BUGS.md) for the full list of open, deliberately-deferred issues.
+
 ## [1.0.2] - 2026-07-03
 
 ### Graph layout fix

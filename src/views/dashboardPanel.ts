@@ -187,6 +187,7 @@ export class DashboardPanel {
     agents: AgentDefinition[],
     workflows: WorkflowDefinition[],
     capabilityGraph: CapabilityGraph,
+    workflowRuns: WorkflowRunState[],
   ): void {
     if (!this.panel) {
       return;
@@ -198,6 +199,7 @@ export class DashboardPanel {
         agents,
         workflows,
         capabilityGraph,
+        workflowRuns,
       },
     };
 

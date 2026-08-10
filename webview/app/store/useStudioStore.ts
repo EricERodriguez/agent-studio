@@ -39,7 +39,8 @@ interface StudioState {
   filters: Filters;
   infoMessage?: string;
   errorMessage?: string;
-  workflowRun?: WorkflowRunState;
+  workflowRuns: WorkflowRunState[];
+  selectedWorkflowRunId?: string;
   pendingApprovals: WorkflowApprovalRequest[];
   pendingObjective?: WorkflowObjectiveRequest;
   /** Mirrors the AgentBuilder draft's validity/dirty state so the steps bar
@@ -50,6 +51,7 @@ interface StudioState {
     agents: AgentDefinition[];
     workflows: WorkflowDefinition[];
     capabilityGraph: CapabilityGraph;
+    workflowRuns: WorkflowRunState[];
   }) => void;
   selectAgent: (agentId?: string) => void;
   selectWorkflow: (workflowId?: string) => void;
@@ -98,6 +100,7 @@ interface StudioState {
   setInfoMessage: (message?: string) => void;
   setErrorMessage: (message?: string) => void;
   setWorkflowRun: (run?: WorkflowRunState) => void;
+  selectWorkflowRun: (runId?: string) => void;
   addApprovalRequest: (request: WorkflowApprovalRequest) => void;
   removeApprovalRequest: (requestId: string) => void;
   setPendingObjective: (request?: WorkflowObjectiveRequest) => void;
@@ -116,6 +119,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
   agents: [],
   workflows: [],
   capabilityGraph: emptyGraph,
+  workflowRuns: [],
   selectedTab: "Identity",
   activeCapabilityPane: "tool",
   centerView: "editor",
@@ -127,13 +131,19 @@ export const useStudioStore = create<StudioState>((set, get) => ({
   agentDraftStatus: { valid: false, dirty: false },
   saveRequestId: 0,
   pendingApprovals: [],
-  setStateFromExtension: ({ agents, workflows, capabilityGraph }) =>
+  setStateFromExtension: ({ agents, workflows, capabilityGraph, workflowRuns }) =>
     set((state) => ({
       agents,
       workflows,
       capabilityGraph,
+      workflowRuns,
       selectedAgentId: state.selectedAgentId || agents[0]?.id,
       selectedWorkflowId: state.selectedWorkflowId || workflows[0]?.id,
+      selectedWorkflowRunId: workflowRuns.some(
+        (run) => run.runId === state.selectedWorkflowRunId,
+      )
+        ? state.selectedWorkflowRunId
+        : workflowRuns[0]?.runId,
     })),
   selectAgent: (selectedAgentId) => set({ selectedAgentId }),
   selectWorkflow: (selectedWorkflowId) => set({ selectedWorkflowId }),
@@ -316,7 +326,21 @@ export const useStudioStore = create<StudioState>((set, get) => ({
     })),
   setInfoMessage: (infoMessage) => set({ infoMessage }),
   setErrorMessage: (errorMessage) => set({ errorMessage }),
-  setWorkflowRun: (workflowRun) => set({ workflowRun }),
+  setWorkflowRun: (workflowRun) =>
+    set((state) => {
+      if (!workflowRun) {
+        return { workflowRuns: [], selectedWorkflowRunId: undefined };
+      }
+      const runKey = workflowRun.runId || `transient-${workflowRun.workflowId}`;
+      const workflowRuns = [
+        workflowRun,
+        ...state.workflowRuns.filter(
+          (run) => (run.runId || `transient-${run.workflowId}`) !== runKey,
+        ),
+      ].sort((a, b) => b.startedAt - a.startedAt);
+      return { workflowRuns, selectedWorkflowRunId: runKey };
+    }),
+  selectWorkflowRun: (selectedWorkflowRunId) => set({ selectedWorkflowRunId }),
   addApprovalRequest: (request) =>
     set((state) => ({
       pendingApprovals: state.pendingApprovals.some((r) => r.requestId === request.requestId)

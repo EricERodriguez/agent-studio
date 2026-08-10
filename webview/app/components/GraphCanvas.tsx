@@ -85,7 +85,9 @@ export function GraphCanvas(): React.JSX.Element {
   );
   const autoLayoutWorkflow = useStudioStore((s) => s.autoLayoutWorkflow);
   const moveWorkflowNode = useStudioStore((s) => s.moveWorkflowNode);
-  const workflowRun = useStudioStore((s) => s.workflowRun);
+  const workflowRuns = useStudioStore((s) => s.workflowRuns);
+  const selectedWorkflowRunId = useStudioStore((s) => s.selectedWorkflowRunId);
+  const selectWorkflowRun = useStudioStore((s) => s.selectWorkflowRun);
 
   const [dragging, setDragging] = useState<Dragging | null>(null);
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
@@ -381,10 +383,17 @@ export function GraphCanvas(): React.JSX.Element {
     });
   };
 
+  const workflowRunsForSelectedWorkflow = useMemo(
+    () =>
+      selectedWorkflow
+        ? workflowRuns.filter((run) => run.workflowId === selectedWorkflow.id)
+        : [],
+    [selectedWorkflow, workflowRuns],
+  );
   const selectedWorkflowRun =
-    selectedWorkflow && workflowRun?.workflowId === selectedWorkflow.id
-      ? workflowRun
-      : undefined;
+    workflowRunsForSelectedWorkflow.find(
+      (run) => (run.runId || `transient-${run.workflowId}`) === selectedWorkflowRunId,
+    ) ?? workflowRunsForSelectedWorkflow[0];
 
   const orderedRunSteps = useMemo(() => {
     if (!isWorkflow || !selectedWorkflow) return [];
@@ -404,6 +413,8 @@ export function GraphCanvas(): React.JSX.Element {
       return {
         name: agent?.name ?? node.agentId,
         state: runStep?.status ?? (selectedWorkflowRun ? "pending" : index === 0 ? "ready" : "pending"),
+        message: runStep?.message,
+        output: runStep?.output,
       };
     });
   }, [agents, isWorkflow, selectedWorkflow, selectedWorkflowRun]);
@@ -545,6 +556,23 @@ export function GraphCanvas(): React.JSX.Element {
           <div className="graph-run-panel">
             <div className="graph-run-panel-head">
               <span>{tx("Run status", "Estado de corrida")}</span>
+              {workflowRunsForSelectedWorkflow.length > 1 && (
+                <select
+                  className="graph-run-history-select"
+                  aria-label={tx("Select saved workflow run", "Seleccionar corrida guardada")}
+                  value={selectedWorkflowRun?.runId || `transient-${selectedWorkflow?.id}`}
+                  onChange={(event) => selectWorkflowRun(event.target.value)}
+                >
+                  {workflowRunsForSelectedWorkflow.map((run) => {
+                    const runKey = run.runId || `transient-${run.workflowId}`;
+                    return (
+                      <option key={runKey} value={runKey}>
+                        {`${run.status} · ${new Date(run.startedAt).toLocaleString()}`}
+                      </option>
+                    );
+                  })}
+                </select>
+              )}
               <span className="graph-run-state">
                 {selectedWorkflowRun?.status || tx("idle", "en espera")}
               </span>
@@ -566,26 +594,50 @@ export function GraphCanvas(): React.JSX.Element {
                 </button>
               )}
             </div>
+            {selectedWorkflowRun?.recovered && (
+              <p className="graph-run-recovered">
+                {tx(
+                  "Recovered for inspection only — this run will not resume automatically.",
+                  "Recuperada sólo para inspección; esta corrida no se reanuda automáticamente.",
+                )}
+              </p>
+            )}
+            {selectedWorkflowRun?.objective && (
+              <details className="graph-run-details">
+                <summary>{tx("Objective", "Objetivo")}</summary>
+                <pre>{selectedWorkflowRun.objective}</pre>
+              </details>
+            )}
             {orderedRunSteps.map((step, index) => (
-              <div key={`${step.name}-${index}`} className="graph-run-step">
-                <span
-                  className={
-                    "graph-run-step-mark" +
-                    (step.state === "ready" || step.state === "completed"
-                      ? " ready"
-                      : step.state === "running"
-                        ? " running"
-                        : step.state === "failed"
-                          ? " failed"
-                          : step.state === "queued"
-                            ? " queued"
-                            : step.state === "waiting_approval"
-                              ? " waiting-approval"
-                              : "")
-                  }
-                />
-                <span className="graph-run-step-name">{step.name}</span>
-                <span className="graph-run-step-state">{step.state}</span>
+              <div key={`${step.name}-${index}`} className="graph-run-step-wrap">
+                <div className="graph-run-step" title={step.message}>
+                  <span
+                    className={
+                      "graph-run-step-mark" +
+                      (step.state === "ready" || step.state === "completed"
+                        ? " ready"
+                        : step.state === "running"
+                          ? " running"
+                          : step.state === "failed"
+                            ? " failed"
+                            : step.state === "interrupted"
+                              ? " interrupted"
+                              : step.state === "queued"
+                                ? " queued"
+                                : step.state === "waiting_approval"
+                                  ? " waiting-approval"
+                                  : "")
+                    }
+                  />
+                  <span className="graph-run-step-name">{step.name}</span>
+                  <span className="graph-run-step-state">{step.state}</span>
+                </div>
+                {step.output && (
+                  <details className="graph-run-details graph-run-step-details">
+                    <summary>{tx("Output", "Salida")}</summary>
+                    <pre>{step.output}</pre>
+                  </details>
+                )}
               </div>
             ))}
             {selectedWorkflow && (

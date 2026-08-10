@@ -4,12 +4,15 @@ Agent Studio is actively developed. Here's what's planned for upcoming releases.
 
 ## Current Release
 
-**Agent Studio 1.0.0** (Latest Stable)
+**Agent Studio 2.0.0** (Latest Stable)
 
 - Visual agent builder with rich editor
 - Handoff graph visualization
 - Capabilities inspector (Tools, Skills, MCP servers)
-- Workflow orchestration (sequential)
+- Workflow orchestration — native execution engine (Run Workflow) with real Claude CLI / Codex CLI sessions per agent, dependency-graph parallelism, automatic/human handoffs with an in-dashboard approval panel, live run status on the graph, a Stop button, and preflight safety checks
+- Run state persistence and recovery: CLI runs survive a VS Code restart as inspectable, `interrupted` history (never auto-resumed), with a run history selector and expandable objective/output in the Run status panel
+- Two/Four/Six-Pack workflow starter templates
+- Per-workflow-node interaction language, independent of the dashboard UI language
 - Local-first architecture with version control
 - Dark mode with responsive design
 
@@ -17,7 +20,6 @@ Agent Studio is actively developed. Here's what's planned for upcoming releases.
 
 **Planned Features:**
 
-- **Workflow Templates**: Pre-built workflow patterns for common scenarios (approval chains, escalation flows, multi-step data pipelines)
 - **Advanced Search**: Full-text search across agent instructions, capabilities, and relationships
 - **Import/Export**: Bulk import agents from JSON/YAML; export workflows as shareable templates
 - **Settings Sync**: Sync Agent Studio preferences and workspace configuration via VS Code Settings Sync
@@ -80,6 +82,7 @@ Have an idea or want to help? Here's how:
 
 | Version | Release Date | Highlights                                                                   |
 | ------- | ------------ | ---------------------------------------------------------------------------- |
+| 2.0.0   | Aug 10 2026  | Native workflow execution engine, human-in-the-loop handoffs, live run status, safety preflight, Two/Four/Six-Pack templates, run persistence & recovery |
 | 1.0.0   | Apr 11 2026  | Initial public release; visual agent builder, graphs, capabilities inspector |
 | 0.9.0   | Apr 2026     | Beta; core features, community feedback incorporation                        |
 | 0.1.0   | Apr 2026     | Alpha/internal; foundation and architecture                                  |

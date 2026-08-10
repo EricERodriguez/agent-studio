@@ -41,6 +41,25 @@ Agent Studio gives you a visual dashboard to design agents, inspect relationship
 - Open agents in chat and move from design to execution quickly.
 - No context switching to external dashboards.
 
+### ⚙️ Native Workflow Execution Engine
+
+- **Run Workflow** drives real CLI sessions — Claude CLI or Codex CLI — instead of pasting into VS Code's chat, chaining each step's output into the next.
+- Independent nodes run **in parallel**, each in its own terminal (Claude) or `codex app-server` session (Codex), following the graph's real dependencies.
+- **Human-in-the-loop handoffs**: mark any edge as `human` and approve, reject, or add instructions from a dedicated in-dashboard panel with full, unclipped context.
+- **Live graph status**: nodes color and animate in real time — queued, running (pulsing), waiting on approval, completed, failed, skipped.
+- A **safety preflight** blocks a run early if the selected CLI isn't installed, and warns if the workspace isn't a git repo.
+- A **Stop** button cancels an in-progress run without killing nodes mid-turn.
+- Runs are **persisted and recoverable**: if VS Code closes mid-run, it's marked `interrupted` on next launch for inspection (never auto-resumed), and the Run status panel gets a history selector plus expandable objective/output per step.
+
+### 🧩 Two/Four/Six-Pack Workflow Templates
+
+- Start a new workflow from **Two-Pack**, **Four-Pack**, or **Six-Pack** — ready-made agent chains with sensible human handoffs, instead of a blank canvas.
+- Only creates the agents you don't already have; existing agents with the same id are reused, never overwritten.
+
+### 🌐 Interaction Language, Independent of the UI
+
+- `agentStudio.interactionLanguage` controls what language agents respond in — separate from the dashboard's own display language — with an optional per-node override right in the graph editor.
+
 ### 🤖 Multi-AI Agent Generation
 
 - Generate the same agent for **Claude Code**, **OpenAI Codex** (via `AGENTS.md`), or **Google Antigravity** from a single definition.
@@ -144,6 +163,10 @@ Agent Studio supports workspace configuration for agent discovery paths.
 
 - `agentStudio.agentPaths`: Additional workspace-relative directories to discover `.agent.md` files.
 - `agentStudio.includeClaudeAgents`: When `true` (default), also discovers globally installed Claude Code subagents from `~/.claude/agents/*.md` and lists them as global agents.
+- `agentStudio.interactionLanguage`: Default language (`en`/`es`, default `en`) agents are asked to respond in during a workflow run — independent of the dashboard's own display language. Individual workflow nodes can override this from the graph editor.
+- `agentStudio.cli.claudeCommand`: Command used to launch the Claude CLI interactively in each workflow node's terminal (default `claude --permission-mode acceptEdits`). Override for a wrapper (e.g. a shell alias like `claude-with-memory`) or different flags.
+- `agentStudio.cli.codexCommand`: Command used to launch the Codex CLI interactively (default `codex --sandbox workspace-write --no-alt-screen`).
+- `agentStudio.cli.startupDelayMs`: Milliseconds to wait after launching a CLI before typing the prompt into it (default `3000`).
 
 ### Agent scopes
 
@@ -202,9 +225,11 @@ Thank you for your generosity—you're making a difference both for this project
 
 ## Roadmap
 
+Shipped in 2.0.0: real CLI-driven workflow execution, parallel per-agent terminals/sessions, human-in-the-loop handoffs, live graph run status, safety preflight, Two/Four/Six-Pack templates, and run state persistence/recovery across VS Code restarts.
+
 Planned improvements include:
 
-- More advanced workflow orchestration controls.
+- Side-by-side terminal split for parallel workflow nodes (currently opens as separate tabs — see [`docs/swarmforge-integration/BUGS.md`](docs/swarmforge-integration/BUGS.md)).
 - Richer validation and diagnostics for agent setups.
 - Expanded templates for common agent architectures.
 - Enhanced observability for multi-agent execution.

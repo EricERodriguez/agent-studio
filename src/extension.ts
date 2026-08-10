@@ -27,6 +27,7 @@ import {
   runWorkflowGraph,
   type ApprovalDecision,
 } from "./services/workflowRun/workflowRunManager";
+import { WorkflowRunHistoryService } from "./services/workflowRun/workflowRunHistoryService";
 import {
   AgentsTreeProvider,
   CapabilitiesTreeProvider,
@@ -87,6 +88,12 @@ export async function activate(
   const pendingApprovals = new Map<string, (decision: ApprovalDecision) => void>();
   const pendingObjectives = new Map<string, (objective: string | undefined) => void>();
   const activeRuns = new Map<string, { cancel: () => void }>();
+  const runWorkspacePath =
+    vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || context.extensionPath;
+  const workflowRunHistoryService = new WorkflowRunHistoryService(
+    path.join(runWorkspacePath, ".agent-studio", "runs"),
+  );
+  let workflowRunHistory: WorkflowRunState[] = [];
 
   const agentsTreeProvider = new AgentsTreeProvider();
   const workflowsTreeProvider = new WorkflowsTreeProvider();
@@ -570,7 +577,27 @@ export async function activate(
     workflowsTreeProvider.setWorkflows(workflows);
     capabilitiesTreeProvider.setCapabilityGraph(capabilityGraph);
     workspaceHealthTreeProvider.setData(agents, workflows, capabilityGraph);
-    dashboard.postState(agents, workflows, capabilityGraph);
+    dashboard.postState(agents, workflows, capabilityGraph, workflowRunHistory);
+  };
+
+  /** Publishing a run is one-way. Recovery only reads the resulting manifests; it never invokes
+   * this path to dispatch a CLI, create a terminal, or reconnect an app-server process. */
+  const publishCliRun = (
+    state: WorkflowRunState,
+    workflow: WorkflowDefinition,
+    objective: string,
+  ): void => {
+    if (state.runId) {
+      workflowRunHistory = [
+        state,
+        ...workflowRunHistory.filter((run) => run.runId !== state.runId),
+      ].sort((a, b) => b.startedAt - a.startedAt);
+    }
+    dashboard.postWorkflowRunUpdate(state);
+    void workflowRunHistoryService.persist(state, workflow, objective).catch((error) => {
+      const message = error instanceof Error ? error.message : String(error);
+      dashboard.postError(`Could not save workflow-run history: ${message}`);
+    });
   };
 
   const quickPickAgents = async (): Promise<void> => {
@@ -736,8 +763,9 @@ export async function activate(
         steps: [],
         startedAt: Date.now(),
         runId,
+        objective,
       };
-      dashboard.postWorkflowRunUpdate(baseState);
+      publishCliRun(baseState, workflow, objective);
 
       let cancelled = false;
       activeRuns.set(runId, { cancel: () => (cancelled = true) });
@@ -753,7 +781,7 @@ export async function activate(
         chatBridgeService,
         onUpdate: (steps) => {
           lastSteps = steps;
-          dashboard.postWorkflowRunUpdate({ ...baseState, status: "running", steps });
+          publishCliRun({ ...baseState, status: "running", steps }, workflow, objective);
         },
         requestApproval: (request) =>
           new Promise<ApprovalDecision>((resolve) => {
@@ -771,13 +799,17 @@ export async function activate(
       });
       activeRuns.delete(runId);
 
-      dashboard.postWorkflowRunUpdate({
-        ...baseState,
-        status: result.status,
-        finishedAt: Date.now(),
-        error: result.error,
-        steps: lastSteps,
-      });
+      publishCliRun(
+        {
+          ...baseState,
+          status: result.status,
+          finishedAt: Date.now(),
+          error: result.error,
+          steps: lastSteps,
+        },
+        workflow,
+        objective,
+      );
       if (result.status === "failed") {
         dashboard.postError(`Workflow failed. ${result.error ?? ""}`.trim());
       } else {
@@ -1420,6 +1452,12 @@ export async function activate(
     showToolsGuide,
     debugShellIntegrationPrototype,
   });
+
+  const recovery = await workflowRunHistoryService.recover();
+  workflowRunHistory = recovery.runs;
+  for (const warning of recovery.warnings) {
+    void vscode.window.showWarningMessage(warning);
+  }
 
   await refreshState();
   const shouldSeed = vscode.workspace

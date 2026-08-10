@@ -77,22 +77,36 @@ export interface WorkflowRunStep {
     | "waiting_approval"
     | "completed"
     | "failed"
-    | "skipped";
+    | "skipped"
+    /** The Extension Host stopped while this step had been dispatched. It is preserved only for
+     * inspection; it is never automatically retried or reattached to a process. */
+    | "interrupted";
   message?: string;
+  /** Final provider output when it is available. Persisted with CLI runs for later inspection. */
+  output?: string;
+  /** Files intentionally written by the runner for this step; never process/PID handles. */
+  evidence?: {
+    promptFilePath?: string;
+    markerFilePath?: string;
+  };
 }
 
 export interface WorkflowRunState {
   workflowId: string;
   mode: "chat" | "plan" | "cli-claude" | "cli-codex";
-  status: "running" | "completed" | "failed";
+  status: "running" | "completed" | "failed" | "interrupted";
   currentStepIndex?: number;
   steps: WorkflowRunStep[];
   startedAt: number;
   finishedAt?: number;
+  /** CLI objective retained with a durable run so the recovered state is understandable. */
+  objective?: string;
   planText?: string;
   error?: string;
   /** Set for CLI-mode runs — lets the UI send a `cancelWorkflow` message back for this run. */
   runId?: string;
+  /** Present for a recovered CLI run. It is evidence only, never a resume token. */
+  recovered?: boolean;
 }
 
 export type ExtensionToWebviewMessage =
@@ -102,6 +116,8 @@ export type ExtensionToWebviewMessage =
         agents: AgentDefinition[];
         workflows: WorkflowDefinition[];
         capabilityGraph: CapabilityGraph;
+        /** Durable CLI runs recovered for inspection, plus current CLI runs while this host lives. */
+        workflowRuns: WorkflowRunState[];
       };
     }
   | {

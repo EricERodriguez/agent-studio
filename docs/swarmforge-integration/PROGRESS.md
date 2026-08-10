@@ -43,7 +43,7 @@ el diseño nuevo (motor nativo, sin tmux, sin socket externo, gating in-process)
 | 4 | `WorkflowRunManager` nativo (reemplaza el adaptador `src/services/swarmforge/*` de la v2) | **Implementado y confirmado** — `src/services/workflowRun/workflowRunManager.ts`, scheduler real basado en dependencias del grafo, corridas reales de varios pasos confirmadas por el usuario | 2026-08-09 |
 | 5 | N terminales de VS Code por workflow + detección de fin de turno | **Cerrado de punta a punta y confirmado.** Detección de fin de turno validada contra `claude`/`codex` reales. N terminales en paralelo (`WorkflowTerminalService`) confirmado corriendo simultáneo en una corrida real. Split de terminales sigue roto (`BUGS.md` #1, todos abren como tabs nuevos) | 2026-08-09 |
 | 6 | Handoff control: Human-in-the-Loop + IA como nodo del grafo (`HandoffMode` = sólo `automatic`/`human`) | **Implementado y confirmado** — `workflowRunManager.ts` pausa el nodo en `waiting_approval`, panel de aprobación propio (no modal nativo) confirmado bloqueando correctamente en una corrida real, con el toggle del editor de grafo ya no hace falta editar JSON | 2026-08-09 |
-| 7 | Estado y recuperación (persistencia de un run, reconexión al reabrir VS Code) | **Rediseñado; pendiente de implementación** — un cierre marca la corrida como `interrupted` y la conserva sólo para inspección, sin adoptar procesos ni reintentar nodos automáticamente; ver `06-estado-recuperacion.md` | 2026-08-10 |
+| 7 | Estado y recuperación (persistencia de un run, reconexión al reabrir VS Code) | **Implementado y validado en EDH con manifest de recuperación** — cada update CLI persiste un manifest atómico; al reabrir, una corrida activa pasa a `interrupted` para inspección sin adoptar procesos ni reintentar nodos. Aún falta la regresión opcional con una CLI realmente activa al cerrar VS Code | 2026-08-10 |
 | 8 | Panel de ejecución y estados visuales del grafo (`queued`/`running` animado/`completed`) | **Implementado y confirmado** — colores por estado en `.graph-node` y animación de pulso en `running`, confirmados por el usuario contra una corrida real (dos rondas: colores, luego intensidad del pulso) | 2026-08-10 |
 | 9 | Preflight de seguridad | **Implementado; validación UI inconclusa** — se retiró el warning de working tree sucio por pedido del usuario. Aún falta observar en EDH el blocker de CLI inexistente y el warning Continue/Cancel para un workspace sin git | 2026-08-10 |
 | 10 | Plan de pruebas | **Diseñado; pendiente de ejecutar y automatizar** — matriz de tests unitarios, integración y EDH real en `07-plan-pruebas.md` | 2026-08-10 |
@@ -1009,7 +1009,6 @@ El usuario confirmó la alternativa recomendada para Fase 7: una corrida activa 
 Code se conserva para inspección y pasa a `interrupted`; no se intenta adoptar terminales o
 procesos `codex app-server`, ni se redispatchan o reintentan nodos. El diseño durable, las reglas
 de transición y los criterios de aceptación están en [`06-estado-recuperacion.md`](./06-estado-recuperacion.md).
-La implementación sigue pendiente.
 
 También se documentó la matriz de evidencia de Fase 10 en [`07-plan-pruebas.md`](./07-plan-pruebas.md):
 unitarios para lógica pura, integración para servicios y manifests, y smoke/QA real en EDH para
@@ -1020,10 +1019,39 @@ advertencia, mientras que CLI inexistente y workspace sin git mantienen sus prot
 `TS2339` de `src/services/agentRegistryService.ts:257` (`PromiseLike<string>` no expone
 `.catch`). Se añadió como `BUGS.md` #4 por indicación del usuario; `npm run build` sigue pasando.
 
+## Fase 7 implementada: manifiestos y recuperación de inspección (2026-08-10)
+
+- Nuevo `src/services/workflowRun/workflowRunHistoryService.ts`. Las corridas CLI se guardan en
+  `.agent-studio/runs/<runId>/manifest.json` con escritura temporal + `rename`; contiene versión,
+  snapshot del workflow, objetivo, estado, outputs finales y referencias de evidencia del runner
+  Claude cuando existen. No guarda PIDs, conexiones de terminal ni sesiones de `codex app-server`.
+- `extension.ts` persiste el estado inicial, cada publicación del scheduler y el estado terminal;
+  serializa las escrituras para que un update viejo no pueda sobrescribir a uno nuevo. En
+  activación recupera manifests del workspace, avisa sobre JSON inválido y no llama a ninguna CLI
+  ni crea terminales durante la recuperación.
+- Si un manifest quedó `running`, o tiene steps `queued`/`running`/`waiting_approval`, se reescribe
+  como `interrupted`: los steps completados permanecen, los activos se marcan `interrupted` y los
+  pendientes `skipped`. `completed` y `failed` se dejan intactos.
+- El dashboard conserva historial por workflow y permite seleccionar una corrida recuperada; muestra
+  objetivo, estado de cada step y output disponible. Sólo ofrece iniciar una corrida nueva, sin
+  botones Resume/Retry. Se añadió el color estático violeta para `interrupted`.
+
+**Evidencia ejecutada:** un fixture standalone persistió una corrida `running`, un manifest JSON
+corrupto y luego llamó `recover()`; pasó validando `completed,running,pending →
+completed,interrupted,skipped`, la reescritura atómica y el warning para el corrupto. En un
+Extension Development Host real se escribió deliberadamente un manifest `running` del workflow
+`QA Four Pack`, se ejecutó `Developer: Reload Window` y se abrió el dashboard: se vio `interrupted`,
+`Specifier` completado, `Coder` interrumpido y los dos pasos restantes skipped, junto con el aviso
+de inspección solamente y el objetivo. La captura temporal es
+`/tmp/agent-studio-fase7-recovered-dashboard.png`; el JSON resultante confirmó esas mismas
+transiciones. Esta prueba sembró el manifest — no cerró VS Code durante una CLI real, por lo que
+esa regresión de proveedor queda como cobertura adicional de Fase 10, no como supuesto confirmado.
+
 ## Qué falta (próximo paso sugerido)
 
 Quedan por validar Fase 2 (idioma de interacción) y Fase 3 (templates, validación UI parcial).
-Fase 7 quedó rediseñada y debe implementarse. Fase 9 sigue sin confirmación UI del blocker de CLI
+Fase 7 está implementada; queda la regresión opcional de cerrar/reabrir durante una CLI real.
+Fase 9 sigue sin confirmación UI del blocker de CLI
 inexistente y del aviso de workspace sin git; ya no tiene validación de working tree sucio. Fase
 10 tiene plan, pero falta ejecutar y automatizar su matriz. Aparte de eso, sólo quedan los cuatro bugs de
 `BUGS.md`, deliberadamente pospuestos para el final por pedido del usuario.

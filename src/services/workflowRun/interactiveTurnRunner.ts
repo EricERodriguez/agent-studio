@@ -68,6 +68,7 @@ export interface AgentTurnResult {
   timedOut: boolean;
   cancelled: boolean;
   promptFilePath: string;
+  markerFilePath: string;
   /** The agent's final answer, read from the marker file it was instructed to write. */
   output: string;
 }
@@ -184,6 +185,7 @@ export async function runAgentTurn(
     timedOut: output === undefined && !cancelled,
     cancelled,
     promptFilePath,
+    markerFilePath,
     output: output ?? "",
   };
 }

@@ -75,6 +75,7 @@ interface NodeRuntime {
   status: WorkflowRunStep["status"];
   message?: string;
   output?: string;
+  evidence?: WorkflowRunStep["evidence"];
 }
 
 function computeReachableOrder(
@@ -164,6 +165,8 @@ export async function runWorkflowGraph(
           agentName: node.agentName,
           status: node.status,
           message: node.message,
+          output: node.output,
+          evidence: node.evidence,
         };
       }),
     );
@@ -266,24 +269,37 @@ export async function runWorkflowGraph(
       resolveInteractionLanguage(nodeById.get(nodeId)?.languageOverride),
     );
 
-    const turn =
-      cliCommand === "codex"
-        ? await codexSessions.runTurn(nodeId, cwd, prompt, 10 * 60 * 1000, shouldCancel)
-        : await runAgentTurn({
-            terminal: terminals.getOrCreateTerminal(
-              nodeId,
-              `Agent Studio: ${workflow.name} · ${node.agentName} (${cliCommand})`,
-              cwd,
-            ),
-            executable: cliCommand,
-            prompt,
-            runDir,
-            stepId: nodeId,
-            shouldCancel,
-          });
+    let turn: {
+      success: boolean;
+      timedOut: boolean;
+      cancelled: boolean;
+      output: string;
+    };
+    if (cliCommand === "codex") {
+      turn = await codexSessions.runTurn(nodeId, cwd, prompt, 10 * 60 * 1000, shouldCancel);
+    } else {
+      const claudeTurn = await runAgentTurn({
+        terminal: terminals.getOrCreateTerminal(
+          nodeId,
+          `Agent Studio: ${workflow.name} · ${node.agentName} (${cliCommand})`,
+          cwd,
+        ),
+        executable: cliCommand,
+        prompt,
+        runDir,
+        stepId: nodeId,
+        shouldCancel,
+      });
+      turn = claudeTurn;
+      node.evidence = {
+        promptFilePath: claudeTurn.promptFilePath,
+        markerFilePath: claudeTurn.markerFilePath,
+      };
+    }
 
     if (!turn.success) {
       node.status = "failed";
+      node.output = turn.output || undefined;
       node.message = turn.cancelled
         ? "Cancelled by user"
         : turn.timedOut
