@@ -1,27 +1,14 @@
 import * as vscode from "vscode";
 import type { AgentDefinition, InteractionLanguage } from "../domain/models";
-import {
-  getInteractionLanguage,
-  interactionLanguageInstruction,
-} from "./interactionLanguageService";
+import { buildAgentPrompt, buildWorkflowTurnPrompt } from "./agentPromptBuilder";
+import { getInteractionLanguage } from "./interactionLanguageService";
 
 export class ChatBridgeService {
   buildPrompt(
     agent: AgentDefinition,
     interactionLanguage = getInteractionLanguage(),
   ): string {
-    return [
-      `Agent: ${agent.name}`,
-      agent.description ? `Description: ${agent.description}` : "",
-      agent.role ? `Role: ${agent.role}` : "",
-      "",
-      "Instructions:",
-      agent.instructions,
-      "",
-      interactionLanguageInstruction(interactionLanguage),
-    ]
-      .filter(Boolean)
-      .join("\n");
+    return buildAgentPrompt(agent, interactionLanguage);
   }
 
   /** Prompt for one CLI-mode workflow turn: the agent definition, the run's overall objective,
@@ -33,15 +20,12 @@ export class ChatBridgeService {
     previousStepOutput?: string,
     interactionLanguage?: InteractionLanguage,
   ): string {
-    return [
-      this.buildPrompt(agent, interactionLanguage),
-      "",
-      "Task:",
+    return buildWorkflowTurnPrompt(
+      agent,
       objective,
-      previousStepOutput ? `\nPrevious agent's output:\n${previousStepOutput}` : "",
-    ]
-      .filter((line) => line !== "")
-      .join("\n");
+      previousStepOutput,
+      interactionLanguage ?? getInteractionLanguage(),
+    );
   }
 
   async openAgentInChat(agent: AgentDefinition): Promise<void> {

@@ -37,16 +37,16 @@ el diseño nuevo (motor nativo, sin tmux, sin socket externo, gating in-process)
 | Fase | Descripción | Estado | Última actualización |
 |---|---|---|---|
 | 0 | Distribución y alcance legal | Revisada para motor nativo — riesgo legal bajó de "bloqueante de runtime" a "no copiar texto literal de role prompts de SwarmForge" | 2026-08-09 |
-| 1 | Modelo de datos extendido (`WorkflowDefinition`/`Node`/`Edge`, `HandoffMode` por edge) | **Implementado y confirmado** — `HandoffMode`/`WorkflowEdge.handoff` en `src/domain/models.ts`; toggle "⚡ Auto / 👤 Human" en el editor de grafo (`GraphCanvas.tsx`), ya no hace falta editar el JSON a mano. Pendiente sólo el bug cosmético del ícono ⚡ (`BUGS.md` #3) | 2026-08-09 |
-| 2 | Separación `uiLanguage` / `interactionLanguage` / `languageOverride` | **Implementado, pendiente de QA UI real** — locale del dashboard persistido como `uiLanguage`, preferencia de workspace `agentStudio.interactionLanguage` y override opcional por nodo que se inyectan al prompt sin alterar la UI | 2026-08-10 |
-| 3 | Catálogo de templates inspirados en two/four/six-pack | **Implementado y validado parcialmente en la UI real** — el flujo Repository → Four-Pack creó los cuatro agents, persistió el workflow y abrió el dashboard con el grafo y el handoff humano inicial. Aún no se recorrieron desde UI Two-Pack, Six-Pack ni los casos de reuso/colisión. Templates son cadenas lineales de un solo pase (el motor DAG no soporta los loops indefinidos de SwarmForge, decisión explícita) | 2026-08-10 |
+| 1 | Modelo de datos extendido (`WorkflowDefinition`/`Node`/`Edge`, `HandoffMode` por edge) | **Implementado y confirmado** — `HandoffMode`/`WorkflowEdge.handoff` en `src/domain/models.ts`; toggle "⚡ Auto / 👤 Human" en el editor de grafo (`GraphCanvas.tsx`), ya no hace falta editar el JSON a mano. Pendiente sólo el bug cosmético del ícono ⚡ (`BUGS.md` #2) | 2026-08-09 |
+| 2 | Separación `uiLanguage` / `interactionLanguage` / `languageOverride` | **Implementado y confirmado** — UI y override persistible verificados en EDH; el constructor común de Chat/workflows está cubierto por tests y Codex app-server completó un turno real en español con override del nodo | 2026-08-10 |
+| 3 | Catálogo de templates inspirados en two/four/six-pack | **Implementado y confirmado** — Two/Four/Six-Pack validados desde UI en Repository, reuso y colisión sin sobrescritura; Two-Pack Global quedó persistido/listado y un turno real de su Coder completó vía Codex. Son cadenas lineales de un pase (DAG estricto, sin loops) | 2026-08-10 |
 | 4 | `WorkflowRunManager` nativo (reemplaza el adaptador `src/services/swarmforge/*` de la v2) | **Implementado y confirmado** — `src/services/workflowRun/workflowRunManager.ts`, scheduler real basado en dependencias del grafo, corridas reales de varios pasos confirmadas por el usuario | 2026-08-09 |
 | 5 | N terminales de VS Code por workflow + detección de fin de turno | **Cerrado de punta a punta y confirmado.** Detección de fin de turno validada contra `claude`/`codex` reales. N terminales en paralelo (`WorkflowTerminalService`) confirmado corriendo simultáneo en una corrida real. Split de terminales sigue roto (`BUGS.md` #1, todos abren como tabs nuevos) | 2026-08-09 |
 | 6 | Handoff control: Human-in-the-Loop + IA como nodo del grafo (`HandoffMode` = sólo `automatic`/`human`) | **Implementado y confirmado** — `workflowRunManager.ts` pausa el nodo en `waiting_approval`, panel de aprobación propio (no modal nativo) confirmado bloqueando correctamente en una corrida real, con el toggle del editor de grafo ya no hace falta editar JSON | 2026-08-09 |
-| 7 | Estado y recuperación (persistencia de un run, reconexión al reabrir VS Code) | **Implementado y validado en EDH con manifest de recuperación** — cada update CLI persiste un manifest atómico; al reabrir, una corrida activa pasa a `interrupted` para inspección sin adoptar procesos ni reintentar nodos. Aún falta la regresión opcional con una CLI realmente activa al cerrar VS Code | 2026-08-10 |
+| 7 | Estado y recuperación (persistencia de un run, reconexión al reabrir VS Code) | **Implementado y confirmado en EDH** — cada update CLI persiste un manifest atómico; al recargar durante un step Claude realmente activo, el manifest y el dashboard pasaron a `interrupted` sólo para inspección, sin adoptar ni reintentar | 2026-08-10 |
 | 8 | Panel de ejecución y estados visuales del grafo (`queued`/`running` animado/`completed`) | **Implementado y confirmado** — colores por estado en `.graph-node` y animación de pulso en `running`, confirmados por el usuario contra una corrida real (dos rondas: colores, luego intensidad del pulso) | 2026-08-10 |
-| 9 | Preflight de seguridad | **Implementado; validación UI inconclusa** — se retiró el warning de working tree sucio por pedido del usuario. Aún falta observar en EDH el blocker de CLI inexistente y el warning Continue/Cancel para un workspace sin git | 2026-08-10 |
-| 10 | Plan de pruebas | **Diseñado; pendiente de ejecutar y automatizar** — matriz de tests unitarios, integración y EDH real en `07-plan-pruebas.md` | 2026-08-10 |
+| 9 | Preflight de seguridad | **Implementado y confirmado salvo `BUGS.md` #4** — CLI inexistente bloquea antes del objetivo/sin manifest; repo sucio llega al objetivo sin warning. El modal de workspace sin git no aparece en EDH y queda diferido como bug | 2026-08-10 |
+| 10 | Plan de pruebas | **Implementado y confirmado** — `npm test` ejecuta 10 tests Node para prompts, idioma, templates y recuperación; checklist EDH reproducible en `08-checklist-edh.md`; smokes de proveedor/recuperación registrados | 2026-08-10 |
 
 (La numeración de fases se comprimió de 0-12 a 0-10 al fusionar lo que antes eran fases separadas
 "5+6" y "7+8" de la integración con SwarmForge en fases únicas del motor nativo — ver
@@ -1047,14 +1047,128 @@ de inspección solamente y el objetivo. La captura temporal es
 transiciones. Esta prueba sembró el manifest — no cerró VS Code durante una CLI real, por lo que
 esa regresión de proveedor queda como cobertura adicional de Fase 10, no como supuesto confirmado.
 
+## QA EDH adicional: Fases 2, 3 y 9 (2026-08-10)
+
+Se continuó en el mismo Extension Development Host real (VS Code 1.129.1) y workspace temporal
+con git. Las interacciones se hicieron con la Command Palette de VS Code y el dashboard del
+webview; los JSON y los archivos resultantes se leyeron después desde ese workspace temporal.
+
+### Fase 9 — blocker confirmado; warning sin git no materializado
+
+- Se configuró temporalmente `agentStudio.cli.claudeCommand` como
+  `agent-studio-missing-cli-for-qa`, se seleccionó `Claude CLI` y se pulsó `Run Workflow` en
+  `QA Four Pack`. En menos de 250 ms el dashboard mostró literalmente: `CLI
+  "agent-studio-missing-cli-for-qa" not found or failed to start...`; no se creó un manifest de
+  run. Captura: `/tmp/agent-studio-fase9-missing-cli.png`. Esto confirma la ruta de blocker antes
+  de pedir el objetivo en la extensión real.
+- Para el warning de workspace sin git se movió reversiblemente el `.git` del workspace temporal
+  a `.git-fase9-qa`. `git -C <workspace> rev-parse --is-inside-work-tree` falló y Source Control
+  mostró que la carpeta no tenía repositorio. Con `claudeCommand: "true"` (su `--version` sale
+  0), el mismo botón no mostró el modal `Continue anyway` ni el objetivo; la captura
+  `/tmp/agent-studio-fase9-nongit-warning.png` no contiene el warning. Se restauró el `.git` y
+  se confirmó de nuevo `rev-parse → true`. Antes y después se cambió otra vez el comando a una
+  CLI inexistente y el blocker volvió a aparecer, descartando que la configuración o el botón
+  estuvieran desconectados. Se registra como `BUGS.md` #5; no se cambió código de producción.
+- El caso de working tree sucio ya no aplica: el chequeo fue retirado por pedido explícito del
+  usuario y los archivos no commiteados no deben provocar advertencia.
+
+### Fase 2 — UI y persistencia verificadas, proveedor aún pendiente
+
+- El workspace temporal quedó con `agentStudio.interactionLanguage: "es"`. En `QA Four Pack` se
+  seleccionó el nodo `Specifier`, apareció el selector `Language: workspace / English / Spanish`,
+  se eligió `English` y se usó `Save Workflow`. El archivo
+  `.vscode/agent-studio/workflows/qa-four-pack.json` quedó con
+  `nodes[0].languageOverride: "en"`. Captura: `/tmp/agent-studio-fase2-language-override.png`.
+- Después se cambió el dashboard al locale español: la UI mostró `ESTADO DE CORRIDA` y las
+  opciones pasaron a `Idioma: workspace / inglés / español`, mientras el select del nodo seguía
+  con valor `en`. Captura: `/tmp/agent-studio-fase2-ui-spanish.png`. Esto confirma que el locale
+  visual y el override de interacción son estados separados también en el webview real.
+- No se lanzó un prompt real contra Chat, Claude o Codex en esta ronda, así que la inyección de
+  la instrucción de idioma en el prompt queda como cobertura de proveedor pendiente, no como
+  comportamiento confirmado de punta a punta.
+
+### Fase 3 — catálogo Repository completo, reuso y colisión confirmados
+
+- Desde `Agent Studio: Create Workflow` se creó `Two-Pack` en scope `Repository`. Se escribió
+  `two-pack-workflow.json` con `coder → cleaner`; como los agents del Four-Pack ya existían, sólo
+  se añadió `cleaner.agent.md`, sin duplicar `coder`.
+- Se creó `Six-Pack` por el mismo flujo. El JSON contiene los seis pasos
+  `specifier → coder → cleaner → architect → hardener → qa`, cinco edges y el último edge con
+  `handoff.mode: "human"`. En disco sólo se añadieron `hardener.agent.md` y `qa.agent.md`; los
+  cuatro roles preexistentes se reutilizaron. Captura: `/tmp/agent-studio-fase3-six-pack.png`.
+- Se repitió `Two-Pack` con el nombre por defecto para probar una colisión de id. En vez de
+  sobrescribir `two-pack-workflow.json`, se creó `two-pack-workflow-2.json`; el directorio de
+  agents siguió con un solo archivo por rol. La captura inicial del Two-Pack es
+  `/tmp/agent-studio-fase3-two-pack.png`.
+- Four-Pack había sido confirmado antes en el mismo EDH. Queda pendiente únicamente recorrer la
+  opción de scope `Global` y evaluar una ejecución real de los prompts enriquecidos; no se
+  afirma aún calidad de turnos sin esa prueba.
+
+## Cierre de Fases 2, 3, 7, 9 y 10 (2026-08-10)
+
+### Fase 10 — automatización y checklist
+
+- Se añadió `npm test`, sin dependencia nueva de runtime: `scripts/run-tests.mjs` compila los
+  entry points TypeScript de `tests/` con esbuild y los corre mediante `node --test`. Los diez
+  tests que pasaron cubren normalización/resolución/instrucción de idioma, constructor puro de
+  prompts para Chat y workflows, los tres templates (incluyendo gates, reuso y colisiones), y
+  persistencia/recuperación de manifests válidos y corruptos.
+- Para que Chat no quede como una ruta sin cobertura, `agentPromptBuilder.ts` concentra el
+  constructor puro que usan `ChatBridgeService` y los workflows. El refactor no cambia el formato
+  del prompt: hace verificable que ambas rutas reciban la instrucción de idioma.
+- Se escribió [`08-checklist-edh.md`](./08-checklist-edh.md), con comandos, workspace temporal,
+  preflight, templates, idioma y recuperación para que el smoke se pueda repetir sin reconstruir
+  el procedimiento desde este historial.
+
+### Fase 3 — scope Global y ejecución real
+
+En el EDH se creó `Two-Pack` en scope Global desde la Command Palette. Se guardó como
+`~/.agents/workflows/two-pack-workflow-3.json`, apareció en el dashboard y preservó la cadena
+Coder → Cleaner. El id quedó con sufijo `-3` porque ya había dos workflows globales homónimos:
+otra confirmación de que la creación no sobrescribe. Para limitar el smoke de proveedor a un solo
+step se quitó Cleaner de este workflow temporal y se guardó; Coder se ejecutó luego por Codex
+app-server con éxito. Captura de la creación: `/tmp/agent-studio-fase3-global-two-pack.png`.
+
+### Fase 2 — proveedor real y separación final
+
+El workspace temporal se dejó con `agentStudio.interactionLanguage: "en"` y el único nodo del
+workflow Global con `languageOverride: "es"`. La corrida Claude real escribió
+`step-n1-prompt.txt`, cuyo contenido incluye explícitamente `final answers in Spanish`, aunque
+el fallback de workspace era inglés. Esa corrida se interrumpió intencionalmente para la prueba
+de recuperación siguiente. Luego, con el mismo workflow y override, Codex app-server ejecutó la
+tarea `Respondé solamente "Codex app-server validado" en español.` y el manifest terminal quedó
+`completed` con output exacto `Codex app-server validado`. Esto confirma una entrega real del
+prompt al proveedor, no sólo la composición local. Captura: `/tmp/agent-studio-codex-app-server-smoke.png`.
+
+El antiguo `BUGS.md` de Codex se cerró y retiró del índice: la evidencia anterior estaba marcada
+como no confirmada tras el pivot a app-server, mientras que este smoke sí completó initialize,
+thread/start, turn/start y turn/completed en la extensión real. No se modificó el runner para
+cerrarlo.
+
+### Fase 7 — recuperación durante Claude activo
+
+Mientras la corrida Claude anterior estaba en `running`, se ejecutó `Developer: Reload Window`.
+El manifest pasó de `running/running` a `interrupted/interrupted`, con
+`Workflow interrupted when VS Code closed.`; no se creó un nuevo run ni se reintentó el nodo. Al
+reabrir el dashboard se mantuvo el estado de inspección, sin Resume/Retry. Captura:
+`/tmp/agent-studio-fase7-live-claude-recovery.png`. Esta vez no es un manifest sembrado: había una
+terminal Claude real activa cuando se recargó el EDH.
+
+### Fase 9 — working tree sucio
+
+Con los archivos creados por los templates todavía sin commit y
+`agentStudio.cli.claudeCommand: "true"` como CLI de prueba disponible, Run Workflow abrió el
+modal de objetivo directamente y no mostró ningún mensaje `uncommitted`. La corrida fue cancelada
+en ese modal antes de crear un run. Captura: `/tmp/agent-studio-fase9-dirty-objective.png`. El
+blocker de CLI inexistente ya estaba confirmado en la ronda anterior; el único caso de Fase 9 que
+queda abierto es el modal de carpeta sin git, ahora `BUGS.md` #4.
+
 ## Qué falta (próximo paso sugerido)
 
-Quedan por validar Fase 2 (idioma de interacción) y Fase 3 (templates, validación UI parcial).
-Fase 7 está implementada; queda la regresión opcional de cerrar/reabrir durante una CLI real.
-Fase 9 sigue sin confirmación UI del blocker de CLI
-inexistente y del aviso de workspace sin git; ya no tiene validación de working tree sucio. Fase
-10 tiene plan, pero falta ejecutar y automatizar su matriz. Aparte de eso, sólo quedan los cuatro bugs de
-`BUGS.md`, deliberadamente pospuestos para el final por pedido del usuario.
+No quedan fases ni cobertura prevista sin validar. Quedan solamente los cuatro bugs diferidos de
+`BUGS.md`: split de terminales, ícono ⚡ del handoff automático, el error preexistente de
+`npm run check` y el modal de preflight para workspace sin git. Se mantienen pospuestos hasta que
+el usuario autorice abordarlos.
 
 ## Notas de handoff
 

@@ -22,22 +22,7 @@ compile.
   de VS Code que esté anulando el layout pedido por la API.
 - Ver `PROGRESS.md`, sección "Segunda ronda de pruebas" (2026-08-09).
 
-### 2. Codex CLI: "run workflow" con codex-cli no hace nada
-
-- **Síntoma**: al elegir el modo Codex CLI y correr el workflow, no pasa nada visible — ni error,
-  ni progreso.
-- **Contexto**: esto es sobre el diseño nuevo de `codex app-server` (JSON-RPC/stdio), implementado
-  el mismo día que se reportó este bug, **todavía sin confirmar en la práctica ni una vez**. No se
-  sabe todavía si el problema es: el proceso `codex app-server --stdio` no arranca (ej. `codex` no
-  está en el PATH del extension host, distinto del PATH de una terminal interactiva), el handshake
-  JSON-RPC falla silenciosamente, o algo se traga un error sin reportarlo a la UI.
-- **Qué revisar primero**: el Output Channel **"Agent Studio: Codex app-server"** — ahí debería
-  quedar todo el tráfico JSON-RPC crudo (líneas `>`/`<`) y cualquier error de spawn o de stderr.
-  Si ese canal está vacío, el problema es que el proceso ni siquiera arrancó.
-- Ver `src/services/workflowRun/codexAppServerRunner.ts` y `PROGRESS.md`, sección
-  "`codex app-server` implementado" (2026-08-09).
-
-### 3. El toggle de handoff no muestra el ícono ⚡ al elegir "Auto"
+### 2. El toggle de handoff no muestra el ícono ⚡ al elegir "Auto"
 
 - **Síntoma**: al seleccionar un edge y tocar "⚡ Auto" en el toggle nuevo, el edge no muestra
   ningún ícono en el grafo — sólo el texto "handoff" tal cual. El caso "👤 Human" sí funciona (se
@@ -48,7 +33,7 @@ compile.
   prefijo `⚡` también para el caso automático, igual que se hizo para `👤`.
 - Ver `PROGRESS.md`, sección "Editor de grafo: selector de `handoff.mode` por edge" (2026-08-09).
 
-### 4. `npm run check` falla en `agentRegistryService.ts:257`
+### 3. `npm run check` falla en `agentRegistryService.ts:257`
 
 - **Síntoma**: `npm run check` (`tsc --noEmit`) termina con `TS2339: Property 'catch' does not
   exist on type 'PromiseLike<string>'` en `src/services/agentRegistryService.ts:257`.
@@ -61,6 +46,24 @@ compile.
   método y reemplazar el uso de `.catch(...)` por una ruta compatible (por ejemplo `await` dentro
   de `try/catch`) sin alterar el manejo funcional del registro de agentes.
 - Ver `PROGRESS.md`, actualización del 2026-08-10 sobre Fases 7/9/10.
+
+### 4. El warning de preflight para un workspace sin git no aparece en EDH
+
+- **Síntoma**: con una carpeta temporal que no es repositorio git (confirmado también por la
+  vista Source Control de VS Code), al elegir `Claude CLI` y tocar `Run Workflow`, no aparece el
+  modal nativo esperado de "Continue anyway". El flujo tampoco mostró el panel de objetivo en
+  esa observación.
+- **Qué se verificó**: se apartó y restauró reversiblemente el `.git` del workspace de prueba;
+  `git -C <workspace> rev-parse --is-inside-work-tree` falló como corresponde. La misma instancia
+  EDH sí mostró el blocker de CLI inexistente antes de pedir objetivo, por lo que el botón, el
+  modo y la configuración de preflight estaban llegando al Extension Host. El helper puro
+  `preflightCheck.ts` devuelve el warning para esa condición por lectura de código, pero el
+  modal no se materializó en la UI real.
+- **Próximo paso sugerido**: instrumentar temporalmente la ruta de warnings o revisar la
+  interacción de `vscode.window.showWarningMessage(..., { modal: true }, ...)` con el panel de
+  dashboard/EDH, y repetir ambos caminos Continue/Cancel en una sesión real antes de cambiar el
+  diseño de preflight.
+- Ver `PROGRESS.md`, sección "QA EDH adicional: Fases 2, 3 y 9" (2026-08-10).
 
 ## Cómo agregar un bug nuevo
 

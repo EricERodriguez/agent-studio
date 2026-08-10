@@ -276,7 +276,8 @@
         "build:webview": "vite build",
         "watch:webview": "vite build --watch",
         "dev:webview": "vite",
-        "check": "tsc --noEmit",
+    "check": "tsc --noEmit",
+    "test": "node scripts/run-tests.mjs",
         "lint": "eslint . --ext .ts,.tsx",
         "package:vsix": "node scripts/package-vsix.mjs",
         "package:vsix:dry": "node scripts/package-vsix.mjs --dry-run"
