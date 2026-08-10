@@ -606,6 +606,34 @@ Code para saber cuándo una TUI externa terminó de arrancar). Si sigue fallando
 (`startupDelayMs` más alto, o un comando propio) es la primera palanca a mover antes de tocar
 código de nuevo.
 
+## Segunda ronda de pruebas: Claude arreglado, Codex y split siguen fallando (2026-08-09)
+
+Confirmado por el usuario: el botón de Stop funciona, Claude ya no necesita Enter manual, y los
+comandos configurables funcionan. Pero **Codex sigue exactamente igual** (mismo
+`zsh: parse error near '>'`) y **el split de terminales no anduvo nada** (todas como tabs nuevos).
+
+**Codex — nueva hipótesis, con evidencia real de su propio `--help`:** codex usa por defecto el
+buffer de pantalla alternativa del terminal (como `vim`/`htop`) para su TUI. Si el `sendText`
+escribe mientras esa transición de pantalla todavía está en curso, el texto puede terminar en el
+buffer equivocado — coincide con que a Claude (que aparentemente no usa alt-screen, o lo maneja
+distinto) el mismo fix de timing sí le funcionó, y a Codex no. `codex --help` confirma un flag
+real para esto: `--no-alt-screen` ("Disable alternate screen mode. Runs the TUI in inline mode,
+preserving terminal scrollback history."). Se agregó a los defaults de
+`agentStudio.cli.codexCommand` (`package.json` y el fallback en `interactiveTurnRunner.ts`).
+**No confirmado todavía contra una corrida real.**
+
+**Split de terminales — segundo intento, tampoco confirmado:** se agregó
+`this.anchorTerminal.show(true)` justo antes de crear cada terminal split, por si VS Code sólo
+respeta `location.parentTerminal` de forma confiable cuando el padre es la terminal activa en ese
+momento. Es una hipótesis razonable pero no verificada — no hay forma de probar esto sin una
+corrida real, y el código en sí (`location: { parentTerminal }`) ya coincide con lo que documenta
+`@types/vscode` para `TerminalOptions`, así que si sigue sin funcionar después de este cambio, el
+problema puede estar en otro lado (versión de VS Code, alguna preferencia de layout del usuario) y
+no en el uso de la API en sí — habría que investigar más a fondo, posiblemente con
+`vscode.commands.executeCommand("workbench.action.terminal.split")` como alternativa.
+
+`npm run check` y `build:extension` verificados limpios.
+
 ## Qué falta (próximo paso sugerido)
 
 **Fase 5 (detección de fin de turno) queda cerrada de punta a punta** para `claude` y `codex`,

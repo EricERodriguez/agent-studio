@@ -249,8 +249,8 @@
                 },
                 "agentStudio.cli.codexCommand": {
                     "type": "string",
-                    "default": "codex --sandbox workspace-write",
-                    "description": "Command used to launch the Codex CLI interactively in each workflow node's terminal. Override this if you use a wrapper or want different flags."
+                    "default": "codex --sandbox workspace-write --no-alt-screen",
+                    "description": "Command used to launch the Codex CLI interactively in each workflow node's terminal. --no-alt-screen keeps Codex off the terminal's alternate screen buffer, which is more reliable for programmatically typed input. Override this if you use a wrapper or want different flags."
                 },
                 "agentStudio.cli.startupDelayMs": {
                     "type": "number",

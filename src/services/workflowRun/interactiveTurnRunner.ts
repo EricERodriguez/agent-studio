@@ -27,20 +27,26 @@ import * as path from "path";
  * Launch command per provider and the startup delay are both user-configurable
  * (`agentStudio.cli.*` settings) — confirmed necessary from real use (2026-08-09): a user with a
  * custom wrapper alias (e.g. `claude-with-memory`) needs to point this at their own command, and
- * a fixed short delay isn't enough for every CLI/wrapper to finish starting up. A real test also
- * showed `codex --sandbox workspace-write` typed too soon after launch got partly swallowed by
- * the still-starting TUI and the rest landed on the raw shell, producing zsh parse errors —
- * typing the prompt as its own `sendText` call (no auto-Enter) followed by a *separate* `sendText`
- * for just the Enter keystroke, with a short pause in between, is a cheap mitigation for that
- * class of race; it is not a guarantee, since VS Code has no API to detect "this TUI is now ready
- * for input".
+ * a fixed short delay isn't enough for every CLI/wrapper to finish starting up. Typing the prompt
+ * as its own `sendText` call (no auto-Enter) followed by a *separate* `sendText` for just the
+ * Enter keystroke, with a short pause in between, fixed the "user has to press Enter manually"
+ * issue for `claude` (confirmed 2026-08-09). It did not fix the same-looking failure for `codex`
+ * (still landed on the raw shell, zsh parse errors) — that turned out to be a different cause:
+ * `codex`'s TUI uses the terminal's alternate screen buffer by default, and typed input arriving
+ * during that screen-buffer transition can land on the wrong buffer. Default `codexCommand` now
+ * includes `--no-alt-screen` (confirmed real flag from `codex --help`) to avoid the transition
+ * entirely — not yet re-confirmed against a real run. None of this is a guarantee, since VS Code
+ * has no API to detect "this TUI is now ready for input".
  */
 
 function getCliConfig() {
   const config = vscode.workspace.getConfiguration("agentStudio.cli");
   return {
     claudeCommand: config.get<string>("claudeCommand", "claude --permission-mode acceptEdits"),
-    codexCommand: config.get<string>("codexCommand", "codex --sandbox workspace-write"),
+    codexCommand: config.get<string>(
+      "codexCommand",
+      "codex --sandbox workspace-write --no-alt-screen",
+    ),
     startupDelayMs: config.get<number>("startupDelayMs", 3000),
   };
 }

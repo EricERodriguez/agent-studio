@@ -14,6 +14,11 @@ export class WorkflowTerminalService {
     if (existing) {
       return existing;
     }
+    if (this.anchorTerminal) {
+      // Some VS Code versions only honor `location.parentTerminal` reliably when the parent is
+      // the currently active/shown terminal at creation time — make sure of that first.
+      this.anchorTerminal.show(true);
+    }
     const terminal = vscode.window.createTerminal(
       this.anchorTerminal
         ? { name, cwd, location: { parentTerminal: this.anchorTerminal } }
