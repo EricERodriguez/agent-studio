@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import { spawn } from "child_process";
+import { workspaceContainsGitRepository } from "./gitWorkspaceCheck";
 
 /**
  * Fase 9 — checks run once, right before launching a workflow, to catch problems that would
@@ -43,16 +44,6 @@ function checkCliAvailable(executable: string, cwd: string): Promise<boolean> {
   });
 }
 
-function runGit(args: string[], cwd: string): Promise<{ code: number; stdout: string }> {
-  return new Promise((resolve) => {
-    const proc = spawn("git", args, { cwd, shell: false });
-    let stdout = "";
-    proc.stdout.on("data", (chunk: Buffer) => (stdout += chunk.toString()));
-    proc.on("error", () => resolve({ code: 1, stdout: "" }));
-    proc.on("close", (code) => resolve({ code: code ?? 1, stdout }));
-  });
-}
-
 export async function runPreflightChecks(
   cwd: string,
   mode: "cli-claude" | "cli-codex",
@@ -69,9 +60,8 @@ export async function runPreflightChecks(
     );
   }
 
-  const gitCheck = await runGit(["rev-parse", "--is-inside-work-tree"], cwd);
-  const isGitRepo = gitCheck.code === 0 && gitCheck.stdout.trim() === "true";
-  if (!isGitRepo) {
+  const containsGitRepository = await workspaceContainsGitRepository(cwd);
+  if (!containsGitRepository) {
     warnings.push(
       "This workspace is not a git repository — changes agents make won't be tracked or easy to undo.",
     );

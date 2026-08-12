@@ -2,7 +2,7 @@
     "name": "agent-studio-ia",
     "displayName": "Agent Studio IA",
     "description": "Visual control plane for designing and orchestrating AI agents in VS Code.",
-    "version": "2.1.0",
+    "version": "2.1.1",
     "publisher": "AgentstudioIA",
     "engines": {
         "vscode": "^1.110.0"
@@ -276,8 +276,8 @@
         "build:webview": "vite build",
         "watch:webview": "vite build --watch",
         "dev:webview": "vite",
-    "check": "tsc --noEmit",
-    "test": "node scripts/run-tests.mjs",
+        "check": "tsc --noEmit",
+        "test": "node scripts/run-tests.mjs",
         "lint": "eslint . --ext .ts,.tsx",
         "package:vsix": "node scripts/package-vsix.mjs",
         "package:vsix:dry": "node scripts/package-vsix.mjs --dry-run"

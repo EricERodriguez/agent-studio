@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.1.1] - 2026-08-12
+
+### Preflight supports multi-repository workspaces
+
+- The Git safety preflight now recognizes a repository in the workspace root or in any direct child project. Opening a parent folder that contains several independent Git projects no longer shows a misleading "not a git repository" warning.
+- Workspaces that contain no Git repository still show the confirmation before agents can run.
+- Added coverage for a root repository, a multi-repository workspace, and a workspace without Git. The `npm test` suite now has 15 tests.
+
 ## [2.1.0] - 2026-08-10
 
 ### Terminal split for parallel workflow nodes now works
