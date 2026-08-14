@@ -4,7 +4,7 @@ Agent Studio is actively developed. Here's what's planned for upcoming releases.
 
 ## Current Release
 
-**Agent Studio 2.0.0** (Latest Stable)
+**Agent Studio 2.2.0** (Latest Stable)
 
 - Visual agent builder with rich editor
 - Handoff graph visualization
@@ -13,6 +13,10 @@ Agent Studio is actively developed. Here's what's planned for upcoming releases.
 - Run state persistence and recovery: CLI runs survive a VS Code restart as inspectable, `interrupted` history (never auto-resumed), with a run history selector and expandable objective/output in the Run status panel
 - Two/Four/Six-Pack workflow starter templates
 - Per-workflow-node interaction language, independent of the dashboard UI language
+- Shared resource repositories for agents and workflows, with unified
+  create/export/import and global-library configuration
+- First-class workflow selection and metadata editing in the dashboard rail
+- Copyable AI prompts for valid agent and workflow definition contracts
 - Local-first architecture with version control
 - Dark mode with responsive design
 
@@ -82,6 +86,7 @@ Have an idea or want to help? Here's how:
 
 | Version | Release Date | Highlights                                                                   |
 | ------- | ------------ | ---------------------------------------------------------------------------- |
+| 2.2.0   | Aug 14 2026  | Shared agent/workflow repositories, first-class workflow editing, portable definition prompts |
 | 2.0.0   | Aug 10 2026  | Native workflow execution engine, human-in-the-loop handoffs, live run status, safety preflight, Two/Four/Six-Pack templates, run persistence & recovery |
 | 1.0.0   | Apr 11 2026  | Initial public release; visual agent builder, graphs, capabilities inspector |
 | 0.9.0   | Apr 2026     | Beta; core features, community feedback incorporation                        |

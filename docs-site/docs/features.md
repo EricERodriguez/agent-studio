@@ -107,15 +107,23 @@ Agent Studio stores everything locally in your workspace.
 
 Your agent definitions are `.agent.md` files in your repo. Treat them like code.
 
-## Bulk Export, Repo Scaffolding, and Import
+## Shared Resource Repositories
 
-Move your whole agent set, not just one agent at a time.
+Keep agents and workflows together in one versionable library.
 
-- **Export All Agents**: write every loaded agent to a folder you choose.
-- **Create Repo Structure**: scaffold a `.github/agents/` folder (plus a short README) ready to become its own repository.
-- **Import Agents**: bring in `.agent.md` files exported earlier, choosing Repository or Global scope; agents that already exist are skipped.
+- **Create resource repository** creates the canonical
+  `.github/agents/` and `.vscode/agent-studio/workflows/` layout, README, and
+  manifest when the chosen repository does not exist.
+- **Export repository bundle** writes every loaded agent and workflow to that
+  layout in one operation. **Import repository bundle** reads them together,
+  skips duplicate IDs, and reports invalid definitions or missing agent
+  references.
+- A created library is used for future global resources through
+  `agentStudio.resourceRepository`; legacy `agents/*.md` and `workflows/*.json`
+  libraries are still readable.
 
-Find all three under **Export / Import** in the **Choose** view — see [Visual Dashboard](/visual-dashboard) and [Creating Agents](/creating-agents#exporting-scaffolding-or-importing-every-agent-at-once).
+The dashboard rail also switches between **Agents** and **Workflows**, so a
+workflow can be selected directly and its metadata or graph edited independently.
 
 ## Integration Points
 

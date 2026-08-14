@@ -395,6 +395,11 @@ Thank you for your generosity—you're making a difference both for this project
 
 ## Roadmap
 
+Shipped in 2.2.0: resource repositories unify agents and workflows in one
+versionable library, workflows are selectable/editable as first-class resources,
+and the README contains two copyable AI prompts with the persisted agent and
+workflow contracts.
+
 Shipped in 2.0.0: real CLI-driven workflow execution, parallel per-agent terminals/sessions, human-in-the-loop handoffs, live graph run status, safety preflight, Two/Four/Six-Pack templates, and run state persistence/recovery across VS Code restarts.
 
 Shipped in 2.1.0: real side-by-side terminal splitting for parallel nodes, the `⚡` icon on automatic handoff edges, a reliable in-dashboard preflight warning for non-git workspaces, and an automated test suite (`npm test`). No open bugs from the workflow engine remain as of this release.

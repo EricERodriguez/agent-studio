@@ -2,6 +2,40 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.2.0] - 2026-08-14
+
+### Shared resource repositories
+
+- Added **Create resource repository**, **Export repository bundle**, and
+  **Import repository bundle**. A single versionable repository now carries
+  `.github/agents/*.agent.md` and
+  `.vscode/agent-studio/workflows/*.json`, plus a README and bundle manifest.
+- Creating a resource repository configures it as `agentStudio.resourceRepository`.
+  New global agents and workflows are saved into that repository; the previous
+  global locations remain supported as fallbacks.
+- Importing a bundle handles agents and workflows together, skips existing IDs,
+  reports invalid files and unresolved agent references, and remains compatible
+  with legacy `agents/*.md` and `workflows/*.json` libraries.
+
+### Workflows as first-class resources
+
+- Added an **Agents / Workflows** selector in the dashboard rail. Selecting a
+  workflow opens it directly in its graph editor instead of treating it as a
+  secondary action attached to agent creation.
+- Workflow metadata can now be edited in place: name, description, and scope,
+  alongside the existing graph composition, save, source, and run controls.
+
+### Safer portable definitions and documentation
+
+- Workflow IDs now require lowercase letters, numbers, and hyphens before save
+  or export. Repository creation rejects directory traversal names, and the
+  canonical layout takes precedence over the legacy layout for duplicate IDs.
+- Added copyable prompts to the README for generating valid Agent Studio agents
+  and workflows with any AI, including the exact persisted contracts for
+  identity, scope, providers, capabilities, handoffs, graph nodes, and edges.
+- Added unit coverage for resource repository layout, bundle serialization,
+  manifest generation, and safe workflow IDs. The suite now has 20 tests.
+
 ## [2.1.1] - 2026-08-12
 
 ### Preflight supports multi-repository workspaces
