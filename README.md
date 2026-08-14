@@ -66,17 +66,186 @@ Agent Studio gives you a visual dashboard to design agents, inspect relationship
 - Pick **✨ All AIs** to produce every provider's file in one step.
 - Export (or re-export) any existing agent later from its context menu — see [Creating Agents](docs-site/docs/creating-agents.md#generating-agents-for-claude-codex-or-antigravity).
 
-### 📦 Bulk Export, Repo Scaffolding, and Import
+### 📦 Resource Repositories: Agents and Workflows Together
 
-- **Export All Agents**: write every loaded agent as a `.agent.md` file into any folder you choose.
-- **Create Repo Structure**: scaffold a fresh `.github/agents/` folder (plus a short `README.md`) with all your agents, ready to become its own repo.
-- **Import Agents**: pick a folder of previously exported `.agent.md` files and bring in the ones you don't already have.
-- All three live in the **Choose** view's **Export / Import** section, with bilingual (English/Spanish) labels and hints.
+- **Create resource repository** creates a versionable library when it does not
+  exist, with both canonical resource directories and a small README/manifest.
+- **Export repository bundle** writes every loaded agent and workflow together
+  into a repository you choose. Export is a merge, so files not managed by the
+  current export remain untouched.
+- **Import repository bundle** brings agents and workflow graphs in together,
+  skips duplicate IDs, and reports invalid files or workflow references whose
+  agents are not available locally.
+- A created library becomes the configured global resource repository, so new
+  global agents and workflows are saved back into the same Git-friendly folder.
+- The canonical layout is `.github/agents/*.agent.md` and
+  `.vscode/agent-studio/workflows/*.json`. Agent Studio also reads legacy
+  `agents/*.md` and `workflows/*.json` from a configured library.
+
+Workflows are also first-class resources in the dashboard: use the
+**Agents / Workflows** rail to select a workflow directly, edit its name,
+description, and scope, then compose, save, or run its graph.
+
+## Prompts for AI-generated resources
+
+Copy one of these prompts into any AI when you want it to generate a resource
+that Agent Studio can import without manual repairs. Replace every
+`<placeholder>` before sending it.
+
+### Prompt: create an Agent Studio agent
+
+```text
+Create exactly one Agent Studio agent definition for this purpose:
+<describe the responsibility, target repository, constraints, and the work it owns>
+
+Return only two items, in this order:
+
+1. The destination path and filename.
+2. One complete .agent.md file in a fenced markdown code block.
+
+Resource placement and identity contract:
+- Scope is chosen by the destination, never written as sourceScope in the file:
+  - repository scope: .github/agents/<agent-id>.agent.md
+  - global shared-library scope: <resource-repository>/.github/agents/<agent-id>.agent.md
+- agent-id is NOT a frontmatter field. Agent Studio derives it from `name` by
+  lowercasing it, replacing every non-alphanumeric run with `-`, and trimming
+  leading/trailing hyphens. Choose `name` so its derived id is exactly the
+  desired lower-case kebab-case id. Example: "API Reviewer" => `api-reviewer`.
+- Include valid YAML frontmatter delimited by `---`, followed by non-empty
+  instructions as the Markdown body.
+- Use only these provider IDs when applicable: `claude`, `codex`, `antigravity`.
+  `providers` records intended targets; provider-specific export is a separate
+  Agent Studio action.
+
+Required frontmatter fields:
+- name: human-readable, with a deterministic derived agent-id.
+- description: one concise sentence explaining when to use the agent.
+- role: short functional role, such as `reviewer` or `backend-engineer`.
+- tags: list of lower-case discovery tags.
+- providers: one or more allowed provider IDs.
+- context: durable repository/domain context the agent needs before acting.
+- handoffs: list of explicit next-agent contracts. Each item has `agent`
+  (the target agent-id), `label`, `prompt`, and boolean `send`.
+- capabilities:
+  - tools is a YAML list of tool IDs. Agent Studio persists only tool IDs, not
+    tool labels/kinds/descriptions, so use stable IDs such as `read_file`.
+  - skills is a list of objects with `id`, `label`, and optional `description`.
+  - mcp is a list of objects with `id`, `label`, optional `command`, optional
+    string-array `args`, optional string-to-string `env`, and optional boolean
+    `autoRunMCP`. Never place secrets, tokens, passwords, or private values in
+    `env`; reference a documented environment-variable name instead.
+
+Use this exact shape, replacing every placeholder. Keep empty capability or
+handoff lists as `[]` rather than inventing values.
+
+---
+name: <Human-readable name whose slug is the desired agent-id>
+description: <One-sentence purpose>
+role: <functional-role>
+tags:
+  - <tag>
+providers:
+  - claude
+  - codex
+  - antigravity
+context: >-
+  <durable context, boundaries, relevant conventions, and expected outputs>
+tools:
+  - <tool-id>
+skills:
+  - id: <skill-id>
+    label: <skill label>
+    description: <optional concise description>
+mcp:
+  - id: <mcp-id>
+    label: <MCP label>
+    command: <optional executable command>
+    args:
+      - <optional argument>
+    env:
+      <ENVIRONMENT_VARIABLE_NAME>: <non-secret reference or value>
+    autoRunMCP: false
+handoffs:
+  - agent: <target-agent-id>
+    label: <short handoff label>
+    prompt: <what the receiving agent must do with the result>
+    send: true
+---
+
+<non-empty instructions in Markdown. Define the agent's goal, allowed work,
+step-by-step method, quality checks, expected deliverable, and when to hand off.
+Do not include an `id`, `sourcePath`, `sourceScope`, or `shadowedAgent` field.>
+```
+
+### Prompt: create an Agent Studio workflow
+
+```text
+Create exactly one Agent Studio workflow for this outcome:
+<describe the outcome, the agents available by id, desired ordering/parallelism,
+human approval gates, and the expected final deliverable>
+
+Return only two items, in this order:
+
+1. The destination path and filename.
+2. One complete workflow JSON file in a fenced json code block.
+
+Resource placement and identity contract:
+- Scope is chosen by the destination, never written as sourceScope in JSON:
+  - repository scope: .vscode/agent-studio/workflows/<workflow-id>.json
+  - global shared-library scope:
+    <resource-repository>/.vscode/agent-studio/workflows/<workflow-id>.json
+- workflow.id and its filename must match and use only lowercase letters,
+  numbers, and hyphens: `^[a-z0-9][a-z0-9-]*$`.
+- name is required and description is optional but recommended.
+- nodes is a non-empty array. Every node has a unique `id`, an `agentId` that
+  exactly matches an existing Agent Studio agent-id, numeric `position.x` and
+  `position.y`, and optional `languageOverride` (`en` or `es`). Exactly one
+  node must have `isEntry: true`.
+- edges is an array. Every edge has a unique `id`, and `source`/`target` values
+  that refer to node IDs in this same workflow. Make a directed acyclic graph
+  reachable from the entry node; do not create self edges or disconnected steps.
+- `label` is optional. `handoff.mode` is `automatic` or `human`. Omit `handoff`
+  or use `automatic` for immediate dispatch; use `human` only where a person
+  must approve, reject, or add instructions before the target step starts.
+- Do not include `sourcePath`, `sourceScope`, or `shadowedWorkflow`.
+
+Use this exact JSON shape, replacing the placeholders. Preserve JSON syntax;
+do not add comments or Markdown inside the JSON.
+
+{
+  "id": "<workflow-id-in-kebab-case>",
+  "name": "<Human-readable workflow name>",
+  "description": "<Concise purpose and expected outcome>",
+  "nodes": [
+    {
+      "id": "<unique-node-id>",
+      "agentId": "<existing-agent-id>",
+      "position": { "x": 120, "y": 180 },
+      "isEntry": true,
+      "languageOverride": "es"
+    },
+    {
+      "id": "<unique-node-id>",
+      "agentId": "<existing-agent-id>",
+      "position": { "x": 420, "y": 180 }
+    }
+  ],
+  "edges": [
+    {
+      "id": "<unique-edge-id>",
+      "source": "<entry-node-id>",
+      "target": "<target-node-id>",
+      "label": "<what is handed off>",
+      "handoff": { "mode": "human" }
+    }
+  ]
+}
+```
 
 ## Screenshots
 
 ![Choose view](media/dashboard-choose.png)
-_Choose what to work on — agents, workflows, and the Export / Import section, all in one screen._
+_Choose what to work on — agents, workflows, and a shared repository bundle in one screen._
 
 ![Agent editor — Identity tab](media/dashboard-edit-identity.png)
 _Agent Builder, Identity tab — Agent ID, Scope, Name, and Role in a single grid._
@@ -163,6 +332,7 @@ Agent Studio supports workspace configuration for agent discovery paths.
 
 - `agentStudio.agentPaths`: Additional workspace-relative directories to discover `.agent.md` files.
 - `agentStudio.includeClaudeAgents`: When `true` (default), also discovers globally installed Claude Code subagents from `~/.claude/agents/*.md` and lists them as global agents.
+- `agentStudio.resourceRepository`: Optional path to a shared Agent Studio repository. Its resources are available globally and new global agents/workflows are saved there. It is set automatically by **Create resource repository**.
 - `agentStudio.interactionLanguage`: Default language (`en`/`es`, default `en`) agents are asked to respond in during a workflow run — independent of the dashboard's own display language. Individual workflow nodes can override this from the graph editor.
 - `agentStudio.cli.claudeCommand`: Command used to launch the Claude CLI interactively in each workflow node's terminal (default `claude --permission-mode acceptEdits`). Override for a wrapper (e.g. a shell alias like `claude-with-memory`) or different flags.
 - `agentStudio.cli.codexCommand`: Command used to launch the Codex CLI interactively (default `codex --sandbox workspace-write --no-alt-screen`).

@@ -84,6 +84,7 @@ export function GraphCanvas(): React.JSX.Element {
   const setWorkflowNodeLanguageOverride = useStudioStore(
     (s) => s.setWorkflowNodeLanguageOverride,
   );
+  const updateWorkflowMeta = useStudioStore((s) => s.updateWorkflowMeta);
   const autoLayoutWorkflow = useStudioStore((s) => s.autoLayoutWorkflow);
   const moveWorkflowNode = useStudioStore((s) => s.moveWorkflowNode);
   const workflowRuns = useStudioStore((s) => s.workflowRuns);
@@ -471,6 +472,37 @@ export function GraphCanvas(): React.JSX.Element {
             </select>
             {selectedWorkflow && (
               <>
+                <input
+                  className="workflow-meta-input workflow-name-input"
+                  aria-label={tx("Workflow name", "Nombre del workflow")}
+                  value={selectedWorkflow.name}
+                  onChange={(event) =>
+                    updateWorkflowMeta(selectedWorkflow.id, { name: event.target.value })
+                  }
+                />
+                <input
+                  className="workflow-meta-input"
+                  aria-label={tx("Workflow description", "Descripción del workflow")}
+                  placeholder={tx("Add a description", "Agregar descripción")}
+                  value={selectedWorkflow.description || ""}
+                  onChange={(event) =>
+                    updateWorkflowMeta(selectedWorkflow.id, {
+                      description: event.target.value || undefined,
+                    })
+                  }
+                />
+                <select
+                  aria-label={tx("Workflow scope", "Alcance del workflow")}
+                  value={selectedWorkflow.sourceScope || "repository"}
+                  onChange={(event) =>
+                    updateWorkflowMeta(selectedWorkflow.id, {
+                      sourceScope: event.target.value as "repository" | "global",
+                    })
+                  }
+                >
+                  <option value="repository">{tx("Repository", "Repositorio")}</option>
+                  <option value="global">{tx("Global", "Global")}</option>
+                </select>
                 <select
                   title={tx("Pick an agent to add as a new workflow step.", "Elige un agent para agregar como step.")}
                   value={agentToAdd}

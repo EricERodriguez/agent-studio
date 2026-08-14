@@ -35,6 +35,9 @@ export type WebviewToExtensionMessage =
   | { type: "createWorkflow" }
   | { type: "exportAllWorkflows" }
   | { type: "importWorkflows" }
+  | { type: "createResourceRepository" }
+  | { type: "exportResourceRepository" }
+  | { type: "importResourceRepository" }
   | {
       type: "approvalResponse";
       payload: {

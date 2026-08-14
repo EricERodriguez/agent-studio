@@ -36,6 +36,24 @@ export function getGlobalWorkflowsRoot(): string | undefined {
   return path.join(home, ".agents", "workflows");
 }
 
+/**
+ * Optional shared library for global resources. It is intentionally a normal
+ * repository path, not a separate storage format: a user can commit, clone,
+ * and open it in VS Code like any other project.
+ */
+export function getResourceRepositoryRoot(): string | undefined {
+  const configured = vscode.workspace
+    .getConfiguration("agentStudio")
+    .get<string>("resourceRepository", "")
+    .trim();
+  return configured || undefined;
+}
+
+export function isWithinDirectory(filePath: string, directory: string): boolean {
+  const relative = path.relative(directory, filePath);
+  return relative !== "" && !relative.startsWith(`..${path.sep}`) && relative !== ".." && !path.isAbsolute(relative);
+}
+
 export async function ensureDirectory(dirPath: string): Promise<void> {
   await vscode.workspace.fs.createDirectory(vscode.Uri.file(dirPath));
 }

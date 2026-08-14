@@ -23,6 +23,7 @@ interface UiPanels {
 
 type CenterView = "choose" | "editor" | "graph" | "inspect";
 type GraphMode = "agent" | "workflow";
+type ResourceRailMode = "agents" | "workflows";
 
 interface StudioState {
   agents: AgentDefinition[];
@@ -37,6 +38,7 @@ interface StudioState {
   uiPanels: UiPanels;
   centerView: CenterView;
   graphMode: GraphMode;
+  resourceRailMode: ResourceRailMode;
   filters: Filters;
   infoMessage?: string;
   errorMessage?: string;
@@ -98,6 +100,7 @@ interface StudioState {
   setUiPanelOpen: (panel: keyof UiPanels, open: boolean) => void;
   setCenterView: (view: CenterView) => void;
   setGraphMode: (mode: GraphMode) => void;
+  setResourceRailMode: (mode: ResourceRailMode) => void;
   autoLayoutWorkflow: (workflowId: string) => void;
   setInfoMessage: (message?: string) => void;
   setErrorMessage: (message?: string) => void;
@@ -127,6 +130,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
   activeCapabilityPane: "tool",
   centerView: "editor",
   graphMode: "agent",
+  resourceRailMode: "agents",
   uiPanels: {
     inspector: true,
   },
@@ -311,6 +315,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
     })),
   setCenterView: (centerView) => set({ centerView }),
   setGraphMode: (graphMode) => set({ graphMode }),
+  setResourceRailMode: (resourceRailMode) => set({ resourceRailMode }),
   autoLayoutWorkflow: (workflowId) =>
     set((state) => ({
       workflows: state.workflows.map((workflow) => {

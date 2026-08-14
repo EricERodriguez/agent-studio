@@ -463,6 +463,30 @@ h4 {
   width: 100%;
 }
 
+.resource-rail-toggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3px;
+  padding: 3px;
+  margin-bottom: 8px;
+  border: 1px solid var(--studio-border);
+  border-radius: var(--studio-radius-sm);
+  background: color-mix(in srgb, var(--studio-surface-1) 70%, transparent);
+}
+
+.resource-rail-toggle button {
+  border-color: transparent;
+  background: transparent;
+  color: var(--vscode-descriptionForeground);
+  font-size: 11.5px;
+  font-weight: 500;
+}
+
+.resource-rail-toggle button.active {
+  background: var(--studio-accent);
+  color: var(--vscode-button-foreground);
+}
+
 .agent-rail-tabs {
   display: flex;
   padding: 3px;
@@ -529,6 +553,27 @@ h4 {
   width: 9px;
   height: 9px;
   border-radius: 50%;
+}
+
+.workflow-rail-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--studio-accent) 18%, transparent);
+  color: var(--studio-accent);
+  font-size: 11px;
+}
+
+.workflow-meta-input {
+  width: 150px;
+  min-width: 96px;
+}
+
+.workflow-name-input {
+  font-weight: 600;
 }
 
 .agent-rail-row-text {

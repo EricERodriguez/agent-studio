@@ -124,76 +124,47 @@ export function ChooseView(): React.JSX.Element {
       )}
 
       <div className="choose-section-heading">
-        {tx("Export / Import", "Exportar / Importar")}
+        {tx("Repository bundle", "Repositorio de recursos")}
       </div>
       <div className="export-import-card">
         <p className="field-hint">
           {tx(
-            "Move agents between machines or share them with your team: export everything to a folder, scaffold a fresh repo-shaped folder ready to commit, or import agents that were exported earlier.",
-            "Movés agents entre máquinas o los compartís con tu equipo: exportá todo a una carpeta, armá una carpeta nueva con forma de repo lista para subir, o importá agents que se exportaron antes.",
+            "Keep agents and workflow graphs together in one versionable repository. Create an empty library, export both resource types to an existing repository, or import them together.",
+            "Mantené agents y grafos de workflow juntos en un repositorio versionable. Creá una biblioteca vacía, exportá ambos tipos de recursos a un repo existente o importalos juntos.",
           )}
         </p>
         <div className="export-import-actions">
           <button
             type="button"
             title={tx(
-              "Write every loaded agent as a .agent.md file into a folder you choose.",
-              "Escribe cada agent cargado como un archivo .agent.md en una carpeta que elijas.",
+              "Create a repository folder when it does not exist, add canonical agent and workflow folders, and use it for future global resources.",
+              "Crea una carpeta de repositorio si no existe, agrega las carpetas canónicas de agents y workflows, y úsala para futuros recursos globales.",
             )}
-            onClick={() => vscode?.postMessage({ type: "exportAllAgents" })}
+            onClick={() => vscode?.postMessage({ type: "createResourceRepository" })}
           >
-            {tx("Export All Agents", "Exportar Todos los Agents")}
+            {tx("Create resource repository", "Crear repositorio de recursos")}
           </button>
           <button
             type="button"
             className="secondary-button"
             title={tx(
-              "Create a new folder with a .github/agents structure (plus a short README) containing every loaded agent, ready to become a repo.",
-              "Crea una carpeta nueva con estructura .github/agents (y un README breve) con todos los agents cargados, lista para convertirse en un repo.",
+              "Write every loaded agent and workflow into the canonical folders of a repository you choose.",
+              "Escribe cada agent y workflow cargado en las carpetas canónicas de un repositorio que elijas.",
             )}
-            onClick={() => vscode?.postMessage({ type: "createRepoStructure" })}
+            onClick={() => vscode?.postMessage({ type: "exportResourceRepository" })}
           >
-            {tx("Create Repo Structure", "Crear Estructura de Repo")}
+            {tx("Export repository bundle", "Exportar repositorio")}
           </button>
           <button
             type="button"
             className="secondary-button"
             title={tx(
-              "Pick a folder with previously exported .agent.md files and import the ones that don't already exist here.",
-              "Elegí una carpeta con archivos .agent.md exportados antes e importá los que todavía no existen acá.",
+              "Import the agents and workflows in a previously exported Agent Studio repository in one operation.",
+              "Importa juntos los agents y workflows de un repositorio de Agent Studio exportado antes.",
             )}
-            onClick={() => vscode?.postMessage({ type: "importAgents" })}
+            onClick={() => vscode?.postMessage({ type: "importResourceRepository" })}
           >
-            {tx("Import Agents", "Importar Agents")}
-          </button>
-        </div>
-        <p className="field-hint">
-          {tx(
-            "Same idea for workflows: export every workflow graph to a folder, or import workflows exported earlier.",
-            "La misma idea para workflows: exportá cada grafo de workflow a una carpeta, o importá workflows exportados antes.",
-          )}
-        </p>
-        <div className="export-import-actions">
-          <button
-            type="button"
-            title={tx(
-              "Write every loaded workflow as a .json file into a folder you choose.",
-              "Escribe cada workflow cargado como un archivo .json en una carpeta que elijas.",
-            )}
-            onClick={() => vscode?.postMessage({ type: "exportAllWorkflows" })}
-          >
-            {tx("Export All Workflows", "Exportar Todos los Workflows")}
-          </button>
-          <button
-            type="button"
-            className="secondary-button"
-            title={tx(
-              "Pick a folder with previously exported workflow .json files and import the ones that don't already exist here.",
-              "Elegí una carpeta con archivos .json de workflows exportados antes e importá los que todavía no existen acá.",
-            )}
-            onClick={() => vscode?.postMessage({ type: "importWorkflows" })}
-          >
-            {tx("Import Workflows", "Importar Workflows")}
+            {tx("Import repository bundle", "Importar repositorio")}
           </button>
         </div>
       </div>

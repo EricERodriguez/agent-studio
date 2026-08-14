@@ -12,6 +12,12 @@ import {
   AgentExportService,
 } from "./services/agentExportService";
 import { collectFilesByPattern, ensureDirectory } from "./infrastructure/fsUtils";
+import {
+  resourceRepositoryLayout,
+  resourceRepositoryManifest,
+  resourceRepositoryReadme,
+  serializeWorkflowDefinition,
+} from "./services/resourceBundle";
 import { CapabilityService } from "./services/capabilityService";
 import { ChatBridgeService } from "./services/chatBridgeService";
 import { SampleDataService } from "./services/sampleDataService";
@@ -469,6 +475,12 @@ export async function activate(
       try {
         await ensureDirectory(destDir);
         for (const workflow of workflows) {
+          const issues = workflowService.validateWorkflow(workflow);
+          if (issues.length > 0) {
+            throw new Error(
+              `Cannot export workflow "${workflow.name}": ${issues.join(" ")}`,
+            );
+          }
           const { sourcePath, sourceScope, shadowedWorkflow, ...rest } =
             workflow;
           const filePath = path.join(destDir, `${workflow.id}.json`);
@@ -574,6 +586,15 @@ export async function activate(
         dashboard.postError(message);
       }
     },
+    onCreateResourceRepository: async () => {
+      await createResourceRepository();
+    },
+    onExportResourceRepository: async () => {
+      await exportResourceRepository();
+    },
+    onImportResourceRepository: async () => {
+      await importResourceRepository();
+    },
   });
 
   const refreshState = async (): Promise<void> => {
@@ -587,6 +608,248 @@ export async function activate(
     capabilitiesTreeProvider.setCapabilityGraph(capabilityGraph);
     workspaceHealthTreeProvider.setData(agents, workflows, capabilityGraph);
     dashboard.postState(agents, workflows, capabilityGraph, workflowRunHistory);
+  };
+
+  const writeResourceRepository = async (root: string): Promise<void> => {
+    const layout = resourceRepositoryLayout(root);
+    await ensureDirectory(layout.agentsDir);
+    await ensureDirectory(layout.workflowsDir);
+
+    for (const agent of agents) {
+      const filePath = path.join(layout.agentsDir, `${agent.id}.agent.md`);
+      await vscode.workspace.fs.writeFile(
+        vscode.Uri.file(filePath),
+        Buffer.from(agentMarkdownService.generate(agent), "utf8"),
+      );
+    }
+
+    for (const workflow of workflows) {
+      const issues = workflowService.validateWorkflow(workflow);
+      if (issues.length > 0) {
+        throw new Error(`Cannot export workflow "${workflow.name}": ${issues.join(" ")}`);
+      }
+      const filePath = path.join(layout.workflowsDir, `${workflow.id}.json`);
+      await vscode.workspace.fs.writeFile(
+        vscode.Uri.file(filePath),
+        Buffer.from(
+          JSON.stringify(serializeWorkflowDefinition(workflow), null, 2),
+          "utf8",
+        ),
+      );
+    }
+
+    await vscode.workspace.fs.writeFile(
+      vscode.Uri.file(layout.manifestPath),
+      Buffer.from(resourceRepositoryManifest(agents.length, workflows.length), "utf8"),
+    );
+
+    // A README is created for a new bundle but never overwrites a repository's
+    // own documentation on later exports.
+    try {
+      await vscode.workspace.fs.stat(vscode.Uri.file(layout.readmePath));
+    } catch {
+      await vscode.workspace.fs.writeFile(
+        vscode.Uri.file(layout.readmePath),
+        Buffer.from(resourceRepositoryReadme(agents.length, workflows.length), "utf8"),
+      );
+    }
+  };
+
+  const createResourceRepository = async (): Promise<void> => {
+    const picked = await vscode.window.showOpenDialog({
+      canSelectFolders: true,
+      canSelectFiles: false,
+      canSelectMany: false,
+      openLabel: "Choose parent folder",
+      title: "Choose where to create the Agent Studio resource repository",
+    });
+    if (!picked || picked.length === 0) {
+      return;
+    }
+
+    const name = await vscode.window.showInputBox({
+      prompt: "Resource repository folder name",
+      value: "agent-studio-resources",
+      ignoreFocusOut: true,
+    });
+    if (!name?.trim()) {
+      return;
+    }
+    const folderName = name.trim();
+    if (
+      path.basename(folderName) !== folderName ||
+      folderName === "." ||
+      folderName === ".."
+    ) {
+      dashboard.postError("Enter a folder name, not a path.");
+      return;
+    }
+
+    const parent = path.resolve(picked[0].fsPath);
+    const root = path.resolve(parent, folderName);
+    if (!root.startsWith(`${parent}${path.sep}`)) {
+      dashboard.postError("The resource repository must be created inside the selected folder.");
+      return;
+    }
+    try {
+      await writeResourceRepository(root);
+      await vscode.workspace
+        .getConfiguration("agentStudio")
+        .update("resourceRepository", root, vscode.ConfigurationTarget.Global);
+      dashboard.postInfo(
+        `Resource repository ready at ${root} with ${agents.length} agent${agents.length === 1 ? "" : "s"} and ${workflows.length} workflow${workflows.length === 1 ? "" : "s"}.`,
+      );
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to create resource repository.";
+      dashboard.postError(message);
+    }
+  };
+
+  const exportResourceRepository = async (): Promise<void> => {
+    const picked = await vscode.window.showOpenDialog({
+      canSelectFolders: true,
+      canSelectFiles: false,
+      canSelectMany: false,
+      openLabel: "Export here",
+      title: "Choose an Agent Studio resource repository",
+    });
+    if (!picked || picked.length === 0) {
+      return;
+    }
+
+    try {
+      await writeResourceRepository(picked[0].fsPath);
+      dashboard.postInfo(
+        `Exported ${agents.length} agent${agents.length === 1 ? "" : "s"} and ${workflows.length} workflow${workflows.length === 1 ? "" : "s"} to ${picked[0].fsPath}.`,
+      );
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to export resource repository.";
+      dashboard.postError(message);
+    }
+  };
+
+  const importResourceRepository = async (): Promise<void> => {
+    const picked = await vscode.window.showOpenDialog({
+      canSelectFolders: true,
+      canSelectFiles: false,
+      canSelectMany: false,
+      openLabel: "Import from here",
+      title: "Choose an Agent Studio resource repository to import",
+    });
+    if (!picked || picked.length === 0) {
+      return;
+    }
+
+    const scopeChoice = await vscode.window.showQuickPick(
+      [
+        { label: "Repository", value: "repository" as const },
+        { label: "Global", value: "global" as const },
+      ],
+      { title: "Import agents and workflows as repository or global resources?" },
+    );
+    if (!scopeChoice) {
+      return;
+    }
+    if (scopeChoice.value === "repository" && !(await ensureWorkspaceOpen())) {
+      dashboard.postError("Open a folder/workspace first to import repository resources.");
+      return;
+    }
+
+    const layout = resourceRepositoryLayout(picked[0].fsPath);
+    try {
+      const [canonicalAgentFiles, canonicalWorkflowFiles] = await Promise.all([
+        collectFilesByPattern(layout.agentsDir, /\.agent\.md$/i),
+        collectFilesByPattern(layout.workflowsDir, /\.json$/i),
+      ]);
+      // Older shared libraries used top-level agents/ and workflows/. Keep
+      // importing those repositories possible while exporting only the
+      // canonical, immediately-discoverable layout.
+      const [legacyAgentFiles, legacyWorkflowFiles] = await Promise.all([
+        canonicalAgentFiles.length === 0
+          ? collectFilesByPattern(path.join(layout.root, "agents"), /\.md$/i)
+          : Promise.resolve([]),
+        canonicalWorkflowFiles.length === 0
+          ? collectFilesByPattern(path.join(layout.root, "workflows"), /\.json$/i)
+          : Promise.resolve([]),
+      ]);
+      const agentFiles = canonicalAgentFiles.length > 0 ? canonicalAgentFiles : legacyAgentFiles;
+      const workflowFiles =
+        canonicalWorkflowFiles.length > 0 ? canonicalWorkflowFiles : legacyWorkflowFiles;
+      if (agentFiles.length === 0 && workflowFiles.length === 0) {
+        dashboard.postInfo("No Agent Studio agents or workflows were found in that repository.");
+        return;
+      }
+
+      const knownAgentIds = new Set(agents.map((agent) => agent.id));
+      const knownWorkflowIds = new Set(workflows.map((workflow) => workflow.id));
+      let importedAgents = 0;
+      let importedWorkflows = 0;
+      let skipped = 0;
+      let invalid = 0;
+      let unresolvedWorkflowReferences = 0;
+
+      for (const fileUri of agentFiles) {
+        try {
+          const buffer = await vscode.workspace.fs.readFile(fileUri);
+          const parsed = agentMarkdownService.parse(Buffer.from(buffer).toString("utf8"));
+          if (knownAgentIds.has(parsed.id)) {
+            skipped += 1;
+            continue;
+          }
+          parsed.sourceScope = scopeChoice.value;
+          await agentRegistryService.saveAgent(parsed);
+          knownAgentIds.add(parsed.id);
+          importedAgents += 1;
+        } catch {
+          invalid += 1;
+        }
+      }
+
+      for (const fileUri of workflowFiles) {
+        try {
+          const buffer = await vscode.workspace.fs.readFile(fileUri);
+          const parsed = JSON.parse(Buffer.from(buffer).toString("utf8")) as WorkflowDefinition;
+          if (workflowService.validateWorkflow(parsed).length > 0) {
+            invalid += 1;
+            continue;
+          }
+          if (knownWorkflowIds.has(parsed.id)) {
+            skipped += 1;
+            continue;
+          }
+          if (
+            parsed.nodes.some((node) => !knownAgentIds.has(node.agentId))
+          ) {
+            unresolvedWorkflowReferences += 1;
+          }
+          parsed.sourceScope = scopeChoice.value;
+          await workflowService.saveWorkflow(parsed);
+          knownWorkflowIds.add(parsed.id);
+          importedWorkflows += 1;
+        } catch {
+          invalid += 1;
+        }
+      }
+
+      await refreshState();
+      const notes = [
+        skipped > 0 ? `skipped ${skipped} duplicate${skipped === 1 ? "" : "s"}` : "",
+        invalid > 0 ? `skipped ${invalid} invalid file${invalid === 1 ? "" : "s"}` : "",
+        unresolvedWorkflowReferences > 0
+          ? `${unresolvedWorkflowReferences} workflow${unresolvedWorkflowReferences === 1 ? "" : "s"} reference missing agents`
+          : "",
+      ].filter(Boolean);
+      dashboard.postInfo(
+        `Imported ${importedAgents} agent${importedAgents === 1 ? "" : "s"} and ${importedWorkflows} workflow${importedWorkflows === 1 ? "" : "s"}` +
+          (notes.length > 0 ? `; ${notes.join(", ")}.` : "."),
+      );
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to import resource repository.";
+      dashboard.postError(message);
+    }
   };
 
   /** Publishing a run is one-way. Recovery only reads the resulting manifests; it never invokes

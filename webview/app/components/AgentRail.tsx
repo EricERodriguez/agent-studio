@@ -5,14 +5,21 @@ import { filterAgentsByCapabilities, searchAgents } from "../utils/agentFilters"
 import { roleColor } from "../utils/roleColor";
 import { useI18n } from "../i18n";
 import { CapabilityFiltersPanel } from "./CapabilityFiltersPanel";
+import { vscode } from "../hooks/useVsCodeApi";
 
 export function AgentRail(): React.JSX.Element {
   const { tx } = useI18n();
   const agents = useStudioStore((s) => s.agents);
+  const workflows = useStudioStore((s) => s.workflows);
   const selectedAgentId = useStudioStore((s) => s.selectedAgentId);
   const selectAgent = useStudioStore((s) => s.selectAgent);
   const filters = useStudioStore((s) => s.filters);
   const setFilter = useStudioStore((s) => s.setFilter);
+  const selectWorkflow = useStudioStore((s) => s.selectWorkflow);
+  const setGraphMode = useStudioStore((s) => s.setGraphMode);
+  const setCenterView = useStudioStore((s) => s.setCenterView);
+  const resourceRailMode = useStudioStore((s) => s.resourceRailMode);
+  const setResourceRailMode = useStudioStore((s) => s.setResourceRailMode);
 
   const [search, setSearch] = React.useState("");
   const [filtersOpen, setFiltersOpen] = React.useState(false);
@@ -46,6 +53,11 @@ export function AgentRail(): React.JSX.Element {
     searchAgents(agents, deferredSearch),
     filters,
   );
+  const visibleWorkflows = workflows.filter((workflow) =>
+    `${workflow.name} ${workflow.id} ${workflow.description || ""}`
+      .toLowerCase()
+      .includes(deferredSearch.trim().toLowerCase()),
+  );
 
   const scopeTabs: Array<{
     key: "all" | "repository" | "global";
@@ -59,17 +71,47 @@ export function AgentRail(): React.JSX.Element {
   return (
     <div className="agent-rail">
       <div className="agent-rail-search">
+        <div
+          className="resource-rail-toggle"
+          role="tablist"
+          aria-label={tx("Resource type", "Tipo de recurso")}
+        >
+          <button
+            role="tab"
+            aria-selected={resourceRailMode === "agents"}
+            className={resourceRailMode === "agents" ? "active" : ""}
+            onClick={() => setResourceRailMode("agents")}
+          >
+            {tx("Agents", "Agents")}
+          </button>
+          <button
+            role="tab"
+            aria-selected={resourceRailMode === "workflows"}
+            className={resourceRailMode === "workflows" ? "active" : ""}
+            onClick={() => setResourceRailMode("workflows")}
+          >
+            {tx("Workflows", "Workflows")}
+          </button>
+        </div>
         <input
           type="search"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder={tx("Search agents…", "Buscar agents…")}
+          placeholder={
+            resourceRailMode === "agents"
+              ? tx("Search agents…", "Buscar agents…")
+              : tx("Search workflows…", "Buscar workflows…")
+          }
           title={tx(
-            "Search agents by name, id, role, or description.",
-            "Busca agents por nombre, id, role o descripción.",
+            resourceRailMode === "agents"
+              ? "Search agents by name, id, role, or description."
+              : "Search workflows by name, id, or description.",
+            resourceRailMode === "agents"
+              ? "Busca agents por nombre, id, role o descripción."
+              : "Busca workflows por nombre, id o descripción.",
           )}
         />
-        <div className="agent-rail-tabs">
+        {resourceRailMode === "agents" && <div className="agent-rail-tabs">
           {scopeTabs.map((scopeTab) => (
             <button
               key={scopeTab.key}
@@ -89,17 +131,17 @@ export function AgentRail(): React.JSX.Element {
               {scopeTab.label}
             </button>
           ))}
-        </div>
+        </div>}
       </div>
 
       <div className="agent-rail-heading">
         <span>
-          {tx("Agents", "Agents")} · {visibleAgents.length}
+          {resourceRailMode === "agents" ? tx("Agents", "Agents") : tx("Workflows", "Workflows")} · {resourceRailMode === "agents" ? visibleAgents.length : visibleWorkflows.length}
         </span>
       </div>
 
       <div className="agent-rail-list">
-        {visibleAgents.length === 0 ? (
+        {resourceRailMode === "agents" && (visibleAgents.length === 0 ? (
           <p className="agent-rail-empty">
             {tx(
               "No agents match the current filters.",
@@ -135,11 +177,45 @@ export function AgentRail(): React.JSX.Element {
               </span>
             </button>
           ))
-        )}
+        ))}
+        {resourceRailMode === "workflows" && (visibleWorkflows.length === 0 ? (
+          <p className="agent-rail-empty">
+            {tx("No workflows match this search.", "Ningún workflow coincide con esta búsqueda.")}
+          </p>
+        ) : (
+          visibleWorkflows.map((workflow) => (
+            <button
+              key={workflow.id}
+              className="agent-rail-row workflow-rail-row"
+              onClick={() => {
+                selectWorkflow(workflow.id);
+                setGraphMode("workflow");
+                setCenterView("graph");
+              }}
+              title={workflow.description || workflow.name}
+            >
+              <span className="agent-rail-dot workflow-rail-dot">⛓</span>
+              <span className="agent-rail-row-text">
+                <span className="agent-rail-row-name">{workflow.name}</span>
+                <span className="agent-rail-row-role">
+                  {workflow.nodes.length} {tx("steps", "pasos")} · {workflow.sourceScope === "global" ? tx("Global", "Global") : tx("Repo", "Repo")}
+                </span>
+              </span>
+              <span className="agent-rail-row-counts">{workflow.edges.length}</span>
+            </button>
+          ))
+        ))}
       </div>
 
       <div className="agent-rail-footer">
-        <button
+        {resourceRailMode === "workflows" && <button
+          className="agent-rail-footer-toggle highlighted"
+          onClick={() => vscode?.postMessage({ type: "createWorkflow" })}
+          title={tx("Create a workflow independent of the current agent editor.", "Crea un workflow independiente del editor de agents actual.")}
+        >
+          <span className="agent-rail-footer-toggle-label">+ {tx("New workflow", "Nuevo workflow")}</span>
+        </button>}
+        {resourceRailMode === "agents" && <button
           ref={footerToggleRef}
           className={
             filtersOpen || hasActiveFilters
@@ -160,10 +236,10 @@ export function AgentRail(): React.JSX.Element {
             )}
           </span>
           <span>{filtersOpen ? "▾" : "›"}</span>
-        </button>
+        </button>}
       </div>
 
-      {filtersOpen &&
+      {resourceRailMode === "agents" && filtersOpen &&
         flyoutPos &&
         createPortal(
           <>

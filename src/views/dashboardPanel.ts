@@ -45,6 +45,9 @@ export interface DashboardPanelHandlers {
   onCreateWorkflow: () => Promise<void>;
   onExportAllWorkflows: () => Promise<void>;
   onImportWorkflows: () => Promise<void>;
+  onCreateResourceRepository: () => Promise<void>;
+  onExportResourceRepository: () => Promise<void>;
+  onImportResourceRepository: () => Promise<void>;
 }
 
 export class DashboardPanel {
@@ -179,6 +182,15 @@ export class DashboardPanel {
             break;
           case "importWorkflows":
             await this.handlers.onImportWorkflows();
+            break;
+          case "createResourceRepository":
+            await this.handlers.onCreateResourceRepository();
+            break;
+          case "exportResourceRepository":
+            await this.handlers.onExportResourceRepository();
+            break;
+          case "importResourceRepository":
+            await this.handlers.onImportResourceRepository();
             break;
         }
       },

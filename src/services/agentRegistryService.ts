@@ -7,7 +7,9 @@ import {
   fileNameWithoutExt,
   getClaudeGlobalAgentsRoot,
   getGlobalAgentsRoot,
+  getResourceRepositoryRoot,
   getWorkspaceRoot,
+  isWithinDirectory,
   toAgentId,
 } from "../infrastructure/fsUtils";
 
@@ -108,6 +110,20 @@ export class AgentRegistryService {
     const claudeGlobalFiles = claudeGlobalRoot
       ? await this.collectAgentFilesFromDirectory(claudeGlobalRoot, /\.md$/i)
       : [];
+    const resourceRepositoryRoot = getResourceRepositoryRoot();
+    const resourceRepositoryFiles = resourceRepositoryRoot
+      ? [
+          // Canonical resources are loaded last so they take precedence over
+          // same-id entries in the legacy top-level agents/ directory.
+          ...(await this.collectAgentFilesFromDirectory(
+            path.join(resourceRepositoryRoot, "agents"),
+            /\.md$/i,
+          )),
+          ...(await this.collectAgentFilesFromDirectory(
+            path.join(resourceRepositoryRoot, ".github", "agents"),
+          )),
+        ]
+      : [];
 
     // Agent Studio's own global format is the richer one (handoffs, skills,
     // tags, context, providers), so it should win display-wise over a
@@ -118,6 +134,7 @@ export class AgentRegistryService {
     const files = [
       ...claudeGlobalFiles,
       ...globalFiles,
+      ...resourceRepositoryFiles,
       ...workspaceUris.flat(),
     ];
 
@@ -215,6 +232,7 @@ export class AgentRegistryService {
 
     const globalRoot = getGlobalAgentsRoot();
     const claudeGlobalRoot = getClaudeGlobalAgentsRoot();
+    const resourceRepositoryRoot = getResourceRepositoryRoot();
 
     // A global agent that was loaded from the Claude Code subagents folder
     // stays there on save, instead of being relocated to Agent Studio's own
@@ -227,12 +245,21 @@ export class AgentRegistryService {
       targetScope === "global" &&
       claudeGlobalRoot !== undefined &&
       previousFolder === claudeGlobalRoot;
+    const isResourceRepositoryAgent =
+      targetScope === "global" &&
+      resourceRepositoryRoot !== undefined &&
+      agent.sourcePath !== undefined &&
+      isWithinDirectory(agent.sourcePath, resourceRepositoryRoot);
 
     const folder =
       targetScope === "global"
         ? isClaudeNative
           ? claudeGlobalRoot
-          : globalRoot
+          : isResourceRepositoryAgent
+            ? previousFolder
+            : resourceRepositoryRoot
+              ? path.join(resourceRepositoryRoot, ".github", "agents")
+              : globalRoot
         : path.join(root as string, ".github", "agents");
 
     if (!folder) {
@@ -241,7 +268,8 @@ export class AgentRegistryService {
 
     await ensureDirectory(folder);
 
-    const fileName = isClaudeNative
+    const fileName = isClaudeNative ||
+      (isResourceRepositoryAgent && !agent.sourcePath?.endsWith(".agent.md"))
       ? `${toAgentId(agent.name)}.md`
       : `${toAgentId(agent.name)}.agent.md`;
     const agentPath = path.join(folder, fileName);

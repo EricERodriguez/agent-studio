@@ -242,6 +242,11 @@
                     "default": true,
                     "description": "When true, Agent Studio also discovers globally installed Claude Code subagents from ~/.claude/agents/*.md and lists them as global agents."
                 },
+                "agentStudio.resourceRepository": {
+                    "type": "string",
+                    "default": "",
+                    "description": "Optional path to a shared Agent Studio resource repository. Its agents and workflows are available as global resources and new global resources are saved there."
+                },
                 "agentStudio.interactionLanguage": {
                     "type": "string",
                     "enum": [

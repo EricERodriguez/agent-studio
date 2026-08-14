@@ -4,8 +4,11 @@ import type { AgentScope, WorkflowDefinition } from "../domain/models";
 import {
   ensureDirectory,
   getGlobalWorkflowsRoot,
+  getResourceRepositoryRoot,
   getWorkspaceRoot,
+  isWithinDirectory,
 } from "../infrastructure/fsUtils";
+import { isSafeResourceId } from "./resourceBundle";
 
 export class WorkflowService {
   private getWorkflowFolder(root: string): string {
@@ -44,8 +47,19 @@ export class WorkflowService {
     const globalUris = globalRoot
       ? await this.collectWorkflowFiles(globalRoot)
       : [];
+    const resourceRepositoryRoot = getResourceRepositoryRoot();
+    const resourceRepositoryUris = resourceRepositoryRoot
+      ? [
+          ...(await this.collectWorkflowFiles(path.join(resourceRepositoryRoot, "workflows"))),
+          // Canonical resources are loaded last so they take precedence over
+          // same-id entries in the legacy top-level workflows/ directory.
+          ...(await this.collectWorkflowFiles(
+            path.join(resourceRepositoryRoot, ".vscode", "agent-studio", "workflows"),
+          )),
+        ]
+      : [];
 
-    const files = [...globalUris, ...repoUris];
+    const files = [...globalUris, ...resourceRepositoryUris, ...repoUris];
 
     const workflowsById = new Map<string, WorkflowDefinition>();
     for (const uri of files) {
@@ -101,6 +115,9 @@ export class WorkflowService {
     if (!workflow.name.trim()) {
       errors.push("Workflow name is required.");
     }
+    if (!isSafeResourceId(workflow.id)) {
+      errors.push("Workflow id must use lowercase letters, numbers, and hyphens only.");
+    }
 
     const nodeIds = new Set(workflow.nodes.map((n) => n.id));
     const entryCount = workflow.nodes.filter((n) => n.isEntry).length;
@@ -130,9 +147,19 @@ export class WorkflowService {
     }
 
     const globalRoot = getGlobalWorkflowsRoot();
+    const resourceRepositoryRoot = getResourceRepositoryRoot();
+    const isResourceRepositoryWorkflow =
+      targetScope === "global" &&
+      resourceRepositoryRoot !== undefined &&
+      workflow.sourcePath !== undefined &&
+      isWithinDirectory(workflow.sourcePath, resourceRepositoryRoot);
     const folder =
       targetScope === "global"
-        ? globalRoot
+        ? isResourceRepositoryWorkflow
+          ? path.dirname(workflow.sourcePath as string)
+          : resourceRepositoryRoot
+            ? path.join(resourceRepositoryRoot, ".vscode", "agent-studio", "workflows")
+            : globalRoot
         : this.getWorkflowFolder(root as string);
 
     if (!folder) {
