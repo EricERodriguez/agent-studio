@@ -104,6 +104,7 @@ enumeran si se modificó el grafo o la ejecución.
 | Responsive | Probar 768 px y 1024 px cuando cambie el layout | No hay controles superpuestos ni fuera de alcance. |
 | Claude CLI | Correr una tarea inocua con nodos paralelos cuando aplique | Se abre una terminal integrada por agente/rama y las ramas paralelas quedan en split. |
 | Codex CLI | Correr una tarea inocua de un workflow de prueba | Se abre una terminal integrada por nodo y aparece la TUI normal de Codex. |
+| Animación | Ejecutar al menos dos pasos dependientes | En `running` no hay viajero; al pasar `completed → running` aparece sólo entonces el viajero del handoff. |
 
 Para Codex, usar como objetivo algo explícitamente inocuo, por ejemplo:
 
@@ -118,6 +119,22 @@ se abre y se cierra, si el prompt queda escrito en una shell vacía o si la
 ejecución ocurre sólo en segundo plano. `cli-codex` debe lanzar la TUI
 interactiva (`codex --sandbox workspace-write` por defecto), no `codex
 app-server` ni `codex exec`.
+
+### Verificación de movimiento y preferencia reducida
+
+No basta con una captura estática de un nodo que parece activo. Para un cambio de
+movimiento, la IA debe observar al menos dos instantes del mismo run:
+
+1. El origen está `running`: nodo/carga y la arista activa se muestran, pero no
+   existe un viajero de handoff.
+2. El origen termina y el destino inicia: el origen queda `completed`, el destino
+   `running` y el único viajero se desplaza por la arista `completed → running`.
+
+Registrar las clases o el estado observable de ambos instantes, más una captura
+del segundo. Confirmar que la regla de `prefers-reduced-motion` incluye el
+spinner de carga (`graph-node-loading`). Si el emulador de media no alcanza el
+iframe anidado de VS Code, esa limitación se registra en el reporte; nunca se
+infiere que la preferencia funciona sin revisar la hoja cargada del webview.
 
 ## 5. Registrar evidencia
 

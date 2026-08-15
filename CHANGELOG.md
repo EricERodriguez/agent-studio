@@ -2,6 +2,55 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.3.0] - 2026-08-15
+
+### Accessible, adaptable workflow graph
+
+- Reworked graph interaction around Pointer Events with pointer capture, bounded
+  panning, keyboard-accessible nodes, edges, zoom, and fit controls. The canvas,
+  minimap, nodes, connectors, and action buttons now expose meaningful labels and
+  visible focus states.
+- Added persistent resize support for the resource rail, plus independent
+  collapse/restore controls for the **Agent Rail**, **Workflow toolbar**,
+  **Minimap**, and **Run status**. A collapsed active run retains a compact Stop
+  control, so critical actions remain available.
+
+### Clear workflow motion and state feedback
+
+- Added staggered graph entry, subtle canvas/grid depth, pan and zoom feedback,
+  loading indicators, node-state transitions, minimap state markers, and
+  hover/drag microinteractions.
+- Handoffs now animate semantically: an edge gets a moving traveler only after
+  its source is complete and its target is running. Running edges stay visibly
+  active without suggesting that work was already handed off.
+- Added transitions for handoff labels and controls, completed/waiting states,
+  and a complete `prefers-reduced-motion` path that also disables the loading
+  spinner.
+
+### Visible Codex execution
+
+- Unified Codex CLI workflow execution with the interactive terminal runner
+  used by Claude. Every workflow node opens an integrated VS Code terminal;
+  parallel nodes use native terminal splits.
+- The runner waits for Shell Integration and launches Codex with the objective
+  as a safe positional argument, so the prompt appears inside the Codex TUI
+  instead of being pasted into an empty shell or running invisibly in an
+  app-server background process.
+
+### Validation and documentation
+
+- Added the mandatory AI QA protocol for validating this extension in an
+  isolated Extension Development Host, including safe setup, terminal evidence,
+  nested webview inspection, and shutdown by exact PID.
+- Excluded local `.agent-studio/runs/` artifacts from the VSIX so release
+  packages do not carry local objectives, outputs, or QA run metadata.
+- Verified the release in a real VS Code Extension Development Host with a
+  two-step Codex workflow: the first node was observed as running without a
+  handoff traveler; after completion, the second node ran with the animated
+  `completed → running` handoff. Both Codex terminals were visible in VS Code.
+- `npm run check`, `npm test` (20 tests), `npm run build`, and `git diff --check`
+  passed during release validation.
+
 ## [2.2.0] - 2026-08-14
 
 ### Shared resource repositories

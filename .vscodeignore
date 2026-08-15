@@ -13,6 +13,7 @@ webview/**
 design-reference/**
 scripts/**
 .codex
+.agent-studio/**
 *.vsix
 .eslintrc.cjs
 .vscodeignore

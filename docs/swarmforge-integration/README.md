@@ -66,6 +66,7 @@ lo soporte, con un mecanismo de marcador de finalización como fallback).
 | [`07-plan-pruebas.md`](./07-plan-pruebas.md) | Estrategia y matriz de pruebas del motor. |
 | [`08-checklist-edh.md`](./08-checklist-edh.md) | Checklist funcional por áreas. |
 | [`09-protocolo-qa-ia-vscode.md`](./09-protocolo-qa-ia-vscode.md) | Procedimiento obligatorio para que una IA valide la extensión dentro de VS Code. |
+| [`../releases/2.3.0.md`](../releases/2.3.0.md) | Notas de release: accesibilidad, terminales Codex visibles, movimiento semántico y QA en EDH. |
 
 ## Qué queda de la investigación sobre SwarmForge
 

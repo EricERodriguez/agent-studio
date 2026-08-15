@@ -56,6 +56,23 @@ git diff --check
    instrucción antes de ser enviado al CLI. Si se quiere validar completion, dejar que Claude
    escriba el marcador final en vez de recargar el EDH.
 
+## Accesibilidad, regiones contraíbles y movimiento
+
+1. En un workflow abierto, contraer y restaurar **Agent Rail**, **Workflow toolbar**,
+   **Minimap** y **Run status**. Recargar el dashboard y comprobar que cada estado persiste;
+   con una corrida activa y Run status contraído, comprobar que el control compacto de detener
+   sigue disponible.
+2. Usar teclado para seleccionar un nodo y un enlace, activar el control de handoff, y operar
+   zoom/Fit graph/minimapa. Confirmar foco visible, nombre accesible y un efecto observable por
+   cada acción. Probar paneo, arrastre y cancelación de arrastre con Pointer Events.
+3. Lanzar una corrida inocua de al menos dos pasos. Mientras el primer nodo está `running`, la
+   arista debe ser `graph-edge-running` y no debe existir viajero. Al completar ese nodo y
+   arrancar el segundo, verificar el viajero de `graph-edge-handoff-flow`, el nodo previo
+   completado, el siguiente en ejecución y el reflejo de ambos estados en minimapa/Run status.
+4. Cuando sea posible emular `prefers-reduced-motion`, verificar que no se ejecuten la entrada,
+   pulso, viajero ni spinner. Si la automatización no puede emularlo dentro del webview, registrar
+   el selector CSS inspeccionado y la limitación en la evidencia de QA.
+
 ## Recuperación
 
 1. Iniciar una corrida CLI real y, mientras el step está `running`, ejecutar

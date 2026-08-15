@@ -45,8 +45,10 @@ Agent Studio gives you a visual dashboard to design agents, inspect relationship
 
 - **Run Workflow** drives real CLI sessions — Claude CLI or Codex CLI — instead of pasting into VS Code's chat, chaining each step's output into the next.
 - Independent nodes run **in parallel**, each in its own integrated terminal (Claude or Codex), following the graph's real dependencies — parallel terminals open **side by side in a real split**, not as separate tabs.
+- Codex runs in its normal interactive TUI: Agent Studio waits for terminal Shell Integration and passes the turn to Codex safely, rather than pasting it into an empty shell or executing it invisibly in the background.
 - **Human-in-the-loop handoffs**: mark any edge as `human` and approve, reject, or add instructions from a dedicated in-dashboard panel with full, unclipped context.
-- **Live graph status**: nodes color and animate in real time — queued, running (pulsing), waiting on approval, completed, failed, skipped.
+- **Live graph status**: nodes, run rows, minimap, and handoff edges explain queued, running, waiting on approval, completed, failed, and skipped states. A moving edge traveler appears only for the real `completed → running` handoff; loading, entry, hover, and pan/zoom motion all respect reduced-motion preferences.
+- **Accessible graph controls**: canvas pan, node selection, connectors, zoom, fit, and minimap controls have keyboard paths, labels, and visible focus. The Agent Rail, Workflow toolbar, Minimap, and Run status can be collapsed independently without hiding a running workflow's Stop action.
 - A **safety preflight** blocks a run early if the selected CLI isn't installed, and warns only when the workspace has no Git repository at its root or in a direct child project — so a parent folder containing several repositories works as expected.
 - A **Stop** button cancels an in-progress run without killing nodes mid-turn.
 - Runs are **persisted and recoverable**: if VS Code closes mid-run, it's marked `interrupted` on next launch for inspection (never auto-resumed), and the Run status panel gets a history selector plus expandable objective/output per step.
@@ -394,6 +396,11 @@ Your donations help keep the project alive — covering hosting, infrastructure 
 Thank you for your generosity—you're making a difference both for this project and for real-life companions. Together we protect our pets, digital and furry alike! 💖
 
 ## Roadmap
+
+Shipped in 2.3.0: accessible graph interaction and collapsible graph regions,
+visible interactive Codex terminals per node, and semantic workflow motion for
+entry, loading, node state, and real handoffs. The full release and QA record
+is in [`docs/releases/2.3.0.md`](docs/releases/2.3.0.md).
 
 Shipped in 2.2.0: resource repositories unify agents and workflows in one
 versionable library, workflows are selectable/editable as first-class resources,
