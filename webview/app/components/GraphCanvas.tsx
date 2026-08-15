@@ -530,6 +530,27 @@ export function GraphCanvas(): React.JSX.Element {
     return map;
   }, [isWorkflow, selectedWorkflowRun]);
 
+  // Carry execution forward through the graph: active nodes and completed-to-
+  // active handoffs get a moving signal, while human gates visibly wait.
+  const edgeRunClassById = useMemo(() => {
+    const classes = new Map<string, string>();
+    if (!isWorkflow || !selectedWorkflowRun || !selectedWorkflow) return classes;
+    for (const edge of selectedWorkflow.edges) {
+      const source = runStatusByNodeId.get(edge.source);
+      const target = runStatusByNodeId.get(edge.target);
+      if (source === "running") {
+        classes.set(edge.id, "graph-edge-running");
+      } else if (source === "completed" && target === "running") {
+        classes.set(edge.id, "graph-edge-handoff-flow");
+      } else if (target === "waiting_approval") {
+        classes.set(edge.id, "graph-edge-waiting");
+      } else if (source === "completed") {
+        classes.set(edge.id, "graph-edge-completed");
+      }
+    }
+    return classes;
+  }, [isWorkflow, runStatusByNodeId, selectedWorkflow, selectedWorkflowRun]);
+
   const isEmptyAgentGraph = !isWorkflow && nodes.length === 0;
   const isEmptyWorkflowGraph = isWorkflow && (!selectedWorkflow || nodes.length === 0);
   const activeStep = orderedRunSteps.find((step) => step.state === "running");
@@ -813,8 +834,8 @@ export function GraphCanvas(): React.JSX.Element {
               </details>
             )}
             {orderedRunSteps.map((step, index) => (
-              <div key={`${step.name}-${index}`} className="graph-run-step-wrap">
-                <div className="graph-run-step" title={step.message}>
+              <div key={`${step.name}-${index}`} className={`graph-run-step-wrap ${step.state.replace(/_/g, "-")}`}>
+                <div className={`graph-run-step ${step.state.replace(/_/g, "-")}`} title={step.message}>
                   <span
                     className={
                       "graph-run-step-mark" +
@@ -961,18 +982,37 @@ export function GraphCanvas(): React.JSX.Element {
                   <path d="M0,0 L8,4.5 L0,9 z" fill="var(--vscode-charts-green)" />
                 </marker>
               </defs>
-              {edges.map((edge) => (
-                <path
-                  key={edge.id}
-                  d={edge.d}
-                  fill="none"
-                  stroke={edge.stroke}
-                  strokeWidth={edge.width}
-                  markerEnd={edge.marker}
-                  opacity={edge.opacity}
-                  aria-hidden="true"
-                />
-              ))}
+              {edges.map((edge) => {
+                const motionClass = edgeRunClassById.get(edge.id) ?? "";
+                const isHumanHandoff = "handoffMode" in edge && edge.handoffMode === "human";
+                // A working node has not handed off yet. Only animate a traveler
+                // once the source completed and the destination actually started.
+                const isMoving = motionClass === "graph-edge-handoff-flow";
+                return (
+                  <React.Fragment key={edge.id}>
+                    <path
+                      className={`graph-edge ${motionClass}${isHumanHandoff ? " graph-edge-human" : ""}${edge.id === selectedEdgeId ? " selected" : ""}`}
+                      d={edge.d}
+                      fill="none"
+                      stroke={edge.stroke}
+                      strokeWidth={edge.width}
+                      markerEnd={edge.marker}
+                      opacity={edge.opacity}
+                      aria-hidden="true"
+                    />
+                    {isMoving && (
+                      <path
+                        className={`graph-edge-traveler ${motionClass}`}
+                        d={edge.d}
+                        fill="none"
+                        stroke={edge.stroke}
+                        strokeWidth={2.8}
+                        aria-hidden="true"
+                      />
+                    )}
+                  </React.Fragment>
+                );
+              })}
               {edges.map((edge) => (
                 <path
                   key={`hit-${edge.id}`}
@@ -1125,7 +1165,7 @@ export function GraphCanvas(): React.JSX.Element {
                 );
               })()}
 
-            {nodes.map((node) => {
+            {nodes.map((node, index) => {
               const isSelected = node.id === selectedAgentId || node.agentId === selectedAgentId;
               const runStatus = runStatusByNodeId.get(node.id);
               return (
@@ -1135,7 +1175,8 @@ export function GraphCanvas(): React.JSX.Element {
                     "graph-node" +
                     (isSelected ? " selected" : "") +
                     (node.isEntry ? " entry" : "") +
-                    (runStatus ? ` run-${runStatus.replace(/_/g, "-")}` : "")
+                    (runStatus ? ` run-${runStatus.replace(/_/g, "-")}` : "") +
+                    (draggingNodeId === node.id ? " dragging" : "")
                   }
                   style={{
                     left: node.x,
@@ -1143,6 +1184,7 @@ export function GraphCanvas(): React.JSX.Element {
                     zIndex: isSelected ? 4 : 3,
                   }}
                   data-graph-node-id={node.id}
+                  data-graph-node-index={index}
                 >
                   <button
                     type="button"
@@ -1157,6 +1199,7 @@ export function GraphCanvas(): React.JSX.Element {
                   >
                     <span className="graph-node-head">
                       <span className="graph-node-dot" style={{ background: node.dot }} />
+                      {runStatus === "running" && <span className="graph-node-loading" aria-hidden="true" />}
                       <span className="graph-node-name">{node.name}</span>
                       {node.isEntry && <span className="graph-node-entry-badge">▸ entry</span>}
                     </span>
@@ -1326,10 +1369,11 @@ export function GraphCanvas(): React.JSX.Element {
             >
             {nodes.map((node) => {
               const mini = toMini(node.x, node.y);
+              const runStatus = runStatusByNodeId.get(node.id);
               return (
                 <div
                   key={`mini-${node.id}`}
-                  className="graph-minimap-node"
+                  className={`graph-minimap-node${runStatus === "running" ? " running" : ""}`}
                   style={{ left: mini.x, top: mini.y, background: node.dot }}
                 />
               );

@@ -1196,14 +1196,21 @@ h4 {
   overflow: hidden;
   position: relative;
   background: var(--studio-surface-1);
-  background-image: radial-gradient(
-    color-mix(in srgb, var(--vscode-editor-foreground) 8%, transparent) 1px,
-    transparent 1px
-  );
-  background-size: 22px 22px;
+  background-image:
+    radial-gradient(
+      color-mix(in srgb, var(--vscode-editor-foreground) 8%, transparent) 1px,
+      transparent 1px
+    ),
+    radial-gradient(
+      color-mix(in srgb, var(--studio-accent) 11%, transparent) 1px,
+      transparent 1px
+    );
+  background-size: 22px 22px, 88px 88px;
+  background-position: 0 0, 11px 11px;
   flex: 1;
   min-height: 280px;
   touch-action: none;
+  animation: graph-canvas-enter 360ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .graph-view {
@@ -1267,6 +1274,7 @@ h4 {
   border-radius: var(--studio-radius-sm);
   padding: 6px;
   backdrop-filter: blur(6px);
+  animation: graph-panel-enter 280ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .graph-toolbar-actions.collapsed {
@@ -1320,10 +1328,12 @@ h4 {
   top: 0;
   transform-origin: 0 0;
   cursor: grab;
+  transition: transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 .graph-canvas-world.panning {
   cursor: grabbing;
+  transition: none;
 }
 
 .graph-svg {
@@ -1339,6 +1349,39 @@ h4 {
   pointer-events: stroke;
 }
 
+.graph-edge {
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: stroke 180ms ease, stroke-width 180ms ease, opacity 180ms ease;
+  animation: graph-edge-enter 320ms ease-out both;
+}
+
+.graph-edge.selected {
+  filter: drop-shadow(0 0 3px color-mix(in srgb, var(--studio-accent) 75%, transparent));
+}
+
+.graph-edge-completed {
+  opacity: 0.96;
+}
+
+.graph-edge-waiting,
+.graph-edge-human.graph-edge-waiting {
+  stroke-dasharray: 4 5;
+  animation: graph-edge-wait 1.3s linear infinite;
+}
+
+.graph-edge-traveler {
+  pointer-events: none;
+  stroke-linecap: round;
+  stroke-dasharray: 2 16;
+  opacity: 0.95;
+  animation: graph-edge-travel 760ms linear infinite;
+}
+
+.graph-edge-traveler.graph-edge-handoff-flow {
+  animation-duration: 560ms;
+}
+
 .graph-node {
   position: absolute;
   width: 158px;
@@ -1348,6 +1391,28 @@ h4 {
   border-radius: 13px;
   padding: 0;
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+  transition: transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1), border-color 180ms ease, box-shadow 180ms ease, filter 180ms ease;
+  animation: graph-node-enter 340ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.graph-node[data-graph-node-index="1"] { animation-delay: 38ms; }
+.graph-node[data-graph-node-index="2"] { animation-delay: 76ms; }
+.graph-node[data-graph-node-index="3"] { animation-delay: 114ms; }
+.graph-node[data-graph-node-index="4"] { animation-delay: 152ms; }
+.graph-node[data-graph-node-index="5"] { animation-delay: 190ms; }
+.graph-node[data-graph-node-index="6"] { animation-delay: 228ms; }
+.graph-node[data-graph-node-index="7"] { animation-delay: 266ms; }
+.graph-node[data-graph-node-index="8"] { animation-delay: 304ms; }
+
+.graph-node:hover {
+  transform: translate(-50%, calc(-50% - 3px));
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.34);
+}
+
+.graph-node.dragging {
+  transition: none;
+  filter: brightness(1.08);
+  box-shadow: 0 14px 34px color-mix(in srgb, var(--studio-accent) 25%, rgba(0, 0, 0, 0.42));
 }
 
 .graph-node-select {
@@ -1368,11 +1433,20 @@ h4 {
   outline-offset: 2px;
 }
 
+.graph-node.run-running .graph-node-select:hover {
+  background: color-mix(in srgb, var(--studio-accent) 11%, transparent);
+}
+
 .graph-node.selected {
   border: 2px solid var(--studio-accent);
   box-shadow:
     0 0 0 4px var(--studio-accent-soft),
     0 6px 20px rgba(0, 0, 0, 0.3);
+}
+
+.graph-node.selected.run-running {
+  outline: 2px solid color-mix(in srgb, var(--vscode-editor-foreground) 74%, var(--studio-accent));
+  outline-offset: 3px;
 }
 
 .graph-node.entry {
@@ -1385,6 +1459,7 @@ h4 {
 
 .graph-node.run-queued {
   border: 2px solid var(--vscode-charts-orange, #d18616);
+  animation: graph-queued-arrive 360ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .graph-node.run-running {
@@ -1396,14 +1471,17 @@ h4 {
 
 .graph-node.run-waiting-approval {
   border: 2px solid var(--vscode-charts-yellow, #d7ba7d);
+  animation: graph-waiting-arrive 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .graph-node.run-completed {
   border: 2px solid var(--vscode-charts-green);
+  animation: graph-complete-flash 520ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .graph-node.run-failed {
   border: 2px solid var(--vscode-charts-red, #f85149);
+  animation: graph-failed-shake 340ms ease-in-out both;
 }
 
 .graph-node.run-interrupted {
@@ -1442,9 +1520,82 @@ h4 {
   }
 }
 
+@keyframes graph-canvas-enter {
+  from { opacity: 0; background-position: 0 10px, 11px 21px; }
+  to { opacity: 1; background-position: 0 0, 11px 11px; }
+}
+
+@keyframes graph-panel-enter {
+  from { opacity: 0; transform: translateY(-8px) scale(0.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes graph-node-enter {
+  from { opacity: 0; transform: translate(-50%, calc(-50% + 12px)) scale(0.96); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+@keyframes graph-edge-enter {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes graph-edge-travel {
+  to { stroke-dashoffset: -36; }
+}
+
+@keyframes graph-edge-wait {
+  to { stroke-dashoffset: -18; }
+}
+
+@keyframes graph-queued-arrive {
+  0% { opacity: 0.45; transform: translate(-50%, calc(-50% + 8px)) scale(0.97); }
+  65% { opacity: 1; transform: translate(-50%, -50%) scale(1.025); }
+  100% { transform: translate(-50%, -50%) scale(1); }
+}
+
+@keyframes graph-waiting-arrive {
+  0% { opacity: 0.45; transform: translate(-50%, calc(-50% + 8px)); }
+  75% { opacity: 1; transform: translate(-50%, -50%); box-shadow: 0 0 0 8px color-mix(in srgb, var(--vscode-charts-yellow, #d7ba7d) 0%, transparent); }
+  100% { transform: translate(-50%, -50%); }
+}
+
+@keyframes graph-complete-flash {
+  0% { transform: translate(-50%, -50%) scale(0.96); box-shadow: 0 0 0 0 color-mix(in srgb, var(--vscode-charts-green) 50%, transparent); }
+  65% { transform: translate(-50%, -50%) scale(1.03); box-shadow: 0 0 0 10px color-mix(in srgb, var(--vscode-charts-green) 0%, transparent); }
+  100% { transform: translate(-50%, -50%) scale(1); box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25); }
+}
+
+@keyframes graph-failed-shake {
+  0%, 100% { transform: translate(-50%, -50%); }
+  25% { transform: translate(calc(-50% - 4px), -50%); }
+  55% { transform: translate(calc(-50% + 4px), -50%); }
+  75% { transform: translate(calc(-50% - 2px), -50%); }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .graph-node.run-running {
+  .graph-canvas,
+  .graph-toolbar-actions,
+  .graph-run-panel,
+  .graph-node,
+  .graph-edge,
+  .graph-edge-waiting,
+  .graph-edge-traveler,
+  .graph-node-loading,
+  .graph-run-step-wrap,
+  .graph-run-step-mark,
+  .graph-minimap-node {
     animation: none;
+  }
+
+  .graph-canvas-world,
+  .graph-node,
+  .graph-edge,
+  .graph-edge-label,
+  .graph-edge-handoff-toggle,
+  .graph-minimap,
+  .graph-run-state {
+    transition-duration: 0.01ms;
   }
 }
 
@@ -1460,6 +1611,21 @@ h4 {
   width: 9px;
   height: 9px;
   border-radius: 50%;
+}
+
+.graph-node-loading {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  margin-left: -3px;
+  border: 2px solid color-mix(in srgb, var(--studio-accent) 24%, transparent);
+  border-top-color: var(--studio-accent);
+  border-radius: 50%;
+  animation: graph-loading-spin 780ms linear infinite;
+}
+
+@keyframes graph-loading-spin {
+  to { transform: rotate(360deg); }
 }
 
 .graph-node-name {
@@ -1579,6 +1745,8 @@ h4 {
   border-radius: 5px;
   padding: 2px 7px;
   font-family: inherit;
+  transition: transform 160ms cubic-bezier(0.2, 0.8, 0.2, 1), border-color 160ms ease, color 160ms ease, background-color 160ms ease, box-shadow 160ms ease;
+  animation: graph-label-enter 260ms ease-out both;
 }
 
 .graph-edge-label-clickable {
@@ -1588,6 +1756,8 @@ h4 {
 .graph-edge-label-clickable:hover {
   border-color: var(--studio-accent);
   color: var(--vscode-editor-foreground);
+  transform: translateY(-2px);
+  box-shadow: 0 5px 12px color-mix(in srgb, black 28%, transparent);
 }
 
 .graph-edge-delete {
@@ -1605,6 +1775,7 @@ h4 {
   font-weight: 700;
   cursor: pointer;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  animation: graph-control-pop 170ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .graph-edge-handoff-toggle {
@@ -1617,6 +1788,7 @@ h4 {
   border-radius: 7px;
   padding: 3px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  animation: graph-control-pop 180ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .graph-edge-handoff-toggle button {
@@ -1636,6 +1808,18 @@ h4 {
   color: var(--vscode-editor-foreground);
 }
 
+.graph-edge-handoff-toggle button:hover,
+.graph-edge-handoff-toggle button:focus-visible {
+  background: color-mix(in srgb, var(--studio-accent) 18%, transparent);
+  border-color: color-mix(in srgb, var(--studio-accent) 64%, transparent);
+  color: var(--vscode-editor-foreground);
+}
+
+.graph-edge-handoff-toggle button.active:hover,
+.graph-edge-handoff-toggle button.active:focus-visible {
+  background: color-mix(in srgb, var(--studio-accent) 30%, transparent);
+}
+
 .graph-run-panel {
   width: auto;
   max-width: none;
@@ -1648,6 +1832,7 @@ h4 {
   padding: 12px 13px;
   backdrop-filter: blur(8px);
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+  animation: graph-panel-enter 340ms 70ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .graph-run-panel.collapsed {
@@ -1739,7 +1924,24 @@ h4 {
   align-items: center;
   gap: 9px;
   padding: 5px 0;
+  transition: background-color 180ms ease, transform 180ms ease;
 }
+
+.graph-run-step.running {
+  margin: 0 -5px;
+  padding: 5px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--studio-accent) 12%, transparent);
+}
+
+.graph-run-step-wrap {
+  animation: graph-run-step-enter 260ms ease-out both;
+}
+
+.graph-run-step-wrap:nth-child(2) { animation-delay: 35ms; }
+.graph-run-step-wrap:nth-child(3) { animation-delay: 70ms; }
+.graph-run-step-wrap:nth-child(4) { animation-delay: 105ms; }
+.graph-run-step-wrap:nth-child(5) { animation-delay: 140ms; }
 
 .graph-run-step-wrap + .graph-run-step-wrap {
   border-top: 1px solid color-mix(in srgb, var(--studio-border) 65%, transparent);
@@ -1772,6 +1974,7 @@ h4 {
 .graph-run-step-mark.running {
   background: var(--studio-accent);
   border-color: var(--studio-accent);
+  animation: graph-step-working 1s ease-in-out infinite;
 }
 
 .graph-run-step-mark.failed {
@@ -1874,6 +2077,8 @@ h4 {
   background: color-mix(in srgb, var(--studio-surface-1) 92%, transparent);
   border: 1px solid var(--studio-border);
   border-radius: 9px;
+  transition: width 180ms ease, height 180ms ease, opacity 180ms ease, transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  animation: graph-minimap-enter 320ms 120ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .graph-minimap.bottom-right { right: 14px; bottom: 14px; }
@@ -1935,6 +2140,39 @@ h4 {
   width: 18px;
   height: 9px;
   border-radius: 3px;
+}
+
+.graph-minimap-node.running {
+  animation: graph-minimap-working 1s ease-in-out infinite;
+}
+
+@keyframes graph-label-enter {
+  from { opacity: 0; transform: translateY(4px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes graph-control-pop {
+  from { opacity: 0; transform: scale(0.85); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes graph-run-step-enter {
+  from { opacity: 0; transform: translateX(7px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes graph-step-working {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--studio-accent) 55%, transparent); }
+  55% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--studio-accent) 0%, transparent); }
+}
+
+@keyframes graph-minimap-enter {
+  from { opacity: 0; transform: translateY(8px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes graph-minimap-working {
+  50% { transform: scale(1.25); box-shadow: 0 0 0 3px color-mix(in srgb, var(--studio-accent) 0%, transparent); }
 }
 
 /* Choose view */
