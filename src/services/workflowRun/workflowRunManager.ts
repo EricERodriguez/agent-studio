@@ -3,7 +3,6 @@ import type { WorkflowRunStep } from "../../domain/messages";
 import type { ChatBridgeService } from "../chatBridgeService";
 import { WorkflowTerminalService } from "./workflowTerminalService";
 import { runAgentTurn } from "./interactiveTurnRunner";
-import { CodexAppServerService } from "./codexAppServerRunner";
 import { resolveInteractionLanguage } from "../interactionLanguageService";
 
 /**
@@ -26,15 +25,12 @@ import { resolveInteractionLanguage } from "../interactionLanguageService";
  * On any node failure (or a rejected human approval), no *new* nodes are dispatched afterwards,
  * but nodes already in flight are left to finish naturally rather than being torn down mid-turn.
  *
- * Turn execution is per-provider: `claude` uses `runAgentTurn` from `./interactiveTurnRunner` — a
- * real interactive CLI session per node (like SwarmForge's attached sessions), so the user can
- * give it feedback mid-task by typing into its terminal. `codex` uses
- * `CodexAppServerService`/`./codexAppServerRunner` instead — real testing (2026-08-09) showed the
- * terminal+sendText approach could not be made reliable for Codex specifically (confirmed by
- * Codex itself: no "ready for input" signal exists for its TUI), so Codex nodes talk to `codex
- * app-server` over JSON-RPC/stdio instead of a visible terminal — no terminal is created for
- * them. `turn/steer` (mid-task human feedback for Codex, the equivalent of typing into Claude's
- * terminal) is not wired up yet — see docs/swarmforge-integration/PROGRESS.md.
+ * Both providers use `runAgentTurn` from `./interactiveTurnRunner`: a real interactive CLI
+ * session per node (like SwarmForge's attached sessions), so every running Claude or Codex agent
+ * has a visible, focusable VS Code terminal. Codex is launched with the configurable
+ * `agentStudio.cli.codexCommand` and receives the initial turn as its documented positional
+ * prompt, so its normal TUI can remain visible. This intentionally favors the interactive
+ * terminal experience over the headless Codex app-server transport.
  */
 
 export interface ApprovalRequestInput {
@@ -176,7 +172,6 @@ export async function runWorkflowGraph(
   publish();
 
   const terminals = new WorkflowTerminalService();
-  const codexSessions = new CodexAppServerService();
   const inFlight = new Map<string, Promise<void>>();
   let aborted = false;
   let abortError: string | undefined;
@@ -251,8 +246,7 @@ export async function runWorkflowGraph(
     }
 
     node.status = "running";
-    node.message =
-      cliCommand === "codex" ? "Working via codex app-server" : `Working in ${cliCommand} CLI`;
+    node.message = `Working in ${cliCommand} CLI terminal`;
     publish();
 
     const predecessorOutput = joinPredecessorOutput(preds, runtime);
@@ -277,40 +271,23 @@ export async function runWorkflowGraph(
       cancelled: boolean;
       output: string;
     };
-    if (cliCommand === "codex") {
-      turn = await codexSessions.runTurn(
+    const interactiveTurn = await runAgentTurn({
+      terminal: await terminals.getOrCreateTerminal(
         nodeId,
+        `Agent Studio: ${workflow.name} · ${node.agentName} (${cliCommand})`,
         cwd,
-        prompt,
-        10 * 60 * 1000,
-        shouldCancel,
-        (summary) => {
-          // The runner intentionally gives us a sanitized activity summary, never raw app-server
-          // JSON or command output. Publishing it makes a long-running Codex step observable.
-          node.activity = { summary, at: Date.now() };
-          node.message = summary;
-          publish();
-        },
-      );
-    } else {
-      const claudeTurn = await runAgentTurn({
-        terminal: await terminals.getOrCreateTerminal(
-          nodeId,
-          `Agent Studio: ${workflow.name} · ${node.agentName} (${cliCommand})`,
-          cwd,
-        ),
-        executable: cliCommand,
-        prompt,
-        runDir,
-        stepId: nodeId,
-        shouldCancel,
-      });
-      turn = claudeTurn;
-      node.evidence = {
-        promptFilePath: claudeTurn.promptFilePath,
-        markerFilePath: claudeTurn.markerFilePath,
-      };
-    }
+      ),
+      executable: cliCommand,
+      prompt,
+      runDir,
+      stepId: nodeId,
+      shouldCancel,
+    });
+    turn = interactiveTurn;
+    node.evidence = {
+      promptFilePath: interactiveTurn.promptFilePath,
+      markerFilePath: interactiveTurn.markerFilePath,
+    };
 
     if (!turn.success) {
       node.status = "failed";
@@ -356,8 +333,6 @@ export async function runWorkflowGraph(
 
   markSkippedIfStuck();
   publish();
-  codexSessions.disposeAll();
-
   const anyFailed = order.some((nodeId) => runtime.get(nodeId)!.status === "failed");
   return anyFailed
     ? { status: "failed", error: abortError ?? "Workflow failed." }

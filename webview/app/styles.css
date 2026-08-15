@@ -1269,6 +1269,27 @@ h4 {
   backdrop-filter: blur(6px);
 }
 
+.graph-toolbar-actions.collapsed {
+  align-self: start;
+  flex-wrap: nowrap;
+}
+
+.graph-toolbar-actions-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 26px;
+  color: var(--vscode-descriptionForeground);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.graph-toolbar-actions:not(.collapsed) .graph-toolbar-actions-head {
+  margin-right: 2px;
+}
+
 .graph-mode-toggle {
   display: flex;
   padding: 3px;

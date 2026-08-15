@@ -14,7 +14,7 @@ webviews.
 |---|---|---|
 | Unitario | Lógica pura, rápida y determinista | normalización de templates, resolución de idioma, migración de manifests |
 | Integración | Servicios contra APIs de VS Code simuladas o fixtures | preflight, persistencia atómica de manifests, scheduler DAG |
-| Smoke EDH | Flujo real de la extensión | Command Palette, dashboard, creación de terminales, app-server de Codex |
+| Smoke EDH | Flujo real de la extensión | Command Palette, dashboard, creación de terminales y TUI visible de Claude/Codex |
 | Regresión manual | Comportamiento que depende de CLIs o UI real | handoff humano, cancelación, recuperación tras reinicio |
 
 Las pruebas automáticas deben vivir junto al código que cubren y no depender de credenciales ni
@@ -42,7 +42,7 @@ claramente sus efectos, coste y prerequisitos.
 ### Fase 7 — Estado y recuperación
 
 - Cerrar el EDH durante un step Claude, Codex y una aprobación humana; al reabrir, verificar que
-  el manifest se lee y la corrida queda `interrupted` sin crear terminal ni iniciar app-server.
+  el manifest se lee y la corrida queda `interrupted` sin crear ni reutilizar una terminal.
 - Confirmar que steps `completed` se preservan, activos pasan a `interrupted` y pendientes a
   `skipped`; una corrida terminal conserva `completed` o `failed` sin mutarse.
 - Introducir un manifest JSON corrupto y comprobar que se informa un warning sin impedir abrir el
@@ -60,8 +60,8 @@ claramente sus efectos, coste y prerequisitos.
 
 ### Motor, terminales y handoffs
 
-- Mantener un smoke opt-in para una corrida real con Claude y otra con Codex app-server, incluyendo
-  el resultado del step y el estado final del DAG.
+- Mantener un smoke opt-in para una corrida real con Claude y otra con Codex CLI interactivo,
+  incluyendo el resultado del step, el estado final del DAG y la TUI visible en su terminal.
 - Verificar paralelismo de nodos sin dependencia, orden topológico de nodos dependientes,
   cancelación, fallo y un handoff humano que no avanza hasta aprobarlo.
 - Los cuatro bugs diferidos de `BUGS.md` se prueban sólo cuando el usuario autorice abordarlos; no
@@ -72,6 +72,7 @@ claramente sus efectos, coste y prerequisitos.
 1. Añadir tests unitarios e integración a `npm test` cuando cada servicio tenga una frontera
    testeable; mantener `npm run build`, `npm run check` y `git diff --check` como barreras básicas.
 2. Mantener una checklist EDH versionada con comandos, workspace temporal y resultado de cada
-   smoke test para que otra sesión pueda reproducirlo.
+   smoke test para que otra sesión pueda reproducirlo. El procedimiento operativo para IA está en
+   [`09-protocolo-qa-ia-vscode.md`](./09-protocolo-qa-ia-vscode.md).
 3. Antes de declarar una fase cerrada, enlazar en `PROGRESS.md` el resultado real y distinguir
    con precisión entre automatizado, validado en EDH y pendiente.

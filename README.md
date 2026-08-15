@@ -44,7 +44,7 @@ Agent Studio gives you a visual dashboard to design agents, inspect relationship
 ### ⚙️ Native Workflow Execution Engine
 
 - **Run Workflow** drives real CLI sessions — Claude CLI or Codex CLI — instead of pasting into VS Code's chat, chaining each step's output into the next.
-- Independent nodes run **in parallel**, each in its own terminal (Claude) or `codex app-server` session (Codex), following the graph's real dependencies — parallel terminals now open **side by side in a real split**, not as separate tabs.
+- Independent nodes run **in parallel**, each in its own integrated terminal (Claude or Codex), following the graph's real dependencies — parallel terminals open **side by side in a real split**, not as separate tabs.
 - **Human-in-the-loop handoffs**: mark any edge as `human` and approve, reject, or add instructions from a dedicated in-dashboard panel with full, unclipped context.
 - **Live graph status**: nodes color and animate in real time — queued, running (pulsing), waiting on approval, completed, failed, skipped.
 - A **safety preflight** blocks a run early if the selected CLI isn't installed, and warns only when the workspace has no Git repository at its root or in a direct child project — so a parent folder containing several repositories works as expected.
@@ -335,7 +335,7 @@ Agent Studio supports workspace configuration for agent discovery paths.
 - `agentStudio.resourceRepository`: Optional path to a shared Agent Studio repository. Its resources are available globally and new global agents/workflows are saved there. It is set automatically by **Create resource repository**.
 - `agentStudio.interactionLanguage`: Default language (`en`/`es`, default `en`) agents are asked to respond in during a workflow run — independent of the dashboard's own display language. Individual workflow nodes can override this from the graph editor.
 - `agentStudio.cli.claudeCommand`: Command used to launch the Claude CLI interactively in each workflow node's terminal (default `claude --permission-mode acceptEdits`). Override for a wrapper (e.g. a shell alias like `claude-with-memory`) or different flags.
-- `agentStudio.cli.codexCommand`: Command used to launch the Codex CLI interactively (default `codex --sandbox workspace-write --no-alt-screen`).
+- `agentStudio.cli.codexCommand`: Command used to launch the Codex CLI interactively (default `codex --sandbox workspace-write`).
 - `agentStudio.cli.startupDelayMs`: Milliseconds to wait after launching a CLI before typing the prompt into it (default `3000`).
 
 ### Agent scopes

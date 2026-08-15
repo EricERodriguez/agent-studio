@@ -63,6 +63,9 @@ lo soporte, con un mecanismo de marcador de finalización como fallback).
 | [`03-arquitectura-handoff-control.md`](./03-arquitectura-handoff-control.md) | Diseño técnico de Human-in-the-Loop / AI-in-the-Loop **in-process**, sin dependencias externas. |
 | [`04-panel-ejecucion.md`](./04-panel-ejecucion.md) | Estados visuales del grafo: nodo corriendo (animado), completado, próximo en ejecución (`queued`). |
 | [`05-riesgos.md`](./05-riesgos.md) | Registro de riesgos, actualizado para el motor nativo. |
+| [`07-plan-pruebas.md`](./07-plan-pruebas.md) | Estrategia y matriz de pruebas del motor. |
+| [`08-checklist-edh.md`](./08-checklist-edh.md) | Checklist funcional por áreas. |
+| [`09-protocolo-qa-ia-vscode.md`](./09-protocolo-qa-ia-vscode.md) | Procedimiento obligatorio para que una IA valide la extensión dentro de VS Code. |
 
 ## Qué queda de la investigación sobre SwarmForge
 

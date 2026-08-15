@@ -18,8 +18,8 @@ git diff --check
 
 - `npm test` compila los tests TypeScript con esbuild y los ejecuta con `node --test`. Cubre
   constructor de prompts Chat/workflow, idioma, templates y recuperación de manifests.
-- `npm run check` tiene un único fallo conocido: `BUGS.md` #3 en
-  `agentRegistryService.ts:257`. No marcarlo verde hasta que ese bug se corrija.
+- `npm run check` debe terminar sin errores. Si falla, la IA debe registrar el error y no declarar
+  aprobado el cambio; no se acepta un fallo de tipos como deuda conocida.
 
 ## Workspace de prueba
 
@@ -49,8 +49,9 @@ git diff --check
 
 1. Poner `agentStudio.interactionLanguage: "en"`, seleccionar un nodo y guardar
    `languageOverride: "es"`; cambiar el locale del dashboard y comprobar que no muta el override.
-2. Correr una tarea mínima con Codex CLI: el manifest debe guardar el prompt con la instrucción
-   española y terminar con `completed`/la respuesta en español.
+2. Correr una tarea mínima con Codex CLI: debe abrirse una terminal integrada por nodo con la TUI
+   normal de Codex visible. Confirmar que el prompt aparece dentro de Codex —no pegado en una
+   shell vacía— y registrar la respuesta/estado final.
 3. Para Claude, verificar el archivo `step-<node>-prompt.txt` del run; contiene la misma
    instrucción antes de ser enviado al CLI. Si se quiere validar completion, dejar que Claude
    escriba el marcador final en vez de recargar el EDH.

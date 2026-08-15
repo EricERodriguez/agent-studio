@@ -121,6 +121,9 @@ export function GraphCanvas(): React.JSX.Element {
   const [runPanelCollapsed, setRunPanelCollapsed] = useState(
     () => window.localStorage.getItem("agent-studio.run-panel-collapsed") === "true",
   );
+  const [toolbarCollapsed, setToolbarCollapsed] = useState(
+    () => window.localStorage.getItem("agent-studio.graph-toolbar-collapsed") === "true",
+  );
   const [minimapCollapsed, setMinimapCollapsed] = useState(
     () => window.localStorage.getItem("agent-studio.minimap-collapsed") === "true",
   );
@@ -149,6 +152,10 @@ export function GraphCanvas(): React.JSX.Element {
   useEffect(() => {
     window.localStorage.setItem("agent-studio.run-panel-collapsed", String(runPanelCollapsed));
   }, [runPanelCollapsed]);
+
+  useEffect(() => {
+    window.localStorage.setItem("agent-studio.graph-toolbar-collapsed", String(toolbarCollapsed));
+  }, [toolbarCollapsed]);
 
   useEffect(() => {
     window.localStorage.setItem("agent-studio.minimap-collapsed", String(minimapCollapsed));
@@ -584,7 +591,27 @@ export function GraphCanvas(): React.JSX.Element {
 
       {isWorkflow && (
         <div className="graph-toolbar-overlay-right">
-          <div className="graph-toolbar-actions">
+          <div className={toolbarCollapsed ? "graph-toolbar-actions collapsed" : "graph-toolbar-actions"}>
+            <div className="graph-toolbar-actions-head">
+              <span>{tx("Workflow toolbar", "Barra del workflow")}</span>
+              <button
+                type="button"
+                className="graph-panel-collapse"
+                aria-expanded={!toolbarCollapsed}
+                aria-label={tx(
+                  toolbarCollapsed ? "Expand workflow toolbar" : "Collapse workflow toolbar",
+                  toolbarCollapsed ? "Expandir barra del workflow" : "Contraer barra del workflow",
+                )}
+                title={tx(
+                  toolbarCollapsed ? "Expand workflow toolbar" : "Collapse workflow toolbar",
+                  toolbarCollapsed ? "Expandir barra del workflow" : "Contraer barra del workflow",
+                )}
+                onClick={() => setToolbarCollapsed((value) => !value)}
+              >
+                {toolbarCollapsed ? "›" : "⌃"}
+              </button>
+            </div>
+            {!toolbarCollapsed && <>
             <select
               title={tx("Choose which workflow to view and edit.", "Elige qué workflow ver y editar.")}
               value={selectedWorkflow?.id || ""}
@@ -711,6 +738,7 @@ export function GraphCanvas(): React.JSX.Element {
                 </button>
               </>
             )}
+            </>}
           </div>
 
           <div className={runPanelCollapsed ? "graph-run-panel collapsed" : "graph-run-panel"}>

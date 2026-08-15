@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import * as path from "path";
+import { waitForShellIntegration } from "./shellIntegrationUtil";
 
 /**
  * Runs one agent turn as a real interactive CLI session — like SwarmForge's tmux-attached
@@ -30,13 +31,12 @@ import * as path from "path";
  * a fixed short delay isn't enough for every CLI/wrapper to finish starting up. Typing the prompt
  * as its own `sendText` call (no auto-Enter) followed by a *separate* `sendText` for just the
  * Enter keystroke, with a short pause in between, fixed the "user has to press Enter manually"
- * issue for `claude` (confirmed 2026-08-09). It did not fix the same-looking failure for `codex`
- * (still landed on the raw shell, zsh parse errors) — that turned out to be a different cause:
- * `codex`'s TUI uses the terminal's alternate screen buffer by default, and typed input arriving
- * during that screen-buffer transition can land on the wrong buffer. Default `codexCommand` now
- * includes `--no-alt-screen` (confirmed real flag from `codex --help`) to avoid the transition
- * entirely — not yet re-confirmed against a real run. None of this is a guarantee, since VS Code
- * has no API to detect "this TUI is now ready for input".
+ * issue for `claude` (confirmed 2026-08-09). Codex is deliberately different: its documented
+ * positional `[PROMPT]` argument starts the first interactive TUI turn itself. Supplying the
+ * initial turn that way means Agent Studio never races Codex's screen initialization by pasting a
+ * prompt into a terminal that might still be a raw shell. Subsequent human input stays directly
+ * interactive in the visible Codex terminal. The default keeps Codex's normal alternate-screen
+ * TUI enabled, which is the UI users expect to inspect while a workflow runs.
  */
 
 function getCliConfig() {
@@ -45,7 +45,7 @@ function getCliConfig() {
     claudeCommand: config.get<string>("claudeCommand", "claude --permission-mode acceptEdits"),
     codexCommand: config.get<string>(
       "codexCommand",
-      "codex --sandbox workspace-write --no-alt-screen",
+      "codex --sandbox workspace-write",
     ),
     startupDelayMs: config.get<number>("startupDelayMs", 3000),
   };
@@ -113,6 +113,15 @@ function flattenForTyping(text: string): string {
   return text.replace(/\r?\n+/g, " ").trim();
 }
 
+/**
+ * Quote a literal argument for the user's POSIX shell. Prompts are deliberately not interpolated
+ * into a command unquoted: the interactive CLI must receive them as data, even if they contain
+ * quotes, dollar expressions, or backticks.
+ */
+function quoteForPosixShell(value: string): string {
+  return `'${value.replace(/'/g, `'"'"'`)}'`;
+}
+
 function buildPromptWithMarkerInstruction(prompt: string, markerFilePath: string): string {
   return (
     `${prompt}\n\n` +
@@ -129,6 +138,23 @@ async function typeAndSubmit(terminal: vscode.Terminal, text: string): Promise<v
   terminal.sendText(text, false);
   await new Promise((resolve) => setTimeout(resolve, 400));
   terminal.sendText("", true);
+}
+
+/** Wait for the actual VS Code shell lifecycle when it is available. A fixed delay alone can
+ * still race a freshly opened terminal under Extension Development Host load. */
+async function waitForInteractiveShell(
+  terminal: vscode.Terminal,
+  fallbackDelayMs: number,
+): Promise<void> {
+  const shellIntegration = await waitForShellIntegration(
+    terminal,
+    Math.max(fallbackDelayMs, 5_000),
+  );
+  if (!shellIntegration) {
+    await new Promise((resolve) => setTimeout(resolve, fallbackDelayMs));
+  }
+  // Give the prompt renderer one short turn after VS Code reports readiness.
+  await new Promise((resolve) => setTimeout(resolve, 250));
 }
 
 async function waitForMarkerFile(
@@ -171,11 +197,22 @@ export async function runAgentTurn(
   await writeTextFile(promptFilePath, prompt);
 
   const { startupDelayMs } = getCliConfig();
-  terminal.sendText(launchCommandFor(executable), true);
-  await new Promise((resolve) => setTimeout(resolve, startupDelayMs));
-
   const fullPrompt = buildPromptWithMarkerInstruction(prompt, markerFilePath);
-  await typeAndSubmit(terminal, flattenForTyping(fullPrompt));
+  if (executable === "codex") {
+    // Wait for the terminal's shell, then let `codex [PROMPT]` own initialization and the first
+    // submitted turn. The delay is for the shell itself (not Codex), so the command is never
+    // pasted into an empty terminal before a shell can execute it.
+    await waitForInteractiveShell(terminal, startupDelayMs);
+    await typeAndSubmit(
+      terminal,
+      `${launchCommandFor(executable)} ${quoteForPosixShell(flattenForTyping(fullPrompt))}`,
+    );
+  } else {
+    await waitForInteractiveShell(terminal, startupDelayMs);
+    terminal.sendText(launchCommandFor(executable), true);
+    await new Promise((resolve) => setTimeout(resolve, startupDelayMs));
+    await typeAndSubmit(terminal, flattenForTyping(fullPrompt));
+  }
 
   const { output, cancelled } = await waitForMarkerFile(markerFilePath, timeoutMs, shouldCancel);
 
