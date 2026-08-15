@@ -22,6 +22,27 @@ export function DashboardPage(): React.JSX.Element {
   const errorMessage = useStudioStore((s) => s.errorMessage);
   const centerView = useStudioStore((s) => s.centerView);
   const uiPanels = useStudioStore((s) => s.uiPanels);
+  const [railWidth, setRailWidth] = React.useState(() => {
+    const saved = Number(window.localStorage.getItem("agent-studio.agent-rail-width"));
+    return Number.isFinite(saved) ? Math.min(520, Math.max(200, saved)) : 256;
+  });
+  const [railCollapsed, setRailCollapsed] = React.useState(
+    () => window.localStorage.getItem("agent-studio.agent-rail-collapsed") === "true",
+  );
+  const zoneRef = React.useRef<HTMLElement | null>(null);
+
+  React.useEffect(() => {
+    window.localStorage.setItem("agent-studio.agent-rail-width", String(railWidth));
+  }, [railWidth]);
+
+  React.useEffect(() => {
+    window.localStorage.setItem("agent-studio.agent-rail-collapsed", String(railCollapsed));
+  }, [railCollapsed]);
+
+  const resizeRail = (clientX: number): void => {
+    const left = zoneRef.current?.getBoundingClientRect().left ?? 0;
+    setRailWidth(Math.min(520, Math.max(200, Math.round(clientX - left))));
+  };
 
   const showInspectorColumn = centerView === "editor" || centerView === "graph";
 
@@ -100,15 +121,52 @@ export function DashboardPage(): React.JSX.Element {
       {errorMessage && <div className="message error">{errorMessage}</div>}
 
       <main
+        ref={zoneRef}
         className={
           showInspectorColumn
             ? uiPanels.inspector
-              ? "agent-zone-grid"
-              : "agent-zone-grid inspector-collapsed"
-            : "agent-zone-grid no-inspector"
+              ? `agent-zone-grid${railCollapsed ? " rail-collapsed" : ""}`
+              : `agent-zone-grid inspector-collapsed${railCollapsed ? " rail-collapsed" : ""}`
+            : `agent-zone-grid no-inspector${railCollapsed ? " rail-collapsed" : ""}`
         }
+        style={{ "--agent-rail-width": `${railCollapsed ? 46 : railWidth}px` } as React.CSSProperties}
       >
-        <AgentRail />
+        <AgentRail collapsed={railCollapsed} onCollapsedChange={setRailCollapsed} />
+        {!railCollapsed && <div
+          className="agent-rail-resize-handle"
+          role="separator"
+          aria-orientation="vertical"
+          aria-label={tx("Resize agent rail", "Redimensionar panel de recursos")}
+          aria-valuemin={200}
+          aria-valuemax={520}
+          aria-valuenow={railWidth}
+          tabIndex={0}
+          onPointerDown={(event) => {
+            event.currentTarget.setPointerCapture(event.pointerId);
+            resizeRail(event.clientX);
+          }}
+          onPointerMove={(event) => {
+            if (event.currentTarget.hasPointerCapture(event.pointerId)) resizeRail(event.clientX);
+          }}
+          onKeyDown={(event) => {
+            if (event.key === "ArrowLeft") {
+              event.preventDefault();
+              setRailWidth((value) => Math.max(200, value - 16));
+            }
+            if (event.key === "ArrowRight") {
+              event.preventDefault();
+              setRailWidth((value) => Math.min(520, value + 16));
+            }
+            if (event.key === "Home") {
+              event.preventDefault();
+              setRailWidth(200);
+            }
+            if (event.key === "End") {
+              event.preventDefault();
+              setRailWidth(520);
+            }
+          }}
+        />}
 
         <div className="center-stage">
           {centerView === "choose" && <ChooseView />}

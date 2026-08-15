@@ -71,6 +71,7 @@ interface StudioState {
     source: string,
     target: string,
     label?: string,
+    handoff?: { mode: "automatic" | "human" },
   ) => void;
   removeWorkflowEdge: (workflowId: string, edgeId: string) => void;
   setEdgeHandoffMode: (
@@ -178,7 +179,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
         };
       }),
     })),
-  addWorkflowEdge: (workflowId, source, target, label = "handoff") =>
+  addWorkflowEdge: (workflowId, source, target, label = "handoff", handoff) =>
     set((state) => ({
       workflows: state.workflows.map((workflow) => {
         if (workflow.id !== workflowId || source === target) {
@@ -194,7 +195,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
           ...workflow,
           edges: [
             ...workflow.edges,
-            { id: `e-${Date.now()}`, source, target, label },
+            { id: `e-${Date.now()}`, source, target, label, handoff },
           ],
         };
       }),

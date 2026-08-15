@@ -48,6 +48,7 @@ interface Dragging {
 }
 
 interface PanOrigin {
+  pointerId: number;
   startX: number;
   startY: number;
   originX: number;
@@ -55,12 +56,20 @@ interface PanOrigin {
 }
 
 interface NodeDragOrigin {
+  pointerId: number;
   nodeId: string;
   startX: number;
   startY: number;
   originX: number;
   originY: number;
   moved: boolean;
+}
+
+type MinimapCorner = "top-left" | "top-right" | "bottom-left" | "bottom-right";
+
+interface UndoEdge {
+  message: string;
+  restore: () => void;
 }
 
 export function GraphCanvas(): React.JSX.Element {
@@ -102,10 +111,24 @@ export function GraphCanvas(): React.JSX.Element {
   >("chat");
   const [draggingNodeId, setDraggingNodeId] = useState<string | null>(null);
   const [manualPositions, setManualPositions] = useState<Record<string, Point>>({});
+  const [minimapCorner, setMinimapCorner] = useState<MinimapCorner>(() => {
+    const saved = window.localStorage.getItem("agent-studio.minimap-corner");
+    return saved === "top-left" || saved === "top-right" || saved === "bottom-left" || saved === "bottom-right"
+      ? saved
+      : "bottom-right";
+  });
+  const [undoEdge, setUndoEdge] = useState<UndoEdge | null>(null);
+  const [runPanelCollapsed, setRunPanelCollapsed] = useState(
+    () => window.localStorage.getItem("agent-studio.run-panel-collapsed") === "true",
+  );
+  const [minimapCollapsed, setMinimapCollapsed] = useState(
+    () => window.localStorage.getItem("agent-studio.minimap-collapsed") === "true",
+  );
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const panOriginRef = useRef<PanOrigin | null>(null);
   const nodeDragRef = useRef<NodeDragOrigin | null>(null);
-  const justDraggedNodeRef = useRef(false);
+  const minimapDragRef = useRef<{ pointerId: number; startX: number; startY: number } | null>(null);
+  const minimapDidDragRef = useRef(false);
 
   const isWorkflow = graphMode === "workflow";
   const scale = zoom / 100;
@@ -120,56 +143,16 @@ export function GraphCanvas(): React.JSX.Element {
   }, [isWorkflow, selectedWorkflow?.id]);
 
   useEffect(() => {
-    if (!isPanning) return;
-    const onMove = (e: MouseEvent): void => {
-      if (!panOriginRef.current) return;
-      const dx = e.clientX - panOriginRef.current.startX;
-      const dy = e.clientY - panOriginRef.current.startY;
-      setPan({ x: panOriginRef.current.originX + dx, y: panOriginRef.current.originY + dy });
-    };
-    const onUp = (): void => {
-      setIsPanning(false);
-      panOriginRef.current = null;
-    };
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
-    return () => {
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
-    };
-  }, [isPanning]);
+    window.localStorage.setItem("agent-studio.minimap-corner", minimapCorner);
+  }, [minimapCorner]);
 
-  // Lets the user drag a node to reposition it — handy to see whether an
-  // arrow actually terminates at a node or just visually passes near it.
   useEffect(() => {
-    if (!draggingNodeId) return;
-    const onMove = (e: MouseEvent): void => {
-      const origin = nodeDragRef.current;
-      if (!origin) return;
-      const dx = (e.clientX - origin.startX) / scale;
-      const dy = (e.clientY - origin.startY) / scale;
-      if (Math.abs(dx) + Math.abs(dy) > 3) {
-        origin.moved = true;
-      }
-      const next = { x: origin.originX + dx, y: origin.originY + dy };
-      if (isWorkflow && selectedWorkflow) {
-        moveWorkflowNode(selectedWorkflow.id, origin.nodeId, next);
-      } else {
-        setManualPositions((prev) => ({ ...prev, [origin.nodeId]: next }));
-      }
-    };
-    const onUp = (): void => {
-      justDraggedNodeRef.current = nodeDragRef.current?.moved ?? false;
-      nodeDragRef.current = null;
-      setDraggingNodeId(null);
-    };
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
-    return () => {
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
-    };
-  }, [draggingNodeId, isWorkflow, moveWorkflowNode, scale, selectedWorkflow]);
+    window.localStorage.setItem("agent-studio.run-panel-collapsed", String(runPanelCollapsed));
+  }, [runPanelCollapsed]);
+
+  useEffect(() => {
+    window.localStorage.setItem("agent-studio.minimap-collapsed", String(minimapCollapsed));
+  }, [minimapCollapsed]);
 
   // Mouse-wheel zoom, keeping the point under the cursor fixed so zooming
   // feels anchored instead of jumping the view around.
@@ -187,9 +170,11 @@ export function GraphCanvas(): React.JSX.Element {
     setPan({ x: mouseX - worldX * nextScale, y: mouseY - worldY * nextScale });
   };
 
-  const startNodeDrag = (e: React.MouseEvent, nodeId: string, x: number, y: number): void => {
+  const startNodeDrag = (e: React.PointerEvent<HTMLButtonElement>, nodeId: string, x: number, y: number): void => {
     e.stopPropagation();
+    viewportRef.current?.setPointerCapture(e.pointerId);
     nodeDragRef.current = {
+      pointerId: e.pointerId,
       nodeId,
       startX: e.clientX,
       startY: e.clientY,
@@ -198,19 +183,6 @@ export function GraphCanvas(): React.JSX.Element {
       moved: false,
     };
     setDraggingNodeId(nodeId);
-  };
-
-  const startPan = (e: React.MouseEvent): void => {
-    // Only start a pan when the background itself was clicked, not a node,
-    // edge, or any other interactive child (those stop propagation already).
-    if (e.target !== e.currentTarget || dragging) return;
-    panOriginRef.current = {
-      startX: e.clientX,
-      startY: e.clientY,
-      originX: pan.x,
-      originY: pan.y,
-    };
-    setIsPanning(true);
   };
 
   const screenToWorld = (clientX: number, clientY: number): Point => {
@@ -379,10 +351,129 @@ export function GraphCanvas(): React.JSX.Element {
   const recenterOn = (worldX: number, worldY: number): void => {
     const rect = viewportRef.current?.getBoundingClientRect();
     if (!rect) return;
-    setPan({
+    setPan(clampPan({
       x: rect.width / 2 - worldX * scale,
       y: rect.height / 2 - worldY * scale,
+    }));
+  };
+
+  const clampPan = (candidate: Point): Point => {
+    const rect = viewportRef.current?.getBoundingClientRect();
+    if (!rect) return candidate;
+    const padding = 140;
+    const left = rect.width - (minimapBounds.maxX + padding) * scale;
+    const right = -(minimapBounds.minX - padding) * scale;
+    const top = rect.height - (minimapBounds.maxY + padding) * scale;
+    const bottom = -(minimapBounds.minY - padding) * scale;
+    return {
+      x: Math.min(Math.max(candidate.x, Math.min(left, right)), Math.max(left, right)),
+      y: Math.min(Math.max(candidate.y, Math.min(top, bottom)), Math.max(top, bottom)),
+    };
+  };
+
+  const resetView = (): void => {
+    setZoom(100);
+    setPan(clampPan({ x: 40, y: 30 }));
+  };
+
+  const fitGraph = (): void => {
+    const rect = viewportRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const worldWidth = Math.max(1, minimapBounds.maxX - minimapBounds.minX + 120);
+    const worldHeight = Math.max(1, minimapBounds.maxY - minimapBounds.minY + 120);
+    const nextZoom = Math.round(
+      Math.min(200, Math.max(20, Math.min((rect.width / worldWidth) * 100, (rect.height / worldHeight) * 100))),
+    );
+    const nextScale = nextZoom / 100;
+    setZoom(nextZoom);
+    setPan({
+      x: rect.width / 2 - ((minimapBounds.minX + minimapBounds.maxX) / 2) * nextScale,
+      y: rect.height / 2 - ((minimapBounds.minY + minimapBounds.maxY) / 2) * nextScale,
     });
+  };
+
+  const onCanvasPointerDown = (event: React.PointerEvent<HTMLDivElement>): void => {
+    if (event.button !== 0 || dragging) return;
+    const target = event.target as Element;
+    if (target.closest("button, input, select, option, [role=button], [role=separator]")) return;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    panOriginRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      originX: pan.x,
+      originY: pan.y,
+    };
+    setIsPanning(true);
+  };
+
+  const onCanvasPointerMove = (event: React.PointerEvent<HTMLDivElement>): void => {
+    const minimapDrag = minimapDragRef.current;
+    if (minimapDrag?.pointerId === event.pointerId) {
+      const rect = viewportRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      if (Math.abs(event.clientX - minimapDrag.startX) + Math.abs(event.clientY - minimapDrag.startY) < 6) return;
+      minimapDidDragRef.current = true;
+      setMinimapCorner(
+        `${event.clientY - rect.top < rect.height / 2 ? "top" : "bottom"}-${event.clientX - rect.left < rect.width / 2 ? "left" : "right"}` as MinimapCorner,
+      );
+      return;
+    }
+    const panOrigin = panOriginRef.current;
+    if (panOrigin?.pointerId === event.pointerId) {
+      setPan(clampPan({
+        x: panOrigin.originX + event.clientX - panOrigin.startX,
+        y: panOrigin.originY + event.clientY - panOrigin.startY,
+      }));
+      return;
+    }
+    const nodeOrigin = nodeDragRef.current;
+    if (nodeOrigin?.pointerId === event.pointerId) {
+      const dx = (event.clientX - nodeOrigin.startX) / scale;
+      const dy = (event.clientY - nodeOrigin.startY) / scale;
+      nodeOrigin.moved ||= Math.abs(dx) + Math.abs(dy) > 3;
+      const next = { x: nodeOrigin.originX + dx, y: nodeOrigin.originY + dy };
+      if (isWorkflow && selectedWorkflow) {
+        moveWorkflowNode(selectedWorkflow.id, nodeOrigin.nodeId, next);
+      } else {
+        setManualPositions((previous) => ({ ...previous, [nodeOrigin.nodeId]: next }));
+      }
+      return;
+    }
+    if (dragging) {
+      const world = screenToWorld(event.clientX, event.clientY);
+      setDragging({ ...dragging, px: world.x, py: world.y });
+    }
+  };
+
+  const onCanvasPointerUp = (event: React.PointerEvent<HTMLDivElement>): void => {
+    if (minimapDragRef.current?.pointerId === event.pointerId) {
+      minimapDragRef.current = null;
+      if (!minimapDidDragRef.current) cycleMinimapCorner();
+      minimapDidDragRef.current = false;
+    }
+    if (panOriginRef.current?.pointerId === event.pointerId) {
+      panOriginRef.current = null;
+      setIsPanning(false);
+    }
+    if (nodeDragRef.current?.pointerId === event.pointerId) {
+      nodeDragRef.current = null;
+      setDraggingNodeId(null);
+    }
+    if (dragging) {
+      const target = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>("[data-graph-node-id]");
+      const targetId = target?.dataset.graphNodeId;
+      if (targetId && targetId !== dragging.from && selectedWorkflow) {
+        addWorkflowEdge(selectedWorkflow.id, dragging.from, targetId);
+      }
+      setDragging(null);
+    }
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+  };
+
+  const cycleMinimapCorner = (): void => {
+    const corners: MinimapCorner[] = ["bottom-right", "bottom-left", "top-left", "top-right"];
+    setMinimapCorner(corners[(corners.indexOf(minimapCorner) + 1) % corners.length]);
   };
 
   const workflowRunsForSelectedWorkflow = useMemo(
@@ -417,6 +508,7 @@ export function GraphCanvas(): React.JSX.Element {
         state: runStep?.status ?? (selectedWorkflowRun ? "pending" : index === 0 ? "ready" : "pending"),
         message: runStep?.message,
         output: runStep?.output,
+        activity: runStep?.activity,
       };
     });
   }, [agents, isWorkflow, selectedWorkflow, selectedWorkflowRun]);
@@ -433,9 +525,44 @@ export function GraphCanvas(): React.JSX.Element {
 
   const isEmptyAgentGraph = !isWorkflow && nodes.length === 0;
   const isEmptyWorkflowGraph = isWorkflow && (!selectedWorkflow || nodes.length === 0);
+  const activeStep = orderedRunSteps.find((step) => step.state === "running");
+  const liveRunMessage = selectedWorkflowRun?.status === "failed"
+    ? tx("Workflow run failed.", "La corrida del workflow falló.")
+    : activeStep?.activity
+      ? `${activeStep.name}: ${activeStep.activity.summary}`
+      : selectedWorkflowRun?.status === "running"
+        ? tx("Workflow run is in progress.", "La corrida del workflow está en curso.")
+        : "";
 
   return (
     <div className="graph-view">
+      <div className="sr-only" aria-live="polite" aria-atomic="true">
+        {liveRunMessage}
+      </div>
+      {selectedWorkflowRun?.status === "failed" && (
+        <div className="sr-only" role="alert">{liveRunMessage}</div>
+      )}
+      {undoEdge && (
+        <div className="graph-undo-toast" role="status" aria-live="polite">
+          <span>{undoEdge.message}</span>
+          <button
+            type="button"
+            onClick={() => {
+              undoEdge.restore();
+              setUndoEdge(null);
+            }}
+          >
+            {tx("Undo", "Deshacer")}
+          </button>
+          <button
+            type="button"
+            aria-label={tx("Dismiss", "Descartar")}
+            onClick={() => setUndoEdge(null)}
+          >
+            ×
+          </button>
+        </div>
+      )}
       <div className="graph-toolbar-overlay-left">
         <div className="graph-mode-toggle">
           <button
@@ -586,7 +713,7 @@ export function GraphCanvas(): React.JSX.Element {
             )}
           </div>
 
-          <div className="graph-run-panel">
+          <div className={runPanelCollapsed ? "graph-run-panel collapsed" : "graph-run-panel"}>
             <div className="graph-run-panel-head">
               <span>{tx("Run status", "Estado de corrida")}</span>
               {workflowRunsForSelectedWorkflow.length > 1 && (
@@ -609,13 +736,28 @@ export function GraphCanvas(): React.JSX.Element {
               <span className="graph-run-state">
                 {selectedWorkflowRun?.status || tx("idle", "en espera")}
               </span>
-              {selectedWorkflowRun?.status === "running" && selectedWorkflowRun.runId && (
+              <button
+                type="button"
+                className="graph-panel-collapse"
+                aria-expanded={!runPanelCollapsed}
+                aria-label={tx(
+                  runPanelCollapsed ? "Expand run status" : "Collapse run status",
+                  runPanelCollapsed ? "Expandir estado de corrida" : "Contraer estado de corrida",
+                )}
+                title={tx(
+                  runPanelCollapsed ? "Expand run status" : "Collapse run status",
+                  runPanelCollapsed ? "Expandir estado de corrida" : "Contraer estado de corrida",
+                )}
+                onClick={() => setRunPanelCollapsed((value) => !value)}
+              >
+                {runPanelCollapsed ? "›" : "⌃"}
+              </button>
+              {runPanelCollapsed && selectedWorkflowRun?.status === "running" && selectedWorkflowRun.runId && (
                 <button
-                  className="danger graph-run-stop-button"
-                  title={tx(
-                    "Stop this run. Steps already in progress finish naturally instead of being killed.",
-                    "Detiene esta corrida. Los pasos ya en curso terminan solos en vez de matarse.",
-                  )}
+                  type="button"
+                  className="danger graph-run-stop-compact"
+                  aria-label={tx("Stop this run", "Detener esta corrida")}
+                  title={tx("Stop this run", "Detener esta corrida")}
                   onClick={() =>
                     vscode?.postMessage({
                       type: "cancelWorkflow",
@@ -623,10 +765,11 @@ export function GraphCanvas(): React.JSX.Element {
                     })
                   }
                 >
-                  ■ {tx("Stop", "Detener")}
+                  ■
                 </button>
               )}
             </div>
+            {!runPanelCollapsed && <>
             {selectedWorkflowRun?.recovered && (
               <p className="graph-run-recovered">
                 {tx(
@@ -671,6 +814,11 @@ export function GraphCanvas(): React.JSX.Element {
                     <pre>{step.output}</pre>
                   </details>
                 )}
+                {step.activity && step.state === "running" && (
+                  <p className="graph-run-activity">
+                    {tx("Last activity", "Última actividad")}: {step.activity.summary} · {new Date(step.activity.at).toLocaleTimeString()}
+                  </p>
+                )}
               </div>
             ))}
             {selectedWorkflow && (
@@ -709,8 +857,26 @@ export function GraphCanvas(): React.JSX.Element {
                     ? tx("Running…", "Ejecutando…")
                     : tx("Run Workflow", "Ejecutar Workflow")}
                 </button>
+                {selectedWorkflowRun?.status === "running" && selectedWorkflowRun.runId && (
+                  <button
+                    className="danger graph-run-stop-button"
+                    title={tx(
+                      "Stop this run. Steps already in progress finish naturally instead of being killed.",
+                      "Detiene esta corrida. Los pasos ya en curso terminan solos en vez de matarse.",
+                    )}
+                    onClick={() =>
+                      vscode?.postMessage({
+                        type: "cancelWorkflow",
+                        payload: { runId: selectedWorkflowRun.runId },
+                      })
+                    }
+                  >
+                    ■ {tx("Stop", "Detener")}
+                  </button>
+                )}
               </div>
             )}
+            </>}
           </div>
         </div>
       )}
@@ -740,14 +906,14 @@ export function GraphCanvas(): React.JSX.Element {
         <div
           className="graph-canvas"
           ref={viewportRef}
-          onMouseMove={onCanvasMove}
-          onMouseUp={onCanvasUp}
-          onMouseLeave={onCanvasUp}
+          onPointerDown={onCanvasPointerDown}
+          onPointerMove={onCanvasPointerMove}
+          onPointerUp={onCanvasPointerUp}
+          onPointerCancel={onCanvasPointerUp}
           onWheel={onWheelZoom}
         >
           <div
             className={isPanning ? "graph-canvas-world panning" : "graph-canvas-world"}
-            onMouseDown={startPan}
             onClick={() => setSelectedEdgeId(null)}
             style={{
               transform: `translate(${pan.x}px, ${pan.y}px) scale(${scale})`,
@@ -776,6 +942,7 @@ export function GraphCanvas(): React.JSX.Element {
                   strokeWidth={edge.width}
                   markerEnd={edge.marker}
                   opacity={edge.opacity}
+                  aria-hidden="true"
                 />
               ))}
               {edges.map((edge) => (
@@ -786,9 +953,18 @@ export function GraphCanvas(): React.JSX.Element {
                   stroke="transparent"
                   strokeWidth={14}
                   style={{ cursor: "pointer" }}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={tx("Select connection", "Seleccionar conexión")}
                   onClick={(e) => {
                     e.stopPropagation();
                     setSelectedEdgeId(edge.id);
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      setSelectedEdgeId(edge.id);
+                    }
                   }}
                 />
               ))}
@@ -808,7 +984,7 @@ export function GraphCanvas(): React.JSX.Element {
               edges
                 .filter((edge) => edge.label && edge.id !== selectedEdgeId)
                 .map((edge) => (
-                  <div
+                  <button
                     key={`label-${edge.id}`}
                     className="graph-edge-label graph-edge-label-clickable"
                     style={{ left: edge.mx - 16, top: edge.my - 9 }}
@@ -822,22 +998,38 @@ export function GraphCanvas(): React.JSX.Element {
                     }}
                   >
                     {edge.label}
-                  </div>
+                  </button>
                 ))}
             {selectedEdgeId &&
               (() => {
                 const edge = edges.find((candidate) => candidate.id === selectedEdgeId);
                 if (!edge) return null;
                 return (
-                  <div
+                  <button
                     className="graph-edge-delete"
                     style={{ left: edge.mx - 11, top: edge.my - 11 }}
                     title={tx("Remove this connection.", "Quitar esta conexión.")}
+                    aria-label={tx("Remove connection", "Quitar conexión")}
                     onClick={(e) => {
                       e.stopPropagation();
                       if (isWorkflow) {
                         if (selectedWorkflow) {
+                          const removed = selectedWorkflow.edges.find((candidate) => candidate.id === edge.id);
                           removeWorkflowEdge(selectedWorkflow.id, edge.id);
+                          if (removed) {
+                            setUndoEdge({
+                              message: tx("Connection removed.", "Conexión eliminada."),
+                              restore: () => {
+                                addWorkflowEdge(
+                                  selectedWorkflow.id,
+                                  removed.source,
+                                  removed.target,
+                                  removed.label,
+                                  removed.handoff,
+                                );
+                              },
+                            });
+                          }
                         }
                       } else {
                         const [sourceId, targetId] = selectedEdgeId.split("->");
@@ -851,13 +1043,20 @@ export function GraphCanvas(): React.JSX.Element {
                           };
                           upsertAgent(updated);
                           vscode?.postMessage({ type: "saveAgent", payload: updated });
+                          setUndoEdge({
+                            message: tx("Connection removed.", "Conexión eliminada."),
+                            restore: () => {
+                              upsertAgent(sourceAgent);
+                              vscode?.postMessage({ type: "saveAgent", payload: sourceAgent });
+                            },
+                          });
                         }
                       }
                       setSelectedEdgeId(null);
                     }}
                   >
                     ✕
-                  </div>
+                  </button>
                 );
               })()}
             {isWorkflow &&
@@ -914,49 +1113,72 @@ export function GraphCanvas(): React.JSX.Element {
                     left: node.x,
                     top: node.y,
                     zIndex: isSelected ? 4 : 3,
-                    cursor: draggingNodeId === node.id ? "grabbing" : "grab",
                   }}
-                  onMouseDown={(e) => startNodeDrag(e, node.id, node.x, node.y)}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (justDraggedNodeRef.current) {
-                      justDraggedNodeRef.current = false;
-                      return;
-                    }
-                    if (!dragging) {
+                  data-graph-node-id={node.id}
+                >
+                  <button
+                    type="button"
+                    className="graph-node-select"
+                    aria-label={tx(`Select ${node.name}`, `Seleccionar ${node.name}`)}
+                    aria-pressed={isSelected}
+                    onClick={(event) => {
+                      event.stopPropagation();
                       selectAgent(node.agentId);
                       setUiPanelOpen("inspector", true);
-                    }
-                  }}
-                  onMouseUp={() => {
-                    if (dragging && dragging.from !== node.id && selectedWorkflow) {
-                      addWorkflowEdge(selectedWorkflow.id, dragging.from, node.id);
-                    }
-                    setDragging(null);
-                  }}
-                >
-                  <div className="graph-node-head">
-                    <span className="graph-node-dot" style={{ background: node.dot }} />
-                    <span className="graph-node-name">{node.name}</span>
-                    {node.isEntry && <span className="graph-node-entry-badge">▸ entry</span>}
-                  </div>
-                  <div className="graph-node-counts">{node.counts}</div>
+                    }}
+                  >
+                    <span className="graph-node-head">
+                      <span className="graph-node-dot" style={{ background: node.dot }} />
+                      <span className="graph-node-name">{node.name}</span>
+                      {node.isEntry && <span className="graph-node-entry-badge">▸ entry</span>}
+                    </span>
+                    <span className="graph-node-counts">{node.counts}</span>
+                  </button>
                   {node.showHandles && (
                     <>
                       <span className="graph-node-handle-in" />
-                      <span
+                      <button
+                        type="button"
                         className="graph-node-handle-out"
+                        aria-label={tx("Drag to another step to connect", "Arrastra a otro paso para conectar")}
                         title={tx("Drag to another step to connect", "Arrastra a otro paso para conectar")}
-                        onMouseDown={(e) => {
+                        onPointerDown={(e) => {
                           e.stopPropagation();
                           e.preventDefault();
+                          viewportRef.current?.setPointerCapture(e.pointerId);
                           setDragging({ from: node.id, sx: node.x + HW - 4, sy: node.y, px: node.x + HW - 4, py: node.y });
                         }}
                       />
+                      <button
+                        type="button"
+                        className="graph-node-drag-handle"
+                        aria-label={tx(`Move ${node.name}; use arrow keys to reposition`, `Mover ${node.name}; usa las flechas para reubicarlo`)}
+                        title={tx("Drag to reposition this node, or use arrow keys", "Arrastra para reubicar este nodo o usa las flechas")}
+                        onPointerDown={(event) => startNodeDrag(event, node.id, node.x, node.y)}
+                        onKeyDown={(event) => {
+                          const distance = event.shiftKey ? 50 : 20;
+                          const delta = event.key === "ArrowLeft" ? { x: -distance, y: 0 }
+                            : event.key === "ArrowRight" ? { x: distance, y: 0 }
+                              : event.key === "ArrowUp" ? { x: 0, y: -distance }
+                                : event.key === "ArrowDown" ? { x: 0, y: distance }
+                                  : undefined;
+                          if (!delta) return;
+                          event.preventDefault();
+                          const next = { x: node.x + delta.x, y: node.y + delta.y };
+                          if (isWorkflow && selectedWorkflow) {
+                            moveWorkflowNode(selectedWorkflow.id, node.id, next);
+                          } else {
+                            setManualPositions((previous) => ({ ...previous, [node.id]: next }));
+                          }
+                        }}
+                      >
+                        ⠿
+                      </button>
                       {isSelected && (
                         <div className="graph-node-actions">
                           {!node.isEntry && (
-                            <span
+                            <button
+                              type="button"
                               className="graph-node-action"
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -964,9 +1186,10 @@ export function GraphCanvas(): React.JSX.Element {
                               }}
                             >
                               {tx("Set entry", "Marcar entrada")}
-                            </span>
+                            </button>
                           )}
-                          <span
+                          <button
+                            type="button"
                             className="graph-node-action danger"
                             onClick={(e) => {
                               e.stopPropagation();
@@ -974,7 +1197,7 @@ export function GraphCanvas(): React.JSX.Element {
                             }}
                           >
                             {tx("Remove", "Quitar")}
-                          </span>
+                          </button>
                           <select
                             className="graph-node-language-override"
                             aria-label={tx(
@@ -1014,24 +1237,55 @@ export function GraphCanvas(): React.JSX.Element {
           </div>
 
           <div className="graph-zoom-controls">
-            <button onClick={() => setZoom((z) => Math.min(200, z + 10))}>+</button>
-            <button onClick={() => setZoom((z) => Math.max(20, z - 10))}>−</button>
             <button
+              aria-label={tx("Zoom in", "Acercar")}
+              title={tx("Zoom in", "Acercar")}
+              onClick={() => setZoom((z) => Math.min(200, z + 10))}
+            >
+              +
+            </button>
+            <button
+              aria-label={tx("Zoom out", "Alejar")}
+              title={tx("Zoom out", "Alejar")}
+              onClick={() => setZoom((z) => Math.max(20, z - 10))}
+            >
+              −
+            </button>
+            <button
+              aria-label={tx("Reset view", "Restablecer vista")}
               title={tx("Reset pan and zoom.", "Restablece desplazamiento y zoom.")}
-              onClick={() => {
-                setZoom(100);
-                setPan({ x: 40, y: 30 });
-              }}
+              onClick={resetView}
             >
               ⤢
+            </button>
+            <button
+              aria-label={tx("Fit graph to view", "Ajustar grafo a la vista")}
+              title={tx("Fit graph to view", "Ajustar grafo a la vista")}
+              onClick={fitGraph}
+            >
+              ⤡
             </button>
           </div>
           <div className="graph-zoom-pct">{zoom}%</div>
 
-          <div
-            className="graph-minimap"
-            title={tx("Click to jump to that area of the graph.", "Haz click para saltar a esa zona del grafo.")}
-            onClick={(e) => {
+          <div className={`graph-minimap ${minimapCorner}${minimapCollapsed ? " collapsed" : ""}`}>
+            {minimapCollapsed ? (
+              <button
+                type="button"
+                className="graph-minimap-restore"
+                aria-label={tx("Expand minimap", "Expandir minimapa")}
+                title={tx("Expand minimap", "Expandir minimapa")}
+                onClick={() => setMinimapCollapsed(false)}
+              >
+                ▣
+              </button>
+            ) : <>
+            <button
+              type="button"
+              className="graph-minimap-jump"
+              aria-label={tx("Jump to this area of the graph", "Saltar a esta zona del grafo")}
+              title={tx("Click to jump to that area of the graph.", "Haz click para saltar a esa zona del grafo.")}
+              onClick={(e) => {
               const rect = e.currentTarget.getBoundingClientRect();
               const px = e.clientX - rect.left;
               const py = e.clientY - rect.top;
@@ -1041,7 +1295,7 @@ export function GraphCanvas(): React.JSX.Element {
               const worldY = minimapBounds.minY + (py / (MINI_H - 14)) * spanY;
               recenterOn(worldX, worldY);
             }}
-          >
+            >
             {nodes.map((node) => {
               const mini = toMini(node.x, node.y);
               return (
@@ -1052,6 +1306,35 @@ export function GraphCanvas(): React.JSX.Element {
                 />
               );
             })}
+            </button>
+            <button
+              type="button"
+              className="graph-minimap-move"
+              aria-label={tx("Move minimap to the next corner", "Mover minimapa a la siguiente esquina")}
+              title={tx("Drag to another corner, or click to cycle corners", "Arrastra a otra esquina o haz click para alternar esquinas")}
+              onPointerDown={(event) => {
+                event.stopPropagation();
+                viewportRef.current?.setPointerCapture(event.pointerId);
+                minimapDidDragRef.current = false;
+                minimapDragRef.current = {
+                  pointerId: event.pointerId,
+                  startX: event.clientX,
+                  startY: event.clientY,
+                };
+              }}
+            >
+              ⠿
+            </button>
+            <button
+              type="button"
+              className="graph-minimap-collapse"
+              aria-label={tx("Collapse minimap", "Contraer minimapa")}
+              title={tx("Collapse minimap", "Contraer minimapa")}
+              onClick={() => setMinimapCollapsed(true)}
+            >
+              −
+            </button>
+            </>}
           </div>
         </div>
       )}

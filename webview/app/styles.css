@@ -434,17 +434,52 @@ h4 {
 
 .agent-zone-grid {
   display: grid;
-  grid-template-columns: 256px 1fr 300px;
+  grid-template-columns: var(--agent-rail-width, 256px) 8px minmax(0, 1fr) 300px;
   flex: 1;
   min-height: 0;
 }
 
 .agent-zone-grid.inspector-collapsed {
-  grid-template-columns: 256px 1fr 46px;
+  grid-template-columns: var(--agent-rail-width, 256px) 8px minmax(0, 1fr) 46px;
 }
 
 .agent-zone-grid.no-inspector {
-  grid-template-columns: 256px 1fr;
+  grid-template-columns: var(--agent-rail-width, 256px) 8px minmax(0, 1fr);
+}
+
+.agent-zone-grid.rail-collapsed {
+  grid-template-columns: 46px minmax(0, 1fr) 300px;
+}
+
+.agent-zone-grid.inspector-collapsed.rail-collapsed {
+  grid-template-columns: 46px minmax(0, 1fr) 46px;
+}
+
+.agent-zone-grid.no-inspector.rail-collapsed {
+  grid-template-columns: 46px minmax(0, 1fr);
+}
+
+.agent-rail-resize-handle {
+  position: relative;
+  z-index: 2;
+  cursor: col-resize;
+  touch-action: none;
+  background: transparent;
+}
+
+.agent-rail-resize-handle::after {
+  content: "";
+  position: absolute;
+  inset: 0 3px;
+  background: var(--studio-border);
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.agent-rail-resize-handle:hover::after,
+.agent-rail-resize-handle:focus-visible::after {
+  opacity: 1;
+  background: var(--studio-accent);
 }
 
 .agent-rail {
@@ -457,6 +492,30 @@ h4 {
   min-width: 0;
   height: 100%;
   overflow-y: auto;
+}
+
+.agent-rail.collapsed {
+  align-items: center;
+  padding: 8px 4px;
+}
+
+.agent-rail-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--vscode-descriptionForeground);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.agent-rail-collapse-toggle {
+  flex: none;
+  min-width: 28px;
+  min-height: 28px;
+  padding: 3px 7px;
 }
 
 .agent-rail-search input {
@@ -586,9 +645,8 @@ h4 {
 .agent-rail-row-name {
   font-size: 13px;
   font-weight: 500;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow-wrap: anywhere;
+  line-height: 1.3;
 }
 
 .agent-rail-row-role {
@@ -1143,6 +1201,9 @@ h4 {
     transparent 1px
   );
   background-size: 22px 22px;
+  flex: 1;
+  min-height: 280px;
+  touch-action: none;
 }
 
 .graph-view {
@@ -1150,25 +1211,50 @@ h4 {
   flex: 1;
   min-height: 0;
   height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.graph-undo-toast {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: min(360px, calc(100% - 28px));
+  padding: 8px 10px;
+  border: 1px solid var(--studio-border);
+  border-radius: 8px;
+  background: var(--studio-surface-2);
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.32);
+  font-size: 12px;
 }
 
 .graph-toolbar-overlay-left {
-  position: absolute;
-  top: 14px;
-  left: 14px;
-  z-index: 5;
+  flex: none;
 }
 
 .graph-toolbar-overlay-right {
-  position: absolute;
-  top: 14px;
-  right: 14px;
-  z-index: 5;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
+  flex: none;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(190px, 230px);
+  align-items: start;
   gap: 10px;
-  max-width: calc(100% - 28px);
 }
 
 .graph-toolbar-actions {
@@ -1239,9 +1325,26 @@ h4 {
   background: var(--studio-surface-2);
   border: 1px solid var(--studio-border);
   border-radius: 13px;
-  padding: 10px 13px;
-  cursor: pointer;
+  padding: 0;
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+}
+
+.graph-node-select {
+  display: block;
+  width: 100%;
+  min-height: 60px;
+  padding: 10px 13px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.graph-node-select:focus-visible {
+  outline: 2px solid var(--vscode-focusBorder, var(--studio-accent));
+  outline-offset: 2px;
 }
 
 .graph-node.selected {
@@ -1388,6 +1491,25 @@ h4 {
   border: 2px solid var(--studio-surface-1);
   transform: translateY(-50%);
   cursor: crosshair;
+  padding: 0;
+}
+
+.graph-node-drag-handle {
+  position: absolute;
+  top: 3px;
+  right: 4px;
+  z-index: 1;
+  padding: 1px 4px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--vscode-descriptionForeground);
+  cursor: grab;
+  touch-action: none;
+}
+
+.graph-node-drag-handle:active {
+  cursor: grabbing;
 }
 
 .graph-node-actions {
@@ -1435,6 +1557,7 @@ h4 {
   border: 1px solid var(--studio-border);
   border-radius: 5px;
   padding: 2px 7px;
+  font-family: inherit;
 }
 
 .graph-edge-label-clickable {
@@ -1493,15 +1616,23 @@ h4 {
 }
 
 .graph-run-panel {
-  width: 230px;
-  max-width: 100%;
+  width: auto;
+  max-width: none;
+  max-height: min(420px, 45vh);
   flex: none;
+  overflow-y: auto;
   background: color-mix(in srgb, var(--studio-surface-2) 92%, transparent);
   border: 1px solid var(--studio-border);
   border-radius: 10px;
   padding: 12px 13px;
   backdrop-filter: blur(8px);
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+}
+
+.graph-run-panel.collapsed {
+  max-height: none;
+  overflow: visible;
+  padding: 8px 10px;
 }
 
 .graph-run-panel-head {
@@ -1514,6 +1645,21 @@ h4 {
   text-transform: uppercase;
   color: var(--vscode-descriptionForeground);
   font-weight: 600;
+}
+
+.graph-panel-collapse {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  margin-left: 2px;
+}
+
+.graph-run-stop-compact {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  padding: 0;
 }
 
 .graph-run-state {
@@ -1582,6 +1728,12 @@ h4 {
   margin: 0 0 5px 23px;
 }
 
+.graph-run-activity {
+  margin: 0 0 6px 23px;
+  font-size: 10.5px;
+  color: var(--vscode-descriptionForeground);
+}
+
 .graph-run-step-mark {
   flex: none;
   width: 14px;
@@ -1634,9 +1786,20 @@ h4 {
 .graph-run-panel-actions {
   display: flex;
   gap: 6px;
+  flex-wrap: wrap;
   margin-top: 10px;
   padding-top: 10px;
   border-top: 1px solid var(--studio-border);
+}
+
+.graph-run-panel-actions select,
+.graph-run-panel-actions button {
+  flex: 1 1 104px;
+  min-width: 0;
+}
+
+.graph-run-panel-actions .graph-run-stop-button {
+  flex-basis: 100%;
 }
 
 .graph-zoom-controls {
@@ -1684,15 +1847,66 @@ h4 {
 
 .graph-minimap {
   position: absolute;
-  right: 14px;
-  bottom: 14px;
   z-index: 5;
   width: 168px;
   height: 104px;
   background: color-mix(in srgb, var(--studio-surface-1) 92%, transparent);
   border: 1px solid var(--studio-border);
   border-radius: 9px;
-  overflow: hidden;
+}
+
+.graph-minimap.bottom-right { right: 14px; bottom: 14px; }
+.graph-minimap.bottom-left { left: 14px; bottom: 56px; }
+.graph-minimap.top-right { right: 14px; top: 14px; }
+.graph-minimap.top-left { left: 14px; top: 14px; }
+
+.graph-minimap-jump {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.graph-minimap-move {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  z-index: 1;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border-radius: 5px;
+  cursor: grab;
+  touch-action: none;
+}
+
+.graph-minimap-collapse {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  z-index: 1;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border-radius: 5px;
+}
+
+.graph-minimap.collapsed {
+  width: 38px;
+  height: 38px;
+  overflow: visible;
+}
+
+.graph-minimap-restore {
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border-radius: 8px;
 }
 
 .graph-minimap-node {
@@ -2881,6 +3095,16 @@ ul {
   }
 }
 
+@media (max-width: 960px) {
+  .graph-toolbar-overlay-right {
+    grid-template-columns: 1fr;
+  }
+
+  .graph-run-panel {
+    max-height: 260px;
+  }
+}
+
 @media (max-width: 1300px) {
   .workflow-grid {
     grid-template-columns: 1fr;
@@ -2889,10 +3113,34 @@ ul {
   .agent-zone-grid,
   .agent-zone-grid.inspector-collapsed {
     grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(420px, 1fr) auto;
+    overflow-y: auto;
+  }
+
+  .agent-zone-grid.no-inspector {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(420px, 1fr);
+  }
+
+  .agent-rail-resize-handle {
+    display: none;
   }
 
   .agent-rail {
+    height: auto;
     max-height: 320px;
+  }
+
+  .center-stage {
+    height: 420px;
+    min-height: 420px;
+    overflow: hidden;
+  }
+
+  .inspector-column,
+  .inspector {
+    height: auto;
+    min-height: 0;
   }
 
   .inspector-collapsed-handle {

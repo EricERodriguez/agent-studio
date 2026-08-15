@@ -189,6 +189,10 @@ export interface WorkflowRunStep {
     | "interrupted";
   message?: string;
   output?: string;
+  activity?: {
+    summary: string;
+    at: number;
+  };
   evidence?: {
     promptFilePath?: string;
     markerFilePath?: string;

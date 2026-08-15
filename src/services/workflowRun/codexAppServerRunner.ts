@@ -62,6 +62,20 @@ interface TurnPayload {
   error?: { message: string };
 }
 
+/** Convert protocol activity into a deliberately non-sensitive status for the dashboard. */
+function describeActivity(params: unknown): string {
+  const payload = params as {
+    item?: { type?: string };
+    itemType?: string;
+  };
+  const itemType = payload?.item?.type ?? payload?.itemType;
+  if (itemType === "commandExecution") return "Codex is running a command";
+  if (itemType === "reasoning") return "Codex is analyzing the task";
+  if (itemType === "agentMessage") return "Codex is preparing a response";
+  if (itemType === "fileChange") return "Codex is applying a file change";
+  return "Codex is working";
+}
+
 class AppServerClient {
   private readonly proc: ChildProcessWithoutNullStreams;
   private nextId = 1;
@@ -239,6 +253,7 @@ export class CodexAppServerService {
     prompt: string,
     timeoutMs: number,
     shouldCancel: () => boolean,
+    onActivity?: (summary: string) => void,
   ): Promise<{ success: boolean; timedOut: boolean; cancelled: boolean; output: string }> {
     try {
       const session = await this.getOrCreateSession(nodeId, cwd);
@@ -253,10 +268,29 @@ export class CodexAppServerService {
         });
       });
 
+      // Activity notifications can be frequent (especially command output deltas). Coalesce them
+      // into a safe, human-readable heartbeat rather than exposing protocol JSON to the webview.
+      let lastActivity = "";
+      let lastActivityAt = 0;
+      const reportActivity = (params: unknown): void => {
+        const summary = describeActivity(params);
+        const now = Date.now();
+        if (summary === lastActivity && now - lastActivityAt < 1500) return;
+        lastActivity = summary;
+        lastActivityAt = now;
+        onActivity?.(summary);
+      };
+      session.client.onNotification("item/started", reportActivity);
+      session.client.onNotification("item/completed", reportActivity);
+      session.client.onNotification("item/commandExecution/outputDelta", () =>
+        onActivity?.("Codex command produced output"),
+      );
+
       await session.client.request("turn/start", {
         threadId,
         input: [{ type: "text", text: prompt }],
       });
+      onActivity?.("Codex started the turn");
 
       const cancelCheck = new Promise<"cancelled">((resolve) => {
         const interval = setInterval(() => {

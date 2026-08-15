@@ -98,6 +98,11 @@ export interface WorkflowRunStep {
   message?: string;
   /** Final provider output when it is available. Persisted with CLI runs for later inspection. */
   output?: string;
+  /** A safe, short indication that the provider is still doing work. Never contains raw CLI output. */
+  activity?: {
+    summary: string;
+    at: number;
+  };
   /** Files intentionally written by the runner for this step; never process/PID handles. */
   evidence?: {
     promptFilePath?: string;

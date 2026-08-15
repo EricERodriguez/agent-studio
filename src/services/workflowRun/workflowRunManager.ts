@@ -75,6 +75,7 @@ interface NodeRuntime {
   status: WorkflowRunStep["status"];
   message?: string;
   output?: string;
+  activity?: WorkflowRunStep["activity"];
   evidence?: WorkflowRunStep["evidence"];
 }
 
@@ -166,6 +167,7 @@ export async function runWorkflowGraph(
           status: node.status,
           message: node.message,
           output: node.output,
+          activity: node.activity,
           evidence: node.evidence,
         };
       }),
@@ -276,7 +278,20 @@ export async function runWorkflowGraph(
       output: string;
     };
     if (cliCommand === "codex") {
-      turn = await codexSessions.runTurn(nodeId, cwd, prompt, 10 * 60 * 1000, shouldCancel);
+      turn = await codexSessions.runTurn(
+        nodeId,
+        cwd,
+        prompt,
+        10 * 60 * 1000,
+        shouldCancel,
+        (summary) => {
+          // The runner intentionally gives us a sanitized activity summary, never raw app-server
+          // JSON or command output. Publishing it makes a long-running Codex step observable.
+          node.activity = { summary, at: Date.now() };
+          node.message = summary;
+          publish();
+        },
+      );
     } else {
       const claudeTurn = await runAgentTurn({
         terminal: await terminals.getOrCreateTerminal(

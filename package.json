@@ -2,7 +2,7 @@
     "name": "agent-studio-ia",
     "displayName": "Agent Studio IA",
     "description": "Visual control plane for designing and orchestrating AI agents in VS Code.",
-    "version": "2.2.0",
+    "version": "2.2.1",
     "publisher": "AgentstudioIA",
     "engines": {
         "vscode": "^1.110.0"

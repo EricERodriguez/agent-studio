@@ -7,7 +7,12 @@ import { useI18n } from "../i18n";
 import { CapabilityFiltersPanel } from "./CapabilityFiltersPanel";
 import { vscode } from "../hooks/useVsCodeApi";
 
-export function AgentRail(): React.JSX.Element {
+interface AgentRailProps {
+  collapsed: boolean;
+  onCollapsedChange: (collapsed: boolean) => void;
+}
+
+export function AgentRail({ collapsed, onCollapsedChange }: AgentRailProps): React.JSX.Element {
   const { tx } = useI18n();
   const agents = useStudioStore((s) => s.agents);
   const workflows = useStudioStore((s) => s.workflows);
@@ -68,8 +73,38 @@ export function AgentRail(): React.JSX.Element {
     { key: "global", label: tx("Global", "Global") },
   ];
 
+  if (collapsed) {
+    return (
+      <aside className="agent-rail collapsed">
+        <button
+          type="button"
+          className="agent-rail-collapse-toggle"
+          aria-label={tx("Expand resource rail", "Expandir panel de recursos")}
+          aria-expanded={false}
+          title={tx("Expand resource rail", "Expandir panel de recursos")}
+          onClick={() => onCollapsedChange(false)}
+        >
+          ›
+        </button>
+      </aside>
+    );
+  }
+
   return (
     <div className="agent-rail">
+      <div className="agent-rail-topbar">
+        <span>{tx("Resources", "Recursos")}</span>
+        <button
+          type="button"
+          className="agent-rail-collapse-toggle"
+          aria-label={tx("Collapse resource rail", "Contraer panel de recursos")}
+          aria-expanded={true}
+          title={tx("Collapse resource rail", "Contraer panel de recursos")}
+          onClick={() => onCollapsedChange(true)}
+        >
+          ‹
+        </button>
+      </div>
       <div className="agent-rail-search">
         <div
           className="resource-rail-toggle"

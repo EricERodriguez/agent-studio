@@ -3,6 +3,7 @@ dist/
 webview-dist/
 *.vsix
 .vscode-test/
+.agent-studio/
 
 # VitePress docs site
 docs-site/.vitepress/cache/
